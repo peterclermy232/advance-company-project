@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
 import { LoadingComponent } from '../../../shared/components/loading/loading.component';
@@ -8,7 +9,6 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Application } from '../../../core/models/application.model';
-import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-application-list',

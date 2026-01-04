@@ -1,4 +1,4 @@
-#!/Users/peteratito/Documents/advance-company-project/backend/venv/bin/python
+#!/Users/peteratito/Documents/advance-company-project/backend/venv/bin/python3.11
 
 import sys
 import json

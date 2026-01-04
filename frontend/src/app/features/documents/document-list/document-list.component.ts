@@ -163,4 +163,9 @@ export class DocumentListComponent implements OnInit {
   isAdmin(): boolean {
     return this.authService.isAdmin();
   }
+
+  // Method to open URL in new window
+  openDocument(url: string) {
+    window.open(url, '_blank');
+  }
 }

@@ -10,7 +10,7 @@ import { User } from '../../core/models/user.model';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, HeaderComponent, SidebarComponent, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, HeaderComponent, SidebarComponent],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss']
 })

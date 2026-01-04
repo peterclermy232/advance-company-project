@@ -1,6 +1,11 @@
+import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+import dotenv
+import dj_database_url
+
+dotenv.load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
@@ -59,16 +64,16 @@ TEMPLATES = [
     },
 ]
 
+# Neon Database Configuration
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME', default='advance_company_db'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='postgres'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
-    }
+    "default": dj_database_url.parse(
+        url=os.getenv("DATABASE_URL", ""),
+        conn_max_age=600, # Optional: controls connection persistence
+        conn_health_checks=True # Optional: enables connection health checks
+    )
 }
+
 
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -121,9 +126,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+# Celery Configuration (Optional - can use Upstash Redis for free)
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
