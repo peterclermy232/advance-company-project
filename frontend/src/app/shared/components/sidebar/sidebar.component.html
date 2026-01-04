@@ -1,0 +1,50 @@
+<aside 
+  [class.w-64]="isOpen"
+  [class.w-20]="!isOpen"
+  class="bg-white border-r border-gray-200 transition-all duration-300 flex flex-col h-screen sticky top-0">
+  
+  <!-- Logo -->
+  <div class="p-4 border-b border-gray-200">
+    <div *ngIf="isOpen" class="flex items-center gap-2">
+      <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shadow-lg">
+        <span class="text-white font-bold text-xl">AC</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="font-bold text-gray-800 text-lg">Advance</span>
+        <span class="text-xs text-gray-500">Company</span>
+      </div>
+    </div>
+    <div *ngIf="!isOpen" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center mx-auto">
+      <span class="text-white font-bold">AC</span>
+    </div>
+  </div>
+
+  <!-- Menu Items -->
+  <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+    <a
+      *ngFor="let item of menuItems"
+      [routerLink]="item.route"
+      routerLinkActive="bg-blue-600 text-white"
+      [routerLinkActiveOptions]="{exact: false}"
+      class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
+      [class.justify-center]="!isOpen">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="item.icon" />
+      </svg>
+      <span *ngIf="isOpen" class="font-medium">{{ item.label }}</span>
+    </a>
+  </nav>
+
+  <!-- Logout Button -->
+  <div class="p-4 border-t border-gray-200">
+    <button
+      (click)="logout()"
+      class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+      [class.justify-center]="!isOpen">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+      </svg>
+      <span *ngIf="isOpen" class="font-medium">Logout</span>
+    </button>
+  </div>
+</aside>

@@ -1,0 +1,149 @@
+<div class="flex h-screen bg-gray-50 overflow-hidden">
+  <app-sidebar [isOpen]="sidebarOpen"></app-sidebar>
+  
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <app-header (toggleSidebar)="toggleSidebar()"></app-header>
+    
+    <main class="flex-1 overflow-y-auto p-6">
+      <app-loading *ngIf="isLoading"></app-loading>
+      
+      <div *ngIf="!isLoading" class="space-y-6">
+        <!-- Welcome Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-lg">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-blue-600 font-bold text-xl shadow-lg">
+                {{ currentUser?.full_name?.charAt(0) || 'U' }}
+              </div>
+              <div>
+                <h1 class="text-3xl font-bold">Welcome, {{ currentUser?.full_name }}!</h1>
+                <div class="flex items-center gap-3 mt-2">
+                  <span class="bg-white/20 px-3 py-1 rounded-full text-sm">{{ currentUser?.role }}</span>
+                  <span class="bg-green-500 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    {{ currentUser?.activity_status }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button routerLink="/settings" class="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
+              Edit Profile
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <app-stat-card
+            label="Monthly Deposits"
+            [value]="summary?.monthly_deposits | currencyFormat"
+            icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            color="blue"
+            trend="+5%">
+          </app-stat-card>
+          
+          <app-stat-card
+            label="Total Contributions"
+            [value]="summary?.total_contributions | currencyFormat"
+            icon="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+            color="green"
+            trend="+12%">
+          </app-stat-card>
+          
+          <app-stat-card
+            label="Interest Earned"
+            [value]="summary?.interest_earned | currencyFormat"
+            icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            color="purple"
+            trend="+8%">
+          </app-stat-card>
+          
+          <app-stat-card
+            label="Active Beneficiaries"
+            [value]="summary?.active_beneficiaries?.toString() || '0'"
+            icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            color="indigo">
+          </app-stat-card>
+        </div>
+
+        <!-- Recent Activity & Quick Actions -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- Recent Activity -->
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Recent Activity</h3>
+            <div class="space-y-3">
+              <div *ngFor="let activity of recentActivities" 
+                   class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <div [class]="activity.status === 'success' ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-yellow-500'"></div>
+                  <div>
+                    <p class="font-medium text-gray-800">{{ activity.action }}</p>
+                    <p class="text-sm text-gray-500">{{ activity.date }}</p>
+                  </div>
+                </div>
+                <span class="text-sm font-medium text-gray-600">{{ activity.amount }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <button routerLink="/financial" class="bg-blue-600 text-white p-4 rounded-lg hover:opacity-90 transition-opacity flex flex-col items-center justify-center">
+                <svg class="w-6 h-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-sm font-medium text-center">Make Deposit</span>
+              </button>
+              
+              <button routerLink="/documents" class="bg-green-600 text-white p-4 rounded-lg hover:opacity-90 transition-opacity flex flex-col items-center justify-center">
+                <svg class="w-6 h-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <span class="text-sm font-medium text-center">Upload Document</span>
+              </button>
+              
+              <button routerLink="/reports" class="bg-purple-600 text-white p-4 rounded-lg hover:opacity-90 transition-opacity flex flex-col items-center justify-center">
+                <svg class="w-6 h-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span class="text-sm font-medium text-center">View Reports</span>
+              </button>
+              
+              <button routerLink="/beneficiary" class="bg-indigo-600 text-white p-4 rounded-lg hover:opacity-90 transition-opacity flex flex-col items-center justify-center">
+                <svg class="w-6 h-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span class="text-sm font-medium text-center">Add Beneficiary</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Contributions Chart -->
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-gray-800">Monthly Contributions</h3>
+            <select class="border border-gray-300 rounded-lg px-4 py-2 text-sm">
+              <option>Last 6 Months</option>
+              <option>Last Year</option>
+              <option>All Time</option>
+            </select>
+          </div>
+          <div class="h-64 flex items-end justify-between gap-2">
+            <div *ngFor="let value of monthlyContributions; let i = index" 
+                 class="flex-1 flex flex-col items-center gap-2">
+              <div class="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg transition-all hover:opacity-80"
+                   [style.height.%]="(value / getMaxContribution()) * 100">
+              </div>
+              <span class="text-xs text-gray-500">{{ months[i] }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

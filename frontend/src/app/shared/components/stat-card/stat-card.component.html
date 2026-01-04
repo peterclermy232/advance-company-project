@@ -1,0 +1,18 @@
+<div class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+  <div class="flex items-start justify-between mb-4">
+    <div 
+      [class]="'p-3 rounded-lg bg-' + color + '-600'">
+      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="icon" />
+      </svg>
+    </div>
+    <span *ngIf="trend" class="text-green-600 text-sm font-medium flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+      {{ trend }}
+    </span>
+  </div>
+  <h3 class="text-gray-500 text-sm font-medium mb-1">{{ label }}</h3>
+  <p class="text-2xl font-bold text-gray-800">{{ value }}</p>
+</div>

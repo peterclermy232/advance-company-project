@@ -1,0 +1,99 @@
+<div class="flex h-screen bg-gray-50 overflow-hidden">
+  <app-sidebar [isOpen]="sidebarOpen"></app-sidebar>
+  
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <app-header (toggleSidebar)="toggleSidebar()"></app-header>
+    
+    <main class="flex-1 overflow-y-auto p-6">
+      <app-loading *ngIf="isLoading"></app-loading>
+      
+      <div *ngIf="!isLoading" class="space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-2xl font-bold text-gray-800">Beneficiary Management</h2>
+          <button routerLink="/beneficiary/add" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add Beneficiary
+          </button>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div *ngFor="let beneficiary of beneficiaries" class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex items-start justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
+                  {{ getInitials(beneficiary.name) }}
+                </div>
+                <div>
+                  <h3 class="font-bold text-gray-800">{{ beneficiary.name }}</h3>
+                  <p class="text-sm text-gray-500">{{ beneficiary.relation }}</p>
+                </div>
+              </div>
+              <span [class]="'px-3 py-1 rounded-full text-xs font-medium ' + getStatusClass(beneficiary.verification_status)">
+                {{ beneficiary.verification_status }}
+              </span>
+            </div>
+
+            <div class="space-y-2 text-sm mb-4">
+              <div class="flex justify-between">
+                <span class="text-gray-500">Age:</span>
+                <span class="font-medium text-gray-800">{{ beneficiary.age }} years</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500">Phone:</span>
+                <span class="font-medium text-gray-800">{{ beneficiary.phone_number || 'N/A' }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500">Status:</span>
+                <span class="font-medium text-gray-800">{{ beneficiary.status }}</span>
+              </div>
+            </div>
+
+            <div class="flex gap-2">
+              <button 
+                [routerLink]="['/beneficiary/edit', beneficiary.id]"
+                class="flex-1 bg-blue-50 text-blue-600 py-2 rounded-lg hover:bg-blue-100 text-sm font-medium">
+                Edit
+              </button>
+              <button 
+                (click)="confirmDelete(beneficiary)"
+                class="flex-1 bg-red-50 text-red-600 py-2 rounded-lg hover:bg-red-100 text-sm font-medium">
+                Remove
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="beneficiaries.length === 0" class="col-span-full text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No beneficiaries</h3>
+            <p class="mt-1 text-sm text-gray-500">Get started by adding a new beneficiary.</p>
+            <div class="mt-6">
+              <button routerLink="/beneficiary/add" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                Add Beneficiary
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div *ngIf="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+    <h3 class="text-lg font-bold text-gray-800 mb-2">Confirm Delete</h3>
+    <p class="text-gray-600 mb-6">Are you sure you want to remove {{ selectedBeneficiary?.name }}? This action cannot be undone.</p>
+    <div class="flex gap-3">
+      <button (click)="showDeleteModal = false" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        Cancel
+      </button>
+      <button (click)="deleteBeneficiary()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+        Delete
+      </button>
+    </div>
+  </div>
+</div>

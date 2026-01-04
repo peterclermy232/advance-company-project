@@ -1,0 +1,118 @@
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
+    <!-- Logo -->
+    <div class="flex justify-center mb-6">
+      <div class="flex items-center gap-2">
+        <div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shadow-lg">
+          <span class="text-white font-bold text-2xl">AC</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="font-bold text-gray-800 text-xl">Advance</span>
+          <span class="text-sm text-gray-500">Company</span>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="text-3xl font-bold text-gray-800 text-center mb-2">Create Account</h2>
+    <p class="text-gray-500 text-center mb-6">Join Advance Company today</p>
+
+    <!-- Register Form -->
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="space-y-4">
+      <!-- Full Name -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+        <input
+          type="text"
+          formControlName="full_name"
+          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          [class.border-red-500]="registerForm.get('full_name')?.invalid && registerForm.get('full_name')?.touched"
+          placeholder="Enter your full name">
+        <p *ngIf="registerForm.get('full_name')?.invalid && registerForm.get('full_name')?.touched" 
+           class="text-red-500 text-sm mt-1">
+          {{ getErrorMessage('full_name') }}
+        </p>
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <input
+          type="email"
+          formControlName="email"
+          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          [class.border-red-500]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched"
+          placeholder="Enter your email">
+        <p *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched" 
+           class="text-red-500 text-sm mt-1">
+          {{ getErrorMessage('email') }}
+        </p>
+      </div>
+
+      <!-- Phone Number -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+        <input
+          type="tel"
+          formControlName="phone_number"
+          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          [class.border-red-500]="registerForm.get('phone_number')?.invalid && registerForm.get('phone_number')?.touched"
+          placeholder="+254712345678">
+        <p *ngIf="registerForm.get('phone_number')?.invalid && registerForm.get('phone_number')?.touched" 
+           class="text-red-500 text-sm mt-1">
+          {{ getErrorMessage('phone_number') }}
+        </p>
+      </div>
+
+      <!-- Password -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <input
+          type="password"
+          formControlName="password"
+          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          [class.border-red-500]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched"
+          placeholder="Create a password">
+        <p *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched" 
+           class="text-red-500 text-sm mt-1">
+          {{ getErrorMessage('password') }}
+        </p>
+      </div>
+
+      <!-- Confirm Password -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+        <input
+          type="password"
+          formControlName="password_confirm"
+          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          [class.border-red-500]="registerForm.get('password_confirm')?.invalid && registerForm.get('password_confirm')?.touched"
+          placeholder="Confirm your password">
+        <p *ngIf="registerForm.get('password_confirm')?.invalid && registerForm.get('password_confirm')?.touched" 
+           class="text-red-500 text-sm mt-1">
+          {{ getErrorMessage('password_confirm') }}
+        </p>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        [disabled]="isLoading"
+        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+        <span *ngIf="!isLoading">Create Account</span>
+        <span *ngIf="isLoading" class="flex items-center justify-center gap-2">
+          <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Creating account...
+        </span>
+      </button>
+
+      <!-- Login Link -->
+      <p class="text-center text-sm text-gray-600 mt-4">
+        Already have an account?
+        <a routerLink="/auth/login" class="text-blue-600 hover:text-blue-700 font-medium">Sign in here</a>
+      </p>
+    </form>
+  </div>
+</div>
