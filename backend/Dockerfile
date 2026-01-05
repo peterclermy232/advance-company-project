@@ -7,20 +7,24 @@ ENV PYTHONUNBUFFERED=1
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies (split into smaller steps to reduce memory usage)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     postgresql-client \
     gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     python3-dev \
-    musl-dev \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt /app/
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    pip install gunicorn
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir gunicorn
 
 # Copy project
 COPY . /app/
@@ -30,9 +34,6 @@ RUN mkdir -p /app/staticfiles /app/media
 
 # Collect static files
 RUN python manage.py collectstatic --noinput || true
-
-# Run migrations (optional, can be done in docker-compose command)
-# RUN python manage.py migrate
 
 EXPOSE 8000
 

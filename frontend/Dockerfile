@@ -14,11 +14,14 @@ COPY . .
 # Build the app
 RUN npm run build -- --configuration production
 
+# Debug: List what was built
+RUN ls -la /app/dist/
+
 # Stage 2: Serve with Nginx
 FROM nginx:alpine
 
-# Copy built app from build stage
-COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
+# Copy built app - Angular 18 uses this path
+COPY --from=build /app/dist/advance-company-frontend/browser /usr/share/nginx/html
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
