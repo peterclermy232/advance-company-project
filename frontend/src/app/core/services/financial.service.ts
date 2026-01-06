@@ -28,4 +28,8 @@ export class FinancialService {
   getMonthlySummary(): Observable<MonthlySummary> {
     return this.apiService.get<MonthlySummary>('financial/deposits/monthly_summary/');
   }
+
+  canDeposit(): Observable<any> {
+    return this.apiService.get<any>('financial/deposits/can_deposit/');
+  }
 }

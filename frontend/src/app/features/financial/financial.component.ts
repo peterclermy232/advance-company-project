@@ -32,14 +32,20 @@ export class FinancialComponent implements OnInit {
   isLoading = true;
   isSubmitting = false;
   showDepositForm = false;
+  canDeposit = true;
+  
+  // Fixed monthly deposit amount
+  readonly MONTHLY_DEPOSIT_AMOUNT = 20000;
   
   account: FinancialAccount | null = null;
   deposits: Deposit[] = [];
   depositForm: FormGroup;
+  monthlyDeposits = 0;
+  hasPaidThisMonth = false;
 
   constructor() {
     this.depositForm = this.fb.group({
-      amount: ['', [Validators.required, Validators.min(100)]],
+      amount: [{ value: this.MONTHLY_DEPOSIT_AMOUNT, disabled: true }], // Amount is fixed and disabled
       payment_method: ['mpesa', Validators.required],
       mpesa_phone: [''],
       notes: ['']
@@ -59,18 +65,24 @@ export class FinancialComponent implements OnInit {
 
   ngOnInit() {
     this.loadFinancialData();
+    this.checkCanDeposit();
   }
 
   loadFinancialData() {
+    // Load account with monthly deposit info
     this.financialService.getMyAccount().subscribe({
-      next: (account) => {
+      next: (account: any) => {
         this.account = account;
+        this.monthlyDeposits = parseFloat(account.monthly_deposits || '0');
+        this.hasPaidThisMonth = account.has_paid_this_month || false;
       },
       error: (error) => {
         console.error('Error loading account:', error);
+        this.notificationService.error('Failed to load account information');
       }
     });
 
+    // Load deposit history
     this.financialService.getDeposits().subscribe({
       next: (response) => {
         this.deposits = response.results;
@@ -83,33 +95,73 @@ export class FinancialComponent implements OnInit {
     });
   }
 
+  checkCanDeposit() {
+    this.financialService.canDeposit().subscribe({
+      next: (response: any) => {
+        this.canDeposit = response.can_deposit;
+        if (!this.canDeposit) {
+          this.notificationService.info('You have already made your monthly deposit of KES 20,000 for this month');
+        }
+      },
+      error: (error) => {
+        console.error('Error checking deposit eligibility:', error);
+      }
+    });
+  }
+
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
   }
 
   toggleDepositForm() {
+    if (!this.canDeposit) {
+      this.notificationService.warning('You have already paid this month. Only one deposit of KES 20,000 per month is allowed.');
+      return;
+    }
+    
     this.showDepositForm = !this.showDepositForm;
     if (!this.showDepositForm) {
-      this.depositForm.reset({ payment_method: 'mpesa' });
+      this.depositForm.reset({ 
+        amount: this.MONTHLY_DEPOSIT_AMOUNT,
+        payment_method: 'mpesa' 
+      });
     }
   }
 
   onSubmitDeposit() {
-    if (this.depositForm.valid) {
+    if (this.depositForm.valid && this.canDeposit) {
       this.isSubmitting = true;
       
-      this.financialService.createDeposit(this.depositForm.value).subscribe({
+      // Include the fixed amount in the payload
+      const formData = {
+        ...this.depositForm.getRawValue(), // getRawValue() includes disabled fields
+        amount: this.MONTHLY_DEPOSIT_AMOUNT
+      };
+
+      this.financialService.createDeposit(formData).subscribe({
         next: (deposit) => {
-          this.notificationService.success('Deposit initiated successfully!');
+          this.notificationService.success(
+            'Monthly deposit of KES 20,000 initiated successfully! ' +
+            'Please complete the payment process.'
+          );
           this.deposits.unshift(deposit);
           this.toggleDepositForm();
           this.isSubmitting = false;
+          
+          // Reload financial data to update dashboard
+          this.loadFinancialData();
+          this.checkCanDeposit();
         },
         error: (error) => {
-          this.notificationService.error('Failed to initiate deposit');
+          const errorMessage = error.error?.amount?.[0] || 
+                             error.error?.non_field_errors?.[0] ||
+                             'Failed to initiate deposit';
+          this.notificationService.error(errorMessage);
           this.isSubmitting = false;
         }
       });
+    } else if (!this.canDeposit) {
+      this.notificationService.warning('You have already paid this month');
     } else {
       Object.keys(this.depositForm.controls).forEach(key => {
         this.depositForm.get(key)?.markAsTouched();
@@ -125,5 +177,14 @@ export class FinancialComponent implements OnInit {
       'cancelled': 'bg-gray-100 text-gray-800'
     };
     return classes[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  getPaymentMethodLabel(method: string): string {
+    const labels: { [key: string]: string } = {
+      'mpesa': 'M-Pesa',
+      'bank': 'Bank Transfer',
+      'mansa_x': 'Mansa-X'
+    };
+    return labels[method] || method;
   }
 }
