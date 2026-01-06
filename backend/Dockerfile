@@ -7,15 +7,11 @@ ENV PYTHONUNBUFFERED=1
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies (split into smaller steps to reduce memory usage)
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     postgresql-client \
     gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
     python3-dev \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -32,11 +28,13 @@ COPY . /app/
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/media
 
-# Collect static files
-RUN python manage.py collectstatic --noinput || true
+# Collect static files (will use environment variables at runtime)
+RUN python manage.py collectstatic --noinput --clear || true
 
+# Expose port
 EXPOSE 8000
 
-# Use shell form to allow variable expansion
-# Use shell form (without brackets) to allow variable expansion
-CMD ["sh", "-c", "gunicorn advance_company.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3"]
+# Run migrations and start server
+CMD python manage.py migrate --noinput && \
+    python manage.py create_admin && \
+    gunicorn advance_company.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3
