@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8000/api',
+  apiUrl: 'https://advance-company-backend-production.up.railway.app/api',
   apiTimeout: 30000
 };
