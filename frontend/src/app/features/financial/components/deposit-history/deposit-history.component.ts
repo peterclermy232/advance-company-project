@@ -6,8 +6,8 @@ import { HeaderComponent } from '../../../../shared/components/header/header.com
 import { LoadingComponent } from '../../../../shared/components/loading/loading.component';
 import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pipe';
 import { FinancialService } from '../../../../core/services/financial.service';
-import { NotificationService } from '../../../../core/services/notification.service';
 import { Deposit } from '../../../../core/models/financial.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-deposit-history',
@@ -26,7 +26,7 @@ import { Deposit } from '../../../../core/models/financial.model';
 export class DepositHistoryComponent implements OnInit {
   private fb = inject(FormBuilder);
   private financialService = inject(FinancialService);
-  private notificationService = inject(NotificationService);
+  private toastService = inject(ToastService);
 
   sidebarOpen = true;
   isLoading = true;
@@ -74,7 +74,7 @@ export class DepositHistoryComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading deposits:', error);
-        this.notificationService.error('Failed to load deposits');
+        this.toastService.error('Failed to load deposits');
         this.isLoading = false;
       }
     });
@@ -108,14 +108,14 @@ export class DepositHistoryComponent implements OnInit {
     this.isProcessing = true;
     this.financialService.approveDeposit(this.selectedDeposit.id).subscribe({
       next: (response) => {
-        this.notificationService.success('Deposit approved successfully');
+        this.toastService.success('Deposit approved successfully');
         this.loadDeposits();
         this.closeModals();
         this.isProcessing = false;
       },
       error: (error) => {
         const message = error.error?.error || 'Failed to approve deposit';
-        this.notificationService.error(message);
+        this.toastService.error(message);
         this.isProcessing = false;
       }
     });
@@ -129,14 +129,14 @@ export class DepositHistoryComponent implements OnInit {
 
     this.financialService.rejectDeposit(this.selectedDeposit.id, reason).subscribe({
       next: (response) => {
-        this.notificationService.success('Deposit rejected');
+        this.toastService.success('Deposit rejected');
         this.loadDeposits();
         this.closeModals();
         this.isProcessing = false;
       },
       error: (error) => {
         const message = error.error?.error || 'Failed to reject deposit';
-        this.notificationService.error(message);
+        this.toastService.error(message);
         this.isProcessing = false;
       }
     });

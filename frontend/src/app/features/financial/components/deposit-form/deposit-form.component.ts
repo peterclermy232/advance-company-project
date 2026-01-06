@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pipe';
 import { FinancialService } from '../../../../core/services/financial.service';
-import { NotificationService } from '../../../../core/services/notification.service';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-deposit-form',
@@ -15,7 +15,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 export class DepositFormComponent {
   private fb = inject(FormBuilder);
   private financialService = inject(FinancialService);
-  private notificationService = inject(NotificationService);
+  private toastService = inject(ToastService);
 
   @Input() canDeposit = true;
   @Output() depositCreated = new EventEmitter<void>();
@@ -55,7 +55,7 @@ export class DepositFormComponent {
 
       this.financialService.createDeposit(formData).subscribe({
         next: (deposit) => {
-          this.notificationService.success(
+          this.toastService.success(
             'Monthly deposit of KES 20,000 initiated successfully! Please complete the payment process.'
           );
           this.isSubmitting = false;
@@ -69,12 +69,12 @@ export class DepositFormComponent {
           const errorMessage = error.error?.amount?.[0] || 
                              error.error?.non_field_errors?.[0] ||
                              'Failed to initiate deposit';
-          this.notificationService.error(errorMessage);
+          this.toastService.error(errorMessage);
           this.isSubmitting = false;
         }
       });
     } else if (!this.canDeposit) {
-      this.notificationService.warning('You have already paid this month');
+      this.toastService.warning('You have already paid this month');
     } else {
       Object.keys(this.depositForm.controls).forEach(key => {
         this.depositForm.get(key)?.markAsTouched();

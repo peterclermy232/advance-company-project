@@ -10,7 +10,7 @@ import uuid
 from .models import FinancialAccount, Deposit, InterestCalculation
 from .serializers import FinancialAccountSerializer, DepositSerializer, InterestCalculationSerializer
 from .permissions import IsAdminUser
-
+from apps.notifications.services import NotificationService
 class DepositViewSet(viewsets.ModelViewSet):
     queryset = Deposit.objects.all()
     serializer_class = DepositSerializer
@@ -36,6 +36,7 @@ class DepositViewSet(viewsets.ModelViewSet):
             transaction_reference=transaction_ref,
             amount=self.MONTHLY_DEPOSIT_AMOUNT
         )
+        NotificationService.notify_deposit_submitted(serializer.instance)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def approve_deposit(self, request, pk=None):
@@ -61,6 +62,9 @@ class DepositViewSet(viewsets.ModelViewSet):
         deposit.approved_by = request.user
         deposit.approved_at = timezone.now()
         deposit.save()
+
+        # Notify user about approval
+        NotificationService.notify_deposit_approved(deposit, approved_by=request.user)
         
         # Get or create financial account
         account, created = FinancialAccount.objects.get_or_create(user=deposit.user)
@@ -116,6 +120,7 @@ class DepositViewSet(viewsets.ModelViewSet):
         deposit.rejected_by = request.user
         deposit.rejected_at = timezone.now()
         deposit.save()
+        NotificationService.notify_deposit_rejected(deposit, rejected_by=request.user, reason=reason)
         
         return Response({
             'message': 'Deposit rejected',

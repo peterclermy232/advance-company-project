@@ -1,21 +1,21 @@
-import { Component, inject, Output, EventEmitter } from '@angular/core';
+import { Component, inject, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { User } from '../../../core/models/user.model';
+import { NotificationDropdownComponent } from '../notification-dropdown/notification-dropdown.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, NotificationDropdownComponent],
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss']
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnInit {
   @Output() toggleSidebar = new EventEmitter<void>();
   
   authService = inject(AuthService);
   currentUser: User | null = null;
-  notificationsCount = 3;
 
   ngOnInit() {
     this.authService.currentUser$.subscribe(user => {
@@ -31,4 +31,3 @@ export class HeaderComponent {
     this.authService.logout();
   }
 }
-

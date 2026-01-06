@@ -1,58 +1,88 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { Observable, BehaviorSubject, interval } from 'rxjs';
+import { switchMap, tap } from 'rxjs/operators';
+import { ApiService } from './api.service';
 
-export interface Notification {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
+export interface AppNotification {
+  id: number;
+  user: number;
+  user_name: string;
+  notification_type: string;
+  title: string;
   message: string;
-  duration?: number;
+  related_deposit_id?: number;
+  related_application_id?: number;
+  related_user_name?: string;
+  is_read: boolean;
+  read_at?: string;
+  created_at: string;
+  time_ago: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class NotificationService {
-  private notificationsSubject = new BehaviorSubject<Notification[]>([]);
+  private apiService = inject(ApiService);
+  
+  private unreadCountSubject = new BehaviorSubject<number>(0);
+  public unreadCount$ = this.unreadCountSubject.asObservable();
+  
+  private notificationsSubject = new BehaviorSubject<AppNotification[]>([]);
   public notifications$ = this.notificationsSubject.asObservable();
 
-  show(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', duration: number = 3000): void {
-    const notification: Notification = {
-      id: this.generateId(),
-      type,
-      message,
-      duration
-    };
-
-    const current = this.notificationsSubject.value;
-    this.notificationsSubject.next([...current, notification]);
-
-    if (duration > 0) {
-      setTimeout(() => this.remove(notification.id), duration);
-    }
+  constructor() {
+    // Poll for new notifications every 30 seconds
+    interval(30000)
+      .pipe(switchMap(() => this.getUnreadCount()))
+      .subscribe();
   }
 
-  success(message: string, duration?: number): void {
-    this.show(message, 'success', duration);
+  getNotifications(): Observable<AppNotification[]> {
+    return this.apiService.get<AppNotification[]>('notifications/').pipe(
+      tap(notifications => this.notificationsSubject.next(notifications))
+    );
   }
 
-  error(message: string, duration?: number): void {
-    this.show(message, 'error', duration);
+  getUnreadNotifications(): Observable<AppNotification[]> {
+    return this.apiService.get<AppNotification[]>('notifications/unread/');
   }
 
-  warning(message: string, duration?: number): void {
-    this.show(message, 'warning', duration);
+  getUnreadCount(): Observable<{ count: number }> {
+    return this.apiService.get<{ count: number }>('notifications/unread_count/').pipe(
+      tap(response => this.unreadCountSubject.next(response.count))
+    );
   }
 
-  info(message: string, duration?: number): void {
-    this.show(message, 'info', duration);
+  getRecentNotifications(): Observable<AppNotification[]> {
+    return this.apiService.get<AppNotification[]>('notifications/recent/').pipe(
+      tap(notifications => this.notificationsSubject.next(notifications))
+    );
   }
 
-  remove(id: string): void {
-    const current = this.notificationsSubject.value;
-    this.notificationsSubject.next(current.filter(n => n.id !== id));
+  markAsRead(id: number): Observable<AppNotification> {
+    return this.apiService.post<AppNotification>(`notifications/${id}/mark_as_read/`, {}).pipe(
+      tap(() => {
+        // Update local state
+        const count = this.unreadCountSubject.value;
+        this.unreadCountSubject.next(Math.max(0, count - 1));
+      })
+    );
   }
 
-  private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+  markAllAsRead(): Observable<any> {
+    return this.apiService.post<any>('notifications/mark_all_as_read/', {}).pipe(
+      tap(() => this.unreadCountSubject.next(0))
+    );
+  }
+
+  clearAll(): Observable<any> {
+    return this.apiService.delete<any>('notifications/clear_all/');
+  }
+
+  // Refresh notifications manually
+  refresh(): void {
+    this.getRecentNotifications().subscribe();
+    this.getUnreadCount().subscribe();
   }
 }

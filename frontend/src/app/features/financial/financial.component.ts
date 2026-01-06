@@ -7,8 +7,8 @@ import { DepositTableComponent } from './components/deposit-table/deposit-table.
 import { DepositApprovalModalComponent } from './components/deposit-approval-modal/deposit-approval-modal.component';
 import { DepositRejectionModalComponent } from './components/deposit-rejection-modal/deposit-rejection-modal.component';
 import { FinancialService } from '../../core/services/financial.service';
-import { NotificationService } from '../../core/services/notification.service';
 import { Deposit } from '../../core/models/financial.model';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-financial',
@@ -27,7 +27,7 @@ import { Deposit } from '../../core/models/financial.model';
 })
 export class FinancialComponent implements OnInit {
   private financialService = inject(FinancialService);
-  private notificationService = inject(NotificationService);
+  private notificationService = inject(ToastService);
 
   sidebarOpen = true;
   isLoading = true;

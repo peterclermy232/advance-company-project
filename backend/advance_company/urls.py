@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/applications/', include('apps.applications.urls')),
     path('api/reports/', include('apps.reports.urls')),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/notifications/', include('apps.notifications.urls')),
 ]
 
 if settings.DEBUG:

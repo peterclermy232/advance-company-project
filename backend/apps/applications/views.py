@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from .models import Application, ApplicationActivity
 from .serializers import ApplicationSerializer, ApplicationActivitySerializer
-
+from apps.notifications.services import NotificationService
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all()
     serializer_class = ApplicationSerializer
@@ -27,7 +27,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             action='submitted',
             notes='Application submitted'
         )
-    
+        NotificationService.notify_application_submitted(application)
+        
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         if request.user.role != 'admin':
@@ -49,6 +50,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             action='approved',
             notes=request.data.get('comments', '')
         )
+
+        NotificationService.notify_application_approved(application)
         
         return Response({'message': 'Application approved successfully'})
     
@@ -73,7 +76,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             action='rejected',
             notes=request.data.get('comments', '')
         )
-        
+
+        NotificationService.notify_application_rejected(application,request.data.get('comments', ''))
+
         return Response({'message': 'Application rejected'})
     
     @action(detail=True, methods=['post'])
