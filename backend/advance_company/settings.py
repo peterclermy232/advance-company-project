@@ -11,17 +11,30 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-# Railway & Production Configuration - FIXED to handle Railway's quoted values
+# Railway & Production Configuration - ENHANCED to handle various formats
+def parse_comma_separated(value):
+    """Parse comma-separated values and strip quotes"""
+    if not value:
+        return []
+    # Remove outer quotes if present
+    value = value.strip().strip('"').strip("'")
+    # Split and clean each item
+    return [item.strip().strip('"').strip("'") for item in value.split(',') if item.strip()]
+
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS', 
     default='*',
-    cast=lambda v: [s.strip().strip('"').strip("'") for s in v.split(',')]
+    cast=parse_comma_separated
 )
+
+# Fallback: if parsing fails or empty, use wildcard
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS', 
     default='',
-    cast=lambda v: [s.strip().strip('"').strip("'") for s in v.split(',')] if v else []
+    cast=parse_comma_separated
 )
 
 INSTALLED_APPS = [
@@ -120,11 +133,11 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-# CORS Configuration - FIXED to handle Railway's quoted values
+# CORS Configuration - ENHANCED parsing
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
     default='http://localhost:4200',
-    cast=lambda v: [s.strip().strip('"').strip("'") for s in v.split(',')]
+    cast=parse_comma_separated
 )
 CORS_ALLOW_CREDENTIALS = True
 
@@ -163,3 +176,8 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     X_FRAME_OPTIONS = 'DENY'
+
+# Print settings on startup (for debugging Railway)
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print(f"DEBUG: {DEBUG}")
+print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
