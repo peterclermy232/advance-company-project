@@ -1,0 +1,37 @@
+<div class="bg-white rounded-xl p-6 shadow-sm">
+      <h3 class="text-lg font-bold text-gray-800 mb-4">{{ title }}</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Date</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Amount</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Method</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Reference</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr *ngFor="let deposit of deposits" class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-sm text-gray-800">{{ deposit.created_at | date:'medium' }}</td>
+              <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ deposit.amount | currencyFormat }}</td>
+              <td class="px-4 py-3 text-sm text-gray-600">{{ getPaymentMethodLabel(deposit.payment_method) }}</td>
+              <td class="px-4 py-3 text-sm text-gray-600 font-mono">{{ deposit.transaction_reference }}</td>
+              <td class="px-4 py-3">
+                <span [class]="'px-3 py-1 rounded-full text-xs font-medium ' + getStatusClass(deposit.status)">
+                  {{ deposit.status }}
+                </span>
+              </td>
+            </tr>
+            <tr *ngIf="deposits.length === 0">
+              <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                {{ emptyMessage }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>

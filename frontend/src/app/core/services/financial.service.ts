@@ -1,35 +1,59 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiService, PaginatedResponse } from './api.service';
-import { FinancialAccount, Deposit, DepositRequest, MonthlySummary } from '../models/financial.model';
+import { environment } from '../../environments/environment';
+import { Deposit } from '../models/financial.model';
+
 
 @Injectable({
   providedIn: 'root'
 })
 export class FinancialService {
-  private apiService = inject(ApiService);
+  private apiUrl = `${environment.apiUrl}/financial`;
 
-  getMyAccount(): Observable<FinancialAccount> {
-    return this.apiService.get<FinancialAccount>('financial/accounts/my_account/');
+  constructor(private http: HttpClient) {}
+
+  // Account endpoints
+  getMyAccount(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/accounts/my_account/`);
   }
 
-  getDeposits(params?: any): Observable<PaginatedResponse<Deposit>> {
-    return this.apiService.get<PaginatedResponse<Deposit>>('financial/deposits/', params);
+  getAccounts(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/accounts/`);
   }
 
-  createDeposit(data: DepositRequest): Observable<Deposit> {
-    return this.apiService.post<Deposit>('financial/deposits/', data);
+  // Deposit endpoints
+  getDeposits(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/deposits/`);
   }
 
-  confirmPayment(id: number): Observable<any> {
-    return this.apiService.post<any>(`financial/deposits/${id}/confirm_payment/`, {});
-  }
-
-  getMonthlySummary(): Observable<MonthlySummary> {
-    return this.apiService.get<MonthlySummary>('financial/deposits/monthly_summary/');
+  createDeposit(data: any): Observable<Deposit> {
+    return this.http.post<Deposit>(`${this.apiUrl}/deposits/`, data);
   }
 
   canDeposit(): Observable<any> {
-    return this.apiService.get<any>('financial/deposits/can_deposit/');
+    return this.http.get(`${this.apiUrl}/deposits/can_deposit/`);
+  }
+
+  getMonthlySummary(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/deposits/monthly_summary/`);
+  }
+
+  // Admin endpoints
+  getPendingApprovals(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/deposits/pending_approvals/`);
+  }
+
+  approveDeposit(depositId: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/deposits/${depositId}/approve_deposit/`, {});
+  }
+
+  rejectDeposit(depositId: number, reason: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/deposits/${depositId}/reject_deposit/`, { reason });
+  }
+
+  // Interest calculations
+  getInterestCalculations(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/interest-calculations/`);
   }
 }

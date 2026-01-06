@@ -12,6 +12,7 @@ class FinancialAccount(models.Model):
     def __str__(self):
         return f"{self.user.full_name} - Account"
 
+
 class Deposit(models.Model):
     PAYMENT_METHOD_CHOICES = [
         ('mpesa', 'M-Pesa'),
@@ -33,6 +34,26 @@ class Deposit(models.Model):
     transaction_reference = models.CharField(max_length=100, unique=True)
     mpesa_phone = models.CharField(max_length=15, null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
+    
+    # Admin approval fields
+    approved_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='approved_deposits'
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejected_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='rejected_deposits'
+    )
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(null=True, blank=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -41,6 +62,7 @@ class Deposit(models.Model):
     
     def __str__(self):
         return f"{self.user.full_name} - KES {self.amount}"
+
 
 class InterestCalculation(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='interest_calculations')

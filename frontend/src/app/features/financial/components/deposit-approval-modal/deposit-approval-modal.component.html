@@ -1,0 +1,59 @@
+<div *ngIf="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="bg-green-100 p-3 rounded-full">
+            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900">Approve Deposit</h3>
+        </div>
+        
+        <div *ngIf="deposit" class="bg-gray-50 rounded-lg p-4 mb-4">
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p class="text-gray-600">Member</p>
+              <p class="font-semibold text-gray-900">{{ deposit.user_name }}</p>
+            </div>
+            <div>
+              <p class="text-gray-600">Amount</p>
+              <p class="font-semibold text-gray-900">{{ deposit.amount | currencyFormat }}</p>
+            </div>
+            <div>
+              <p class="text-gray-600">Method</p>
+              <p class="font-semibold text-gray-900">{{ getPaymentMethodLabel(deposit.payment_method) }}</p>
+            </div>
+            <div>
+              <p class="text-gray-600">Reference</p>
+              <p class="font-mono text-xs text-gray-900">{{ deposit.transaction_reference }}</p>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-6">
+          This will approve the deposit and update the member's financial account with contributions and interest.
+        </p>
+
+        <div class="flex gap-3">
+          <button
+            (click)="onCancel()"
+            [disabled]="isProcessing"
+            class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50">
+            Cancel
+          </button>
+          <button
+            (click)="onConfirm()"
+            [disabled]="isProcessing"
+            class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            <svg *ngIf="!isProcessing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <svg *ngIf="isProcessing" class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isProcessing ? 'Processing...' : 'Approve Deposit' }}
+          </button>
+        </div>
+      </div>
+    </div>

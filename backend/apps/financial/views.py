@@ -2,13 +2,14 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.utils import timezone
 from datetime import datetime
 from decimal import Decimal
 import uuid
 from .models import FinancialAccount, Deposit, InterestCalculation
 from .serializers import FinancialAccountSerializer, DepositSerializer, InterestCalculationSerializer
+from .permissions import IsAdminUser
 
 class DepositViewSet(viewsets.ModelViewSet):
     queryset = Deposit.objects.all()
@@ -36,22 +37,29 @@ class DepositViewSet(viewsets.ModelViewSet):
             amount=self.MONTHLY_DEPOSIT_AMOUNT
         )
     
-    @action(detail=True, methods=['post'])
-    def confirm_payment(self, request, pk=None):
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def approve_deposit(self, request, pk=None):
         """
-        Confirm payment and update financial account
-        This should be called after payment verification (e.g., M-Pesa callback)
+        Admin endpoint to approve a deposit and update financial account
         """
         deposit = self.get_object()
         
-        if deposit.status != 'pending':
+        if deposit.status == 'completed':
             return Response(
-                {'error': 'Deposit already processed'},
+                {'error': 'Deposit already approved and processed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if deposit.status == 'failed' or deposit.status == 'cancelled':
+            return Response(
+                {'error': f'Cannot approve a {deposit.status} deposit'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         # Update deposit status
         deposit.status = 'completed'
+        deposit.approved_by = request.user
+        deposit.approved_at = timezone.now()
         deposit.save()
         
         # Get or create financial account
@@ -79,13 +87,53 @@ class DepositViewSet(viewsets.ModelViewSet):
         )
         
         return Response({
-            'message': 'Payment confirmed successfully',
+            'message': 'Deposit approved successfully',
             'deposit': DepositSerializer(deposit).data,
             'account': {
                 'total_contributions': str(account.total_contributions),
                 'interest_earned': str(account.interest_earned),
-                'monthly_deposit': str(self.MONTHLY_DEPOSIT_AMOUNT)
+                'interest_amount_added': str(interest_earned)
             }
+        })
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def reject_deposit(self, request, pk=None):
+        """
+        Admin endpoint to reject a deposit
+        """
+        deposit = self.get_object()
+        
+        if deposit.status == 'completed':
+            return Response(
+                {'error': 'Cannot reject an already completed deposit'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        reason = request.data.get('reason', 'No reason provided')
+        
+        deposit.status = 'failed'
+        deposit.rejection_reason = reason
+        deposit.rejected_by = request.user
+        deposit.rejected_at = timezone.now()
+        deposit.save()
+        
+        return Response({
+            'message': 'Deposit rejected',
+            'deposit': DepositSerializer(deposit).data
+        })
+    
+    @action(detail=False, methods=['get'], permission_classes=[IsAdminUser])
+    def pending_approvals(self, request):
+        """
+        Get all pending deposits that need admin approval
+        """
+        pending_deposits = Deposit.objects.filter(status='pending').order_by('-created_at')
+        
+        serializer = self.get_serializer(pending_deposits, many=True)
+        
+        return Response({
+            'count': pending_deposits.count(),
+            'results': serializer.data
         })
     
     @action(detail=False, methods=['get'])
@@ -129,7 +177,7 @@ class DepositViewSet(viewsets.ModelViewSet):
         
         existing_deposits = Deposit.objects.filter(
             user=user,
-            status='completed',
+            status__in=['completed', 'pending'],  # Include pending to prevent duplicate submissions
             created_at__month=current_month,
             created_at__year=current_year
         )
@@ -139,7 +187,7 @@ class DepositViewSet(viewsets.ModelViewSet):
         return Response({
             'can_deposit': can_deposit,
             'monthly_amount': str(self.MONTHLY_DEPOSIT_AMOUNT),
-            'message': 'You can make your monthly deposit' if can_deposit else 'You have already paid this month'
+            'message': 'You can make your monthly deposit' if can_deposit else 'You have already submitted a deposit this month'
         })
 
 
@@ -179,6 +227,8 @@ class FinancialAccountViewSet(viewsets.ModelViewSet):
         data['has_paid_this_month'] = monthly_deposits >= Decimal('20000.00')
         
         return Response(data)
+
+
 class InterestCalculationViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = InterestCalculation.objects.all()
     serializer_class = InterestCalculationSerializer
@@ -188,4 +238,3 @@ class InterestCalculationViewSet(viewsets.ReadOnlyModelViewSet):
         if self.request.user.role == 'admin':
             return InterestCalculation.objects.all()
         return InterestCalculation.objects.filter(user=self.request.user)
-
