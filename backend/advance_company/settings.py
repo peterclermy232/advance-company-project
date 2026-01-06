@@ -11,17 +11,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-# Railway & Production Configuration
+# Railway & Production Configuration - FIXED to handle Railway's quoted values
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS', 
     default='*',
-    cast=lambda v: [s.strip() for s in v.split(',')]
+    cast=lambda v: [s.strip().strip('"').strip("'") for s in v.split(',')]
 )
 
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS', 
     default='',
-    cast=lambda v: [s.strip() for s in v.split(',')] if v else []
+    cast=lambda v: [s.strip().strip('"').strip("'") for s in v.split(',')] if v else []
 )
 
 INSTALLED_APPS = [
@@ -79,7 +79,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'advance_company.wsgi.application'
 
-# Neon Database Configuration (Keep your existing DATABASE_URL)
+# Neon Database Configuration
 DATABASES = {
     "default": dj_database_url.parse(
         url=os.getenv("DATABASE_URL", ""),
@@ -120,11 +120,11 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-# CORS Configuration
+# CORS Configuration - FIXED to handle Railway's quoted values
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
     default='http://localhost:4200',
-    cast=lambda v: [s.strip() for s in v.split(',')]
+    cast=lambda v: [s.strip().strip('"').strip("'") for s in v.split(',')]
 )
 CORS_ALLOW_CREDENTIALS = True
 
