@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, BehaviorSubject, interval, timer } from 'rxjs';
 import { switchMap, tap, catchError, startWith } from 'rxjs/operators';
 import { ApiService } from './api.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
+
 
 export interface AppNotification {
   id: number;
@@ -31,6 +33,7 @@ interface NotificationResponse {
 })
 export class NotificationService {
   private apiService = inject(ApiService);
+  private snackBar = inject(MatSnackBar);
   
   private unreadCountSubject = new BehaviorSubject<number>(0);
   public unreadCount$ = this.unreadCountSubject.asObservable();
@@ -197,4 +200,30 @@ export class NotificationService {
       this.pollingSubscription.unsubscribe();
     }
   }
+  success(message: string, action: string = 'OK', duration = 3000): void {
+  this.snackBar.open(message, action, {
+    duration,
+    panelClass: ['snackbar-success'],
+    horizontalPosition: 'right',
+    verticalPosition: 'top'
+  });
+}
+
+error(message: string, action: string = 'DISMISS', duration = 4000): void {
+  this.snackBar.open(message, action, {
+    duration,
+    panelClass: ['snackbar-error'],
+    horizontalPosition: 'right',
+    verticalPosition: 'top'
+  });
+}
+
+info(message: string, action: string = 'OK', duration = 3000): void {
+  this.snackBar.open(message, action, {
+    duration,
+    panelClass: ['snackbar-info'],
+    horizontalPosition: 'right',
+    verticalPosition: 'top'
+  });
+}
 }

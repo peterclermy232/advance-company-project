@@ -1,7 +1,15 @@
-// app.config.ts
-import { ApplicationConfig, provideZoneChangeDetection, APP_INITIALIZER } from '@angular/core';
+import {
+  ApplicationConfig,
+  provideZoneChangeDetection,
+  APP_INITIALIZER,
+  importProvidersFrom
+} from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideAnimations } from '@angular/platform-browser/animations';
+
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { NotificationService } from './core/services/notification.service';
@@ -32,6 +40,11 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withInterceptors([authInterceptor])
     ),
+
+    // REQUIRED for Angular Material SnackBar
+    provideAnimations(),
+    importProvidersFrom(MatSnackBarModule),
+
     // Initialize notification service on app startup
     {
       provide: APP_INITIALIZER,
