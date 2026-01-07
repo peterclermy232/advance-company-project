@@ -4,11 +4,20 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pipe';
 import { FinancialService } from '../../../../core/services/financial.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { HeaderComponent } from '../../../../shared/components/header/header.component';
+import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
+import { LoadingComponent } from '../../../../shared/components/loading/loading.component';
 
 @Component({
   selector: 'app-deposit-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, CurrencyFormatPipe],
+  imports: [
+    CommonModule, ReactiveFormsModule,
+    HeaderComponent, 
+        SidebarComponent, 
+     CurrencyFormatPipe,
+     LoadingComponent,
+    ],
   templateUrl: './deposit-form.component.html',
   styleUrls: ['./deposit-form.component.scss']
 })
@@ -24,6 +33,9 @@ export class DepositFormComponent {
   readonly MONTHLY_DEPOSIT_AMOUNT = 20000;
   isSubmitting = false;
   depositForm: FormGroup;
+
+  isLoading = true;
+  sidebarOpen = true;
 
   constructor() {
     this.depositForm = this.fb.group({
@@ -80,5 +92,8 @@ export class DepositFormComponent {
         this.depositForm.get(key)?.markAsTouched();
       });
     }
+  }
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen;
   }
 }

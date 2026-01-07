@@ -1,4 +1,12 @@
-<div class="bg-white rounded-xl p-6 shadow-sm border-2 border-blue-500">
+<div class="flex h-screen bg-gray-50 overflow-hidden">
+  <app-sidebar [isOpen]="sidebarOpen"></app-sidebar>
+<div class="flex-1 flex flex-col overflow-hidden">
+    <app-header (toggleSidebar)="toggleSidebar()"></app-header>
+
+    <main class="flex-1 overflow-y-auto p-6">
+      <!-- <app-loading *ngIf="isLoading"></app-loading> -->
+
+<div  class="bg-white rounded-xl p-6 shadow-sm border-2 border-blue-500">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-bold text-gray-800">Make Monthly Deposit</h3>
         <div class="bg-blue-50 px-4 py-2 rounded-lg">
@@ -76,3 +84,7 @@
         </button>
       </form>
     </div>
+
+    </main>
+</div>
+</div>

@@ -23,6 +23,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'deposit-form',
+    loadComponent: () => import('./features/financial/components/deposit-form/deposit-form.component').then(m => m.DepositFormComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'beneficiary',
     loadChildren: () => import('./features/beneficiary/beneficiary.routes').then(m => m.BENEFICIARY_ROUTES),
     canActivate: [authGuard]
