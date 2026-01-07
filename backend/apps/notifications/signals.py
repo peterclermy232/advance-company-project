@@ -22,13 +22,17 @@ def notify_deposit_created(sender, instance, created, **kwargs):
     Notify admin when a deposit needs approval
     """
     if created:
+        # Import here to avoid circular imports
+        from .utils import send_multi_channel_notification
+        
         # Notify the user who created the deposit
-        Notification.objects.create(
+        send_multi_channel_notification(
             user=instance.user,
             notification_type='deposit_created',
             title='Deposit Created',
             message=f'Your deposit of KES {instance.amount:,.2f} has been submitted and is pending approval.',
-            related_deposit_id=instance.id
+            related_deposit_id=instance.id,
+            deposit=instance  # Pass deposit object for email/SMS templates
         )
         
         # Notify all admins about new deposit
@@ -36,6 +40,7 @@ def notify_deposit_created(sender, instance, created, **kwargs):
         admins = User.objects.filter(role='admin')
         
         for admin in admins:
+            # Create in-app notification only for admins (no email/SMS spam)
             Notification.objects.create(
                 user=admin,
                 notification_type='deposit_created',
@@ -56,24 +61,29 @@ def notify_deposit_status_change(sender, instance, **kwargs):
         try:
             old_instance = Deposit.objects.get(pk=instance.pk)
             
+            # Import here to avoid circular imports
+            from .utils import send_multi_channel_notification
+            
             # Deposit approved
             if old_instance.status != 'completed' and instance.status == 'completed':
-                Notification.objects.create(
+                send_multi_channel_notification(
                     user=instance.user,
                     notification_type='deposit_approved',
                     title='Deposit Approved',
                     message=f'Your deposit of KES {instance.amount:,.2f} has been approved and credited to your account.',
-                    related_deposit_id=instance.id
+                    related_deposit_id=instance.id,
+                    deposit=instance  # Pass deposit object for email/SMS templates
                 )
             
             # Deposit rejected
             elif old_instance.status != 'failed' and instance.status == 'failed':
-                Notification.objects.create(
+                send_multi_channel_notification(
                     user=instance.user,
                     notification_type='deposit_rejected',
                     title='Deposit Rejected',
                     message=f'Your deposit of KES {instance.amount:,.2f} was rejected. Please contact support for details.',
-                    related_deposit_id=instance.id
+                    related_deposit_id=instance.id,
+                    deposit=instance  # Pass deposit object for email/SMS templates
                 )
         except Deposit.DoesNotExist:
             pass
@@ -90,13 +100,16 @@ def notify_application_submitted(sender, instance, created, **kwargs):
     Notify admins about new application
     """
     if created:
+        from .utils import send_multi_channel_notification
+        
         # Notify the user
-        Notification.objects.create(
+        send_multi_channel_notification(
             user=instance.user,
             notification_type='application_submitted',
             title='Application Submitted',
             message=f'Your {instance.get_application_type_display()} application has been submitted for review.',
-            related_application_id=instance.id
+            related_application_id=instance.id,
+            application=instance
         )
         
         # Notify all admins
@@ -122,25 +135,28 @@ def notify_application_status_change(sender, instance, **kwargs):
     if instance.pk:
         try:
             old_instance = Application.objects.get(pk=instance.pk)
+            from .utils import send_multi_channel_notification
             
             # Application approved
             if old_instance.status != 'approved' and instance.status == 'approved':
-                Notification.objects.create(
+                send_multi_channel_notification(
                     user=instance.user,
                     notification_type='application_approved',
                     title='Application Approved',
                     message=f'Your {instance.get_application_type_display()} application has been approved.',
-                    related_application_id=instance.id
+                    related_application_id=instance.id,
+                    application=instance
                 )
             
             # Application rejected
             elif old_instance.status != 'rejected' and instance.status == 'rejected':
-                Notification.objects.create(
+                send_multi_channel_notification(
                     user=instance.user,
                     notification_type='application_rejected',
                     title='Application Rejected',
                     message=f'Your {instance.get_application_type_display()} application was rejected. {instance.admin_comments or ""}',
-                    related_application_id=instance.id
+                    related_application_id=instance.id,
+                    application=instance
                 )
         except Application.DoesNotExist:
             pass
@@ -157,8 +173,10 @@ def notify_document_uploaded(sender, instance, created, **kwargs):
     Notify admins about new document for verification
     """
     if created:
+        from .utils import send_multi_channel_notification
+        
         # Notify the user
-        Notification.objects.create(
+        send_multi_channel_notification(
             user=instance.user,
             notification_type='document_uploaded',
             title='Document Uploaded',
@@ -187,10 +205,11 @@ def notify_document_status_change(sender, instance, **kwargs):
     if instance.pk:
         try:
             old_instance = Document.objects.get(pk=instance.pk)
+            from .utils import send_multi_channel_notification
             
             # Document verified
             if old_instance.status != 'verified' and instance.status == 'verified':
-                Notification.objects.create(
+                send_multi_channel_notification(
                     user=instance.user,
                     notification_type='document_verified',
                     title='Document Verified',
@@ -200,7 +219,7 @@ def notify_document_status_change(sender, instance, **kwargs):
             # Document rejected
             elif old_instance.status != 'rejected' and instance.status == 'rejected':
                 reason = instance.rejection_reason or 'Please reupload'
-                Notification.objects.create(
+                send_multi_channel_notification(
                     user=instance.user,
                     notification_type='document_rejected',
                     title='Document Rejected',
@@ -221,8 +240,10 @@ def notify_beneficiary_added(sender, instance, created, **kwargs):
     Notify admins about new beneficiary for verification
     """
     if created:
+        from .utils import send_multi_channel_notification
+        
         # Notify the user
-        Notification.objects.create(
+        send_multi_channel_notification(
             user=instance.user,
             notification_type='beneficiary_added',
             title='Beneficiary Added',
@@ -251,10 +272,11 @@ def notify_beneficiary_status_change(sender, instance, **kwargs):
     if instance.pk:
         try:
             old_instance = Beneficiary.objects.get(pk=instance.pk)
+            from .utils import send_multi_channel_notification
             
             # Beneficiary verified
             if old_instance.verification_status != 'verified' and instance.verification_status == 'verified':
-                Notification.objects.create(
+                send_multi_channel_notification(
                     user=instance.user,
                     notification_type='beneficiary_verified',
                     title='Beneficiary Verified',
@@ -263,7 +285,7 @@ def notify_beneficiary_status_change(sender, instance, **kwargs):
             
             # Beneficiary marked as deceased
             if old_instance.status != 'deceased' and instance.status == 'deceased':
-                Notification.objects.create(
+                send_multi_channel_notification(
                     user=instance.user,
                     notification_type='beneficiary_deceased',
                     title='Beneficiary Status Updated',
