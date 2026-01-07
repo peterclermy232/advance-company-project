@@ -29,13 +29,13 @@ export class NotificationsComponent implements OnInit {
   loadNotifications() {
     this.notificationService.notifications$.subscribe(
       notifications => {
-        this.notifications = notifications;
+        this.notifications = notifications ?? [];
         this.isLoading = false;
       }
     );
 
     this.notificationService.unreadCount$.subscribe(
-      count => this.unreadCount = count
+      count => this.unreadCount = count ?? 0
     );
 
     // Load all notifications (not just recent)
