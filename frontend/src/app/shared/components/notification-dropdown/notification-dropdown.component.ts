@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, HostListener, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -24,6 +24,7 @@ import { NotificationTypeClassPipe } from '../../pipes/notification-type-class.p
 export class NotificationDropdownComponent implements OnInit, OnDestroy {
   private notificationService = inject(NotificationService);
   private router = inject(Router);
+  private elementRef = inject(ElementRef);
 
   isOpen = false;
   notifications: AppNotification[] = [];
@@ -31,7 +32,12 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
   private subscriptions: Subscription[] = [];
 
   @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent) { this.isOpen = false; }
+  onDocumentClick(event: MouseEvent) {
+    // Only close if the click was OUTSIDE this component
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.isOpen = false;
+    }
+  }
 
   ngOnInit() {
     this.subscriptions.push(
