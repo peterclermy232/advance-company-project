@@ -20,7 +20,7 @@ export const routes: Routes = [
   {
     path: 'financial',
     loadComponent: () => import('./features/financial/financial.component').then(m => m.FinancialComponent),
-    canActivate: [authGuard,adminGuard]
+    canActivate: [authGuard]
   },
   {
     path: 'beneficiary',
