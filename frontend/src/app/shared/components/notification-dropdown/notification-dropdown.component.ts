@@ -41,10 +41,17 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.subscriptions.push(
-      this.notificationService.notifications$.subscribe(n => this.notifications = n ?? [])
+      this.notificationService.notifications$.subscribe(n => {
+        console.log('NotificationDropdown: Received notifications', n);
+        this.notifications = n ?? [];
+        console.log('NotificationDropdown: notifications array length', this.notifications.length);
+      })
     );
     this.subscriptions.push(
-      this.notificationService.unreadCount$.subscribe(c => this.unreadCount = c ?? 0)
+      this.notificationService.unreadCount$.subscribe(c => {
+        console.log('NotificationDropdown: Unread count', c);
+        this.unreadCount = c ?? 0;
+      })
     );
     this.notificationService.refresh();
   }
@@ -55,7 +62,13 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
 
   toggleDropdown() { 
     this.isOpen = !this.isOpen; 
-    if (this.isOpen) this.notificationService.getRecentNotifications().subscribe();
+    console.log('NotificationDropdown: Dropdown toggled, isOpen=', this.isOpen);
+    if (this.isOpen) {
+      console.log('NotificationDropdown: Fetching recent notifications...');
+      this.notificationService.getRecentNotifications().subscribe(response => {
+        console.log('NotificationDropdown: Got response', response);
+      });
+    }
   }
 
   closeDropdown() { this.isOpen = false; }

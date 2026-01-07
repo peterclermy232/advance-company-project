@@ -107,17 +107,20 @@ export class NotificationService implements OnDestroy {
     );
   }
 
-  getRecentNotifications(): Observable<NotificationResponse> {
-    return this.apiService.get<NotificationResponse>('notifications/recent/').pipe(
-      tap(response => {
-        this.notificationsSubject.next(response.results ?? []);
-      }),
-      catchError(error => {
-        console.error('NotificationService: Error fetching recent notifications', error);
-        return of({ count: 0, next: null, previous: null, results: [] });
-      })
-    );
-  }
+  getRecentNotifications(): Observable<NotificationResponse | AppNotification[]> {
+  return this.apiService.get<NotificationResponse | AppNotification[]>('notifications/recent/').pipe(
+    tap(response => {
+      // Handle both response formats: array or object with results
+      const notifications = Array.isArray(response) ? response : (response.results ?? []);
+      console.log('NotificationService: Setting notifications', notifications);
+      this.notificationsSubject.next(notifications);
+    }),
+    catchError(error => {
+      console.error('NotificationService: Error fetching recent notifications', error);
+      return of({ count: 0, next: null, previous: null, results: [] });
+    })
+  );
+}
 
   markAsRead(id: number): Observable<AppNotification> {
     return this.apiService.post<AppNotification>(`notifications/${id}/mark_as_read/`, {}).pipe(
