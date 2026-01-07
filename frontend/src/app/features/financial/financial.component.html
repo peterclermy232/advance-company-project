@@ -23,6 +23,7 @@
         <app-deposit-table
           [deposits]="filteredDeposits"
           [filterStatus]="filterStatus"
+          [isAdmin]="isAdmin"
           [pendingCount]="pendingDeposits.length"
           [approvedCount]="approvedDeposits.length"
           [rejectedCount]="rejectedDeposits.length"

@@ -7,6 +7,7 @@ import { DepositTableComponent } from './components/deposit-table/deposit-table.
 import { DepositApprovalModalComponent } from './components/deposit-approval-modal/deposit-approval-modal.component';
 import { DepositRejectionModalComponent } from './components/deposit-rejection-modal/deposit-rejection-modal.component';
 import { FinancialService } from '../../core/services/financial.service';
+import { AuthService } from '../../core/services/auth.service';
 import { Deposit } from '../../core/models/financial.model';
 import { ToastService } from '../../core/services/toast.service';
 
@@ -27,6 +28,7 @@ import { ToastService } from '../../core/services/toast.service';
 })
 export class FinancialComponent implements OnInit {
   private financialService = inject(FinancialService);
+  private authService = inject(AuthService);
   private notificationService = inject(ToastService);
 
   sidebarOpen = true;
@@ -41,6 +43,10 @@ export class FinancialComponent implements OnInit {
 
   ngOnInit() {
     this.loadDeposits();
+  }
+
+  get isAdmin(): boolean {
+    return this.authService.isAdmin();
   }
 
   get pendingDeposits() {
@@ -82,17 +88,25 @@ export class FinancialComponent implements OnInit {
   }
 
   handleApprove(deposit: Deposit) {
+    if (!this.isAdmin) {
+      this.notificationService.error('Only admins can approve deposits');
+      return;
+    }
     this.selectedDeposit = deposit;
     this.showApproveModal = true;
   }
 
   handleReject(deposit: Deposit) {
+    if (!this.isAdmin) {
+      this.notificationService.error('Only admins can reject deposits');
+      return;
+    }
     this.selectedDeposit = deposit;
     this.showRejectModal = true;
   }
 
   confirmApprove() {
-    if (!this.selectedDeposit) return;
+    if (!this.selectedDeposit || !this.isAdmin) return;
 
     this.isProcessing = true;
     this.financialService.approveDeposit(this.selectedDeposit.id).subscribe({
@@ -111,7 +125,7 @@ export class FinancialComponent implements OnInit {
   }
 
   confirmReject(reason: string) {
-    if (!this.selectedDeposit) return;
+    if (!this.selectedDeposit || !this.isAdmin) return;
 
     this.isProcessing = true;
     this.financialService.rejectDeposit(this.selectedDeposit.id, reason).subscribe({

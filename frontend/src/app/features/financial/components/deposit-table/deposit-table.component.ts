@@ -12,6 +12,7 @@ import { Deposit } from '../../../../core/models/financial.model';
 export class DepositTableComponent {
   @Input() deposits: Deposit[] = [];
   @Input() filterStatus: 'pending' | 'completed' | 'failed' = 'pending';
+  @Input() isAdmin = false;
   @Input() pendingCount = 0;
   @Input() approvedCount = 0;
   @Input() rejectedCount = 0;

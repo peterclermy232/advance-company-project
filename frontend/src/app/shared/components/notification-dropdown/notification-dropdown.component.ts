@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 
@@ -14,6 +14,7 @@ import { AppNotification, NotificationService } from '../../../core/services/not
 })
 export class NotificationDropdownComponent implements OnInit, OnDestroy {
   private notificationService = inject(NotificationService);
+  private router = inject(Router);
   
   isOpen = false;
   notifications: AppNotification[] = [];
@@ -56,10 +57,37 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
   }
 
   markAsRead(notification: AppNotification) {
+    // Mark as read first
     if (!notification.is_read) {
       this.notificationService.markAsRead(notification.id).subscribe(() => {
         notification.is_read = true;
       });
+    }
+
+    // Navigate based on notification type
+    this.navigateToNotification(notification);
+    this.closeDropdown();
+  }
+
+  navigateToNotification(notification: AppNotification) {
+    const routes: { [key: string]: string } = {
+      'deposit_created': '/financial',
+      'deposit_approved': '/dashboard',
+      'deposit_rejected': '/dashboard',
+      'application_submitted': '/applications',
+      'application_approved': '/applications',
+      'application_rejected': '/applications',
+      'document_verified': '/documents',
+      'beneficiary_verified': '/beneficiary',
+    };
+
+    const route = routes[notification.notification_type];
+    
+    if (route) {
+      this.router.navigate([route]);
+    } else {
+      // Default fallback to dashboard
+      this.router.navigate(['/dashboard']);
     }
   }
 
@@ -80,7 +108,9 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
   }
 
   viewAll() {
-    // Navigate to notifications page (you can create this later)
+    // Navigate to a dedicated notifications page if you have one
+    // Otherwise, you can create a simple notifications list page
+    this.router.navigate(['/notifications']);
     this.closeDropdown();
   }
 

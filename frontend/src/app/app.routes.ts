@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { adminGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   {
@@ -19,7 +20,7 @@ export const routes: Routes = [
   {
     path: 'financial',
     loadComponent: () => import('./features/financial/financial.component').then(m => m.FinancialComponent),
-    canActivate: [authGuard]
+    canActivate: [authGuard,adminGuard]
   },
   {
     path: 'beneficiary',
@@ -51,6 +52,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/support/support.component').then(m => m.SupportComponent),
     canActivate: [authGuard]
   },
+  {
+  path: 'notifications',
+  loadComponent: () => import('./features/notifications/notifications.component')
+    .then(m => m.NotificationsComponent),
+  canActivate: [authGuard]
+},
   {
     path: '**',
     redirectTo: '/dashboard'
