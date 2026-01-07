@@ -142,6 +142,8 @@ class DepositViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 # Update deposit status
                 deposit.status = 'completed'
+                deposit.approved_by = request.user
+                deposit.approved_at = timezone.now()
                 deposit.save()
                 
                 # Update financial account
@@ -155,12 +157,15 @@ class DepositViewSet(viewsets.ModelViewSet):
                 account.interest_earned += interest
                 account.save()
                 
-                # Record interest calculation
+                # Record interest calculation with correct field names
                 InterestCalculation.objects.create(
-                    account=account,
-                    amount=interest,
-                    calculation_type='deposit',
-                    description=f'Interest on deposit {deposit.transaction_reference}'
+                    user=deposit.user,
+                    principal_amount=deposit.amount,
+                    interest_rate=account.interest_rate,
+                    interest_amount=interest,
+                    calculation_date=timezone.now().date(),
+                    period_start=timezone.now().date(),
+                    period_end=timezone.now().date()
                 )
                 
                 # Notification sent automatically by signal
@@ -195,6 +200,9 @@ class DepositViewSet(viewsets.ModelViewSet):
         
         # Update deposit status
         deposit.status = 'failed'
+        deposit.rejection_reason = reason
+        deposit.rejected_by = request.user
+        deposit.rejected_at = timezone.now()
         deposit.notes = f"Rejected: {reason}"
         deposit.save()
         
@@ -217,8 +225,8 @@ class InterestCalculationViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         if self.request.user.role == 'admin':
-            return InterestCalculation.objects.all().order_by('-calculated_at')
+            return InterestCalculation.objects.all().order_by('-calculation_date')
         
         return InterestCalculation.objects.filter(
-            account__user=self.request.user
-        ).order_by('-calculated_at')
+            user=self.request.user
+        ).order_by('-calculation_date')
