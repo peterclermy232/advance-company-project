@@ -21,6 +21,9 @@ export class RegisterComponent {
   registerForm: FormGroup;
   isLoading = false;
 
+  showPassword = false;
+  showConfirmPassword = false;
+
   constructor() {
     this.registerForm = this.fb.group({
       full_name: ['', [Validators.required, Validators.minLength(3)]],
@@ -87,5 +90,13 @@ export class RegisterComponent {
       return 'Passwords do not match';
     }
     return '';
+  }
+
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
+  }
+
+  toggleConfirmPassword(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
   }
 }

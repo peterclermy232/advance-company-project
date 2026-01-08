@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, tap, catchError, throwError } from 'rxjs';
 import { User, AuthResponse, LoginRequest, RegisterRequest } from '../models/user.model';
 import { environment } from '../../environments/environment';
+import { ToastService } from './toast.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +12,7 @@ import { environment } from '../../environments/environment';
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private toastService = inject(ToastService);
   
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -39,9 +41,15 @@ export class AuthService {
   login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/users/login/`, credentials)
       .pipe(
-        tap(response => this.handleAuthResponse(response)),
+        tap(response => {
+          this.handleAuthResponse(response);
+          this.toastService.success(`Welcome back, ${response.user.full_name}! 👋`);
+        }),
         catchError(error => {
-          console.error('Login error:', error);
+          const message = error.error?.detail || 
+                         error.error?.non_field_errors?.[0] || 
+                         'Invalid email or password';
+          this.toastService.error(message);
           return throwError(() => error);
         })
       );
@@ -50,9 +58,16 @@ export class AuthService {
   register(data: RegisterRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/users/register/`, data)
       .pipe(
-        tap(response => this.handleAuthResponse(response)),
+        tap(response => {
+          this.handleAuthResponse(response);
+          this.toastService.success(`Account created successfully! Welcome, ${response.user.full_name}! 🎉`);
+        }),
         catchError(error => {
-          console.error('Registration error:', error);
+          const errorMessage = error.error?.email?.[0] || 
+                             error.error?.phone_number?.[0] || 
+                             error.error?.detail ||
+                             'Registration failed. Please check your information.';
+          this.toastService.error(errorMessage);
           return throwError(() => error);
         })
       );
@@ -67,6 +82,7 @@ export class AuthService {
 
   logout(): void {
     this.clearStorage();
+    this.toastService.info('Logged out successfully. See you soon! 👋');
     this.router.navigate(['/auth/login']);
   }
 
@@ -124,6 +140,11 @@ export class AuthService {
         tap(user => {
           localStorage.setItem(this.USER_KEY, JSON.stringify(user));
           this.currentUserSubject.next(user);
+          this.toastService.success('Profile updated successfully! ✓');
+        }),
+        catchError(error => {
+          this.toastService.error('Failed to update profile. Please try again.');
+          return throwError(() => error);
         })
       );
   }

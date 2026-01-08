@@ -21,6 +21,7 @@ export class LoginComponent {
   loginForm: FormGroup;
   selectedRole: 'user' | 'admin' = 'user';
   isLoading = false;
+  showPassword = false;
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -75,4 +76,7 @@ export class LoginComponent {
     }
     return '';
   }
+  togglePassword(): void {
+  this.showPassword = !this.showPassword;
+}
 }

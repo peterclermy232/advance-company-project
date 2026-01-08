@@ -1,58 +1,55 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-
-export interface Notification {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  message: string;
-  duration?: number;
-}
+import { MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ToastService {
-  private notificationsSubject = new BehaviorSubject<Notification[]>([]);
-  public notifications$ = this.notificationsSubject.asObservable();
+  constructor(private snackBar: MatSnackBar) {}
 
-  show(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', duration: number = 3000): void {
-    const notification: Notification = {
-      id: this.generateId(),
-      type,
-      message,
+  private defaultConfig: MatSnackBarConfig = {
+    horizontalPosition: 'right',
+    verticalPosition: 'top',
+    duration: 4000
+  };
+
+  success(message: string, duration: number = 4000): void {
+    this.snackBar.open(message, '✓', {
+      ...this.defaultConfig,
+      duration,
+      panelClass: ['snackbar-success']
+    });
+  }
+
+  error(message: string, duration: number = 5000): void {
+    this.snackBar.open(message, '✕', {
+      ...this.defaultConfig,
+      duration,
+      panelClass: ['snackbar-error']
+    });
+  }
+
+  warning(message: string, duration: number = 4000): void {
+    this.snackBar.open(message, '⚠', {
+      ...this.defaultConfig,
+      duration,
+      panelClass: ['snackbar-warning']
+    });
+  }
+
+  info(message: string, duration: number = 4000): void {
+    this.snackBar.open(message, 'ℹ', {
+      ...this.defaultConfig,
+      duration,
+      panelClass: ['snackbar-info']
+    });
+  }
+
+  // Custom toast with action button
+  withAction(message: string, action: string, duration: number = 6000) {
+    return this.snackBar.open(message, action, {
+      ...this.defaultConfig,
       duration
-    };
-
-    const current = this.notificationsSubject.value;
-    this.notificationsSubject.next([...current, notification]);
-
-    if (duration > 0) {
-      setTimeout(() => this.remove(notification.id), duration);
-    }
-  }
-
-  success(message: string, duration?: number): void {
-    this.show(message, 'success', duration);
-  }
-
-  error(message: string, duration?: number): void {
-    this.show(message, 'error', duration);
-  }
-
-  warning(message: string, duration?: number): void {
-    this.show(message, 'warning', duration);
-  }
-
-  info(message: string, duration?: number): void {
-    this.show(message, 'info', duration);
-  }
-
-  remove(id: string): void {
-    const current = this.notificationsSubject.value;
-    this.notificationsSubject.next(current.filter(n => n.id !== id));
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    });
   }
 }
