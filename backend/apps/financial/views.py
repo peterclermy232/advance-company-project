@@ -1,3 +1,7 @@
+"""
+backend/apps/financial/views.py
+Fixed version with proper error handling and notification sending
+"""
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,6 +11,7 @@ from django.db.models import Sum, Q
 from django.db import transaction
 from datetime import datetime, timedelta
 import uuid
+import logging
 
 from .models import FinancialAccount, Deposit, InterestCalculation
 from .serializers import (
@@ -14,6 +19,8 @@ from .serializers import (
     DepositSerializer, 
     InterestCalculationSerializer
 )
+
+logger = logging.getLogger(__name__)
 
 
 class FinancialAccountViewSet(viewsets.ReadOnlyModelViewSet):
@@ -56,7 +63,7 @@ class DepositViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         Create deposit with auto-generated transaction reference
-        Fixed: Removed old notification call - now handled by signals
+        Notifications are sent automatically by signals
         """
         # Generate unique transaction reference
         transaction_ref = f"DEP{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}"
@@ -67,9 +74,6 @@ class DepositViewSet(viewsets.ModelViewSet):
             transaction_reference=transaction_ref,
             amount=self.MONTHLY_DEPOSIT_AMOUNT
         )
-        
-        # Notifications are now sent automatically by signals in apps/notifications/signals.py
-        # No need to call NotificationService here anymore
 
     @action(detail=False, methods=['get'])
     def can_deposit(self, request):
@@ -128,7 +132,7 @@ class DepositViewSet(viewsets.ModelViewSet):
     def approve_deposit(self, request, pk=None):
         """
         Admin endpoint to approve a deposit and update financial account
-        Fixed: Notifications sent automatically by signals
+        Fixed: Better error handling and transaction management
         """
         deposit = self.get_object()
         
@@ -157,7 +161,7 @@ class DepositViewSet(viewsets.ModelViewSet):
                 account.interest_earned += interest
                 account.save()
                 
-                # Record interest calculation with correct field names
+                # Record interest calculation
                 InterestCalculation.objects.create(
                     user=deposit.user,
                     principal_amount=deposit.amount,
@@ -168,7 +172,7 @@ class DepositViewSet(viewsets.ModelViewSet):
                     period_end=timezone.now().date()
                 )
                 
-                # Notification sent automatically by signal
+                logger.info(f"Deposit {deposit.id} approved by admin {request.user.id}")
                 
                 serializer = self.get_serializer(deposit)
                 return Response({
@@ -177,8 +181,9 @@ class DepositViewSet(viewsets.ModelViewSet):
                 })
                 
         except Exception as e:
+            logger.error(f"Error approving deposit {deposit.id}: {str(e)}", exc_info=True)
             return Response(
-                {'error': str(e)},
+                {'error': f'Failed to approve deposit: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -186,7 +191,7 @@ class DepositViewSet(viewsets.ModelViewSet):
     def reject_deposit(self, request, pk=None):
         """
         Admin endpoint to reject a deposit
-        Fixed: Notifications sent automatically by signals
+        Fixed: Better error handling
         """
         deposit = self.get_object()
         
@@ -196,23 +201,31 @@ class DepositViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        reason = request.data.get('reason', 'No reason provided')
-        
-        # Update deposit status
-        deposit.status = 'failed'
-        deposit.rejection_reason = reason
-        deposit.rejected_by = request.user
-        deposit.rejected_at = timezone.now()
-        deposit.notes = f"Rejected: {reason}"
-        deposit.save()
-        
-        # Notification sent automatically by signal
-        
-        serializer = self.get_serializer(deposit)
-        return Response({
-            'message': 'Deposit rejected',
-            'deposit': serializer.data
-        })
+        try:
+            reason = request.data.get('reason', 'No reason provided')
+            
+            # Update deposit status
+            deposit.status = 'failed'
+            deposit.rejection_reason = reason
+            deposit.rejected_by = request.user
+            deposit.rejected_at = timezone.now()
+            deposit.notes = f"Rejected: {reason}"
+            deposit.save()
+            
+            logger.info(f"Deposit {deposit.id} rejected by admin {request.user.id}")
+            
+            serializer = self.get_serializer(deposit)
+            return Response({
+                'message': 'Deposit rejected',
+                'deposit': serializer.data
+            })
+            
+        except Exception as e:
+            logger.error(f"Error rejecting deposit {deposit.id}: {str(e)}", exc_info=True)
+            return Response(
+                {'error': f'Failed to reject deposit: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class InterestCalculationViewSet(viewsets.ReadOnlyModelViewSet):
