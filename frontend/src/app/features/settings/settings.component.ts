@@ -6,6 +6,8 @@ import { SidebarComponent } from '../../shared/components/sidebar/sidebar.compon
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { User } from '../../core/models/user.model';
+import { environment } from '../../environments/environment';
+
 
 @Component({
   selector: 'app-settings',
@@ -22,6 +24,8 @@ export class SettingsComponent implements OnInit {
   sidebarOpen = true;
   isUpdating = false;
   currentUser: User | null = null;
+  selectedPhoto: File | null = null;
+  photoPreview: string | null = null;
   
   profileForm: FormGroup;
   notificationPreferences = {
@@ -56,13 +60,75 @@ export class SettingsComponent implements OnInit {
     this.sidebarOpen = !this.sidebarOpen;
   }
 
+  getProfilePhotoUrl(photoPath: string): string {
+    // If it's already a full URL, return as is
+    if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+      return photoPath;
+    }
+    // Otherwise, prepend your API base URL
+    return `${environment.apiUrl}${photoPath}`;
+  }
+
+  onPhotoSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.notificationService.error('Please select an image file');
+        return;
+      }
+      
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        this.notificationService.error('Image size should be less than 5MB');
+        return;
+      }
+      
+      this.selectedPhoto = file;
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.photoPreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      
+      this.notificationService.info('Photo selected. Click "Save Changes" to upload');
+    }
+  }
+
+  clearPhotoSelection(fileInput: HTMLInputElement) {
+    this.selectedPhoto = null;
+    this.photoPreview = null;
+    fileInput.value = '';
+    this.notificationService.info('Photo selection cleared');
+  }
+
   onUpdateProfile() {
     if (this.profileForm.valid) {
       this.isUpdating = true;
       
-      this.authService.updateProfile(this.profileForm.value).subscribe({
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      
+      // Append all form fields
+      Object.keys(this.profileForm.value).forEach(key => {
+        const value = this.profileForm.value[key];
+        if (value !== null && value !== '') {
+          formData.append(key, value);
+        }
+      });
+      
+      // Append photo if selected
+      if (this.selectedPhoto) {
+        formData.append('profile_photo', this.selectedPhoto);
+      }
+      
+      this.authService.updateProfileWithPhoto(formData).subscribe({
         next: (user) => {
           this.notificationService.success('Profile updated successfully');
+          this.selectedPhoto = null;
+          this.photoPreview = null;
           this.isUpdating = false;
         },
         error: (error) => {
@@ -70,14 +136,6 @@ export class SettingsComponent implements OnInit {
           this.isUpdating = false;
         }
       });
-    }
-  }
-
-  onPhotoSelected(event: any) {
-    const file = event.target.files[0];
-    if (file) {
-      // Handle photo upload
-      this.notificationService.info('Photo upload feature coming soon');
     }
   }
 }

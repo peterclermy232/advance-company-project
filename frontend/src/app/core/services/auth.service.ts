@@ -134,6 +134,23 @@ export class AuthService {
       );
   }
 
+  updateProfileWithPhoto(formData: FormData): Observable<User> {
+    // Note: Don't set Content-Type header - Angular will set it automatically with boundary
+    return this.http.put<User>(`${environment.apiUrl}/auth/users/update_profile/`, formData)
+      .pipe(
+        tap(user => {
+          localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+          this.currentUserSubject.next(user);
+          this.toastService.success('Profile updated successfully! ✓');
+        }),
+        catchError(error => {
+          this.toastService.error('Failed to update profile. Please try again.');
+          return throwError(() => error);
+        })
+      );
+  }
+
+  // Keep the existing updateProfile method for JSON updates without photos
   updateProfile(data: Partial<User>): Observable<User> {
     return this.http.put<User>(`${environment.apiUrl}/auth/users/update_profile/`, data)
       .pipe(
@@ -148,4 +165,22 @@ export class AuthService {
         })
       );
   }
+
+  registerWithPhoto(formData: FormData): Observable<AuthResponse> {
+  return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/users/register/`, formData)
+    .pipe(
+      tap(response => {
+        this.handleAuthResponse(response);
+        this.toastService.success(`Account created successfully! Welcome, ${response.user.full_name}! 🎉`);
+      }),
+      catchError(error => {
+        const errorMessage = error.error?.email?.[0] || 
+                           error.error?.phone_number?.[0] || 
+                           error.error?.detail ||
+                           'Registration failed. Please check your information.';
+        this.toastService.error(errorMessage);
+        return throwError(() => error);
+      })
+    );
+}
 }
