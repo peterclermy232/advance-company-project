@@ -1,7 +1,3 @@
-"""
-backend/apps/financial/views.py
-Fixed version with proper error handling and notification sending
-"""
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,6 +6,7 @@ from django.utils import timezone
 from django.db.models import Sum, Q
 from django.db import transaction
 from datetime import datetime, timedelta
+from decimal import Decimal
 import uuid
 import logging
 
@@ -132,7 +129,7 @@ class DepositViewSet(viewsets.ModelViewSet):
     def approve_deposit(self, request, pk=None):
         """
         Admin endpoint to approve a deposit and update financial account
-        Fixed: Better error handling and transaction management
+        Fixed: Proper Decimal type handling for interest calculation
         """
         deposit = self.get_object()
         
@@ -157,7 +154,8 @@ class DepositViewSet(viewsets.ModelViewSet):
                 account.total_contributions += deposit.amount
                 
                 # Calculate and add interest (e.g., 5% per deposit)
-                interest = deposit.amount * (account.interest_rate / 100)
+                # Fix: Use Decimal for division to avoid type mixing
+                interest = deposit.amount * (account.interest_rate / Decimal('100'))
                 account.interest_earned += interest
                 account.save()
                 
