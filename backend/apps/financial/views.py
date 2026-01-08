@@ -1,3 +1,7 @@
+"""
+backend/apps/financial/views.py
+Fixed version with proper error handling and Decimal type handling
+"""
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -154,8 +158,10 @@ class DepositViewSet(viewsets.ModelViewSet):
                 account.total_contributions += deposit.amount
                 
                 # Calculate and add interest (e.g., 5% per deposit)
-                # Fix: Use Decimal for division to avoid type mixing
-                interest = deposit.amount * (account.interest_rate / Decimal('100'))
+                # Fix: Convert to Decimal to ensure type consistency
+                interest_rate = Decimal(str(account.interest_rate))
+                deposit_amount = Decimal(str(deposit.amount))
+                interest = deposit_amount * (interest_rate / Decimal('100'))
                 account.interest_earned += interest
                 account.save()
                 
