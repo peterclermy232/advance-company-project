@@ -22,6 +22,9 @@ from apps.financial.models import FinancialAccount, Deposit
 class AdminAnalyticsViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     
+    # Important: This tells DRF we don't need a detail route
+    lookup_value_regex = '[^/.]+'
+    
     def _check_admin(self, request):
         """Check if user is admin"""
         if request.user.role != 'admin':
@@ -31,7 +34,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet):
             )
         return None
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='members')
     def members(self, request):
         """Get comprehensive member analytics"""
         admin_check = self._check_admin(request)
@@ -124,7 +127,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet):
             'monthly_trends': monthly_trends
         })
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='summary')
     def summary(self, request):
         """Get analytics summary only"""
         admin_check = self._check_admin(request)
@@ -151,7 +154,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet):
         
         return Response(summary)
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='export')
     def export(self, request):
         """Export analytics to Excel or PDF"""
         admin_check = self._check_admin(request)
