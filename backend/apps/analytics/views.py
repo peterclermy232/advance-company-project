@@ -160,6 +160,12 @@ class AdminAnalyticsViewSet(viewsets.ViewSet):
         
         export_format = request.query_params.get('format', 'excel')
         
+        if export_format not in ['excel', 'pdf']:
+            return Response(
+                {'error': 'Invalid format. Use "excel" or "pdf"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         # Get member data
         users = User.objects.filter(role='user').select_related('financial_account')
         
@@ -179,10 +185,8 @@ class AdminAnalyticsViewSet(viewsets.ViewSet):
         
         if export_format == 'excel':
             return self._export_excel(member_data)
-        elif export_format == 'pdf':
+        else:  # pdf
             return self._export_pdf(member_data)
-        else:
-            return Response({'error': 'Invalid format'}, status=status.HTTP_400_BAD_REQUEST)
     
     def _export_excel(self, member_data):
         """Export to Excel"""
@@ -251,6 +255,19 @@ class AdminAnalyticsViewSet(viewsets.ViewSet):
             styles['Normal']
         )
         elements.append(date_text)
+        elements.append(Spacer(1, 0.3 * inch))
+        
+        # Summary statistics
+        total_contributions = sum(m['contributions'] for m in member_data)
+        total_interest = sum(m['interest'] for m in member_data)
+        
+        summary_text = Paragraph(
+            f"<b>Summary:</b> Total Members: {len(member_data)} | "
+            f"Total Contributions: KES {total_contributions:,.2f} | "
+            f"Total Interest: KES {total_interest:,.2f}",
+            styles['Normal']
+        )
+        elements.append(summary_text)
         elements.append(Spacer(1, 0.3 * inch))
         
         # Table data

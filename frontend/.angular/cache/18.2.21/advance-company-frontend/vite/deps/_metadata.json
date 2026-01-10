@@ -1,94 +1,103 @@
 {
-  "hash": "28ce9e91",
-  "configHash": "bc5170e9",
-  "lockfileHash": "62500595",
-  "browserHash": "e32d35ec",
+  "hash": "f8542eba",
+  "configHash": "84260865",
+  "lockfileHash": "acb18abe",
+  "browserHash": "a8c07ab6",
   "optimized": {
     "@angular/common": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/common.mjs",
       "file": "@angular_common.js",
-      "fileHash": "2cf2dd02",
+      "fileHash": "e8769d4b",
       "needsInterop": false
     },
     "@angular/common/http": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/http.mjs",
       "file": "@angular_common_http.js",
-      "fileHash": "eb12f230",
+      "fileHash": "0dae1947",
       "needsInterop": false
     },
     "@angular/core": {
       "src": "../../../../../../node_modules/@angular/core/fesm2022/core.mjs",
       "file": "@angular_core.js",
-      "fileHash": "acf762b0",
+      "fileHash": "687e0c80",
       "needsInterop": false
     },
     "@angular/forms": {
       "src": "../../../../../../node_modules/@angular/forms/fesm2022/forms.mjs",
       "file": "@angular_forms.js",
-      "fileHash": "e44a9612",
+      "fileHash": "7acf334b",
       "needsInterop": false
     },
     "@angular/material/snack-bar": {
       "src": "../../../../../../node_modules/@angular/material/fesm2022/snack-bar.mjs",
       "file": "@angular_material_snack-bar.js",
-      "fileHash": "460a35e5",
+      "fileHash": "672275cf",
       "needsInterop": false
     },
     "@angular/platform-browser": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs",
       "file": "@angular_platform-browser.js",
-      "fileHash": "fb53cb80",
+      "fileHash": "f9f9c16d",
       "needsInterop": false
     },
     "@angular/platform-browser/animations": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/animations.mjs",
       "file": "@angular_platform-browser_animations.js",
-      "fileHash": "9fd397b6",
+      "fileHash": "ba1b2329",
       "needsInterop": false
     },
     "@angular/router": {
       "src": "../../../../../../node_modules/@angular/router/fesm2022/router.mjs",
       "file": "@angular_router.js",
-      "fileHash": "f91b3b8e",
+      "fileHash": "39a036fb",
       "needsInterop": false
     },
     "rxjs": {
       "src": "../../../../../../node_modules/rxjs/dist/esm5/index.js",
       "file": "rxjs.js",
-      "fileHash": "becf262c",
+      "fileHash": "790b8e54",
       "needsInterop": false
     },
     "rxjs/operators": {
       "src": "../../../../../../node_modules/rxjs/dist/esm5/operators/index.js",
       "file": "rxjs_operators.js",
-      "fileHash": "15b32ac5",
+      "fileHash": "8346d611",
+      "needsInterop": false
+    },
+    "chart.js": {
+      "src": "../../../../../../node_modules/chart.js/dist/chart.js",
+      "file": "chart__js.js",
+      "fileHash": "13be1841",
       "needsInterop": false
     }
   },
   "chunks": {
-    "chunk-POI3KBK4": {
-      "file": "chunk-POI3KBK4.js"
+    "chunk-KATVSYXL": {
+      "file": "chunk-KATVSYXL.js"
     },
-    "chunk-F3ZSUPDB": {
-      "file": "chunk-F3ZSUPDB.js"
+    "chunk-IBS7U4MX": {
+      "file": "chunk-IBS7U4MX.js"
     },
-    "chunk-A2MYQCX4": {
-      "file": "chunk-A2MYQCX4.js"
+    "chunk-M5M264MY": {
+      "file": "chunk-M5M264MY.js"
     },
-    "chunk-W2BAPFRP": {
-      "file": "chunk-W2BAPFRP.js"
+    "chunk-GUBNNMHS": {
+      "file": "chunk-GUBNNMHS.js"
     },
-    "chunk-TL4DGONE": {
-      "file": "chunk-TL4DGONE.js"
+    "chunk-MEHXH6ZQ": {
+      "file": "chunk-MEHXH6ZQ.js"
     },
-    "chunk-FFZIAYYX": {
-      "file": "chunk-FFZIAYYX.js"
+    "chunk-PEBH6BBU": {
+      "file": "chunk-PEBH6BBU.js"
     },
-    "chunk-6Q4RANH6": {
-      "file": "chunk-6Q4RANH6.js"
+    "chunk-WPM5VTLQ": {
+      "file": "chunk-WPM5VTLQ.js"
     },
-    "chunk-CXCX2JKZ": {
-      "file": "chunk-CXCX2JKZ.js"
+    "chunk-4S3KYZTJ": {
+      "file": "chunk-4S3KYZTJ.js"
+    },
+    "chunk-WDMUDEB6": {
+      "file": "chunk-WDMUDEB6.js"
     }
   }
 }
