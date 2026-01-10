@@ -128,7 +128,6 @@ class BiometricAuthSerializer(serializers.Serializer):
             raise serializers.ValidationError("Device not registered")
         
         # Here you would verify the auth_signature and challenge_response
-        # This typically involves:
         # 1. Verifying the signature using the stored public_key
         # 2. Checking the challenge_response matches what was sent
         # For simplicity, we'll assume verification is successful
