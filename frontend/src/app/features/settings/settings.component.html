@@ -1,68 +1,93 @@
 <div class="flex h-screen bg-gray-50 overflow-hidden">
+
+  <!-- Sidebar -->
   <app-sidebar [isOpen]="sidebarOpen"></app-sidebar>
-  
+
+  <!-- Main Content Wrapper -->
   <div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Header -->
     <app-header (toggleSidebar)="toggleSidebar()"></app-header>
-    
+
+    <!-- Page Content -->
     <main class="flex-1 overflow-y-auto p-6">
       <div class="max-w-4xl mx-auto space-y-6">
+
         <h2 class="text-2xl font-bold text-gray-800">Settings</h2>
 
-        <!-- Profile Settings -->
+        <!-- ================= Account Settings ================= -->
         <div class="bg-white rounded-xl p-6 shadow-sm">
           <h3 class="text-lg font-bold text-gray-800 mb-4">Account Settings</h3>
-          
-          <<div class="mb-6">
-  <label class="block text-sm font-medium text-gray-700 mb-2">Profile Photo</label>
-  <div class="flex items-center gap-4">
-    <div class="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
-      <!-- Priority 1: Show preview of newly selected photo -->
-      <img 
-        *ngIf="photoPreview" 
-        [src]="photoPreview" 
-        alt="Preview" 
-        class="w-full h-full object-cover">
-      
-      <!-- Priority 2: Show existing uploaded photo from server -->
-      <img 
-        *ngIf="!photoPreview && currentUser?.profile_photo" 
-        [src]="getProfilePhotoUrl(currentUser.profile_photo)" 
-        alt="Profile" 
-        class="w-full h-full object-cover">
-      
-      <!-- Priority 3: Show initials if no photo at all -->
-      <span *ngIf="!photoPreview && !currentUser?.profile_photo">
-        {{ currentUser?.full_name?.charAt(0) || 'U' }}
-      </span>
-    </div>
-    
-    <div class="flex flex-col gap-2">
-      <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-        <input 
-          type="file" 
-          #fileInput
-          (change)="onPhotoSelected($event)" 
-          accept="image/*" 
-          class="hidden">
-        Choose Photo
-      </label>
-      <button 
-        *ngIf="selectedPhoto || photoPreview"
-        type="button"
-        (click)="clearPhotoSelection(fileInput)"
-        class="text-xs text-red-600 hover:text-red-700 font-medium">
-        Remove photo
-      </button>
-    </div>
-  </div>
-  <p class="text-xs text-gray-500 mt-2">JPG, PNG or GIF (Max 5MB)</p>
-</div>
+
+          <!-- Profile Photo -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Profile Photo
+            </label>
+
+            <div class="flex items-center gap-4">
+              <div
+                class="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
+
+                <!-- Preview -->
+                <img
+                  *ngIf="photoPreview"
+                  [src]="photoPreview"
+                  alt="Preview"
+                  class="w-full h-full object-cover">
+
+                <!-- Existing profile photo -->
+                <img
+               *ngIf="!photoPreview && currentUser?.profile_photo as photo"
+              [src]="getProfilePhotoUrl(photo)"
+              alt="Profile"
+              class="w-full h-full object-cover">
+
+                <!-- Initials -->
+                <span *ngIf="!photoPreview && !currentUser?.profile_photo">
+                  {{ currentUser?.full_name?.charAt(0) || 'U' }}
+                </span>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label
+                  class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  <input
+                    type="file"
+                    #fileInput
+                    (change)="onPhotoSelected($event)"
+                    accept="image/*"
+                    class="hidden">
+                  Choose Photo
+                </label>
+
+                <button
+                  *ngIf="selectedPhoto || photoPreview"
+                  type="button"
+                  (click)="clearPhotoSelection(fileInput)"
+                  class="text-xs text-red-600 hover:text-red-700 font-medium">
+                  Remove photo
+                </button>
+              </div>
+            </div>
+
+            <p class="text-xs text-gray-500 mt-2">
+              JPG, PNG or GIF (Max 5MB)
+            </p>
           </div>
 
-          <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()" class="space-y-4">
+          <!-- Profile Form -->
+          <form
+            [formGroup]="profileForm"
+            (ngSubmit)="onUpdateProfile()"
+            class="space-y-4">
+
             <div class="grid md:grid-cols-2 gap-4">
+
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name
+                </label>
                 <input
                   type="text"
                   formControlName="full_name"
@@ -70,7 +95,9 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   formControlName="email"
@@ -78,7 +105,9 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
                 <input
                   type="tel"
                   formControlName="phone_number"
@@ -86,7 +115,9 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Age
+                </label>
                 <input
                   type="number"
                   formControlName="age"
@@ -94,8 +125,12 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                <select formControlName="gender" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Gender
+                </label>
+                <select
+                  formControlName="gender"
+                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                   <option value="">Select gender</option>
                   <option value="M">Male</option>
                   <option value="F">Female</option>
@@ -104,8 +139,12 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Marital Status</label>
-                <select formControlName="marital_status" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Marital Status
+                </label>
+                <select
+                  formControlName="marital_status"
+                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                   <option value="">Select status</option>
                   <option value="single">Single</option>
                   <option value="married">Married</option>
@@ -115,7 +154,9 @@
               </div>
 
               <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Profession
+                </label>
                 <input
                   type="text"
                   formControlName="profession"
@@ -129,47 +170,60 @@
               class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
               {{ isUpdating ? 'Saving...' : 'Save Changes' }}
             </button>
+
           </form>
         </div>
 
-        <!-- Notification Preferences -->
+        <!-- ================= Notification Preferences ================= -->
         <div class="bg-white rounded-xl p-6 shadow-sm">
-          <h3 class="text-lg font-bold text-gray-800 mb-4">Notification Preferences</h3>
+          <h3 class="text-lg font-bold text-gray-800 mb-4">
+            Notification Preferences
+          </h3>
+
           <div class="space-y-3">
-            <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-              <span class="text-gray-800 font-medium">Email Notifications</span>
-              <input type="checkbox" [(ngModel)]="notificationPreferences.email" class="w-5 h-5">
+            <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
+              <span>Email Notifications</span>
+              <input type="checkbox" [(ngModel)]="notificationPreferences.email">
             </label>
-            <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-              <span class="text-gray-800 font-medium">SMS Notifications</span>
-              <input type="checkbox" [(ngModel)]="notificationPreferences.sms" class="w-5 h-5">
+
+            <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
+              <span>SMS Notifications</span>
+              <input type="checkbox" [(ngModel)]="notificationPreferences.sms">
             </label>
-            <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-              <span class="text-gray-800 font-medium">Push Notifications</span>
-              <input type="checkbox" [(ngModel)]="notificationPreferences.push" class="w-5 h-5">
+
+            <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
+              <span>Push Notifications</span>
+              <input type="checkbox" [(ngModel)]="notificationPreferences.push">
             </label>
-            <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-              <span class="text-gray-800 font-medium">Monthly Reports</span>
-              <input type="checkbox" [(ngModel)]="notificationPreferences.reports" class="w-5 h-5">
+
+            <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
+              <span>Monthly Reports</span>
+              <input type="checkbox" [(ngModel)]="notificationPreferences.reports">
             </label>
           </div>
         </div>
 
-        <!-- Privacy & Security -->
+        <!-- ================= Privacy & Security ================= -->
         <div class="bg-white rounded-xl p-6 shadow-sm">
-          <h3 class="text-lg font-bold text-gray-800 mb-4">Privacy & Security</h3>
+          <h3 class="text-lg font-bold text-gray-800 mb-4">
+            Privacy & Security
+          </h3>
+
           <div class="space-y-3">
-            <button class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 font-medium text-gray-800">
+            <button class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
               Change Password
             </button>
-            <button class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 font-medium text-gray-800">
+
+            <button class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
               Two-Factor Authentication
             </button>
-            <button class="w-full text-left p-3 bg-red-50 rounded-lg hover:bg-red-100 font-medium text-red-600">
+
+            <button class="w-full text-left p-3 bg-red-50 rounded-lg hover:bg-red-100 text-red-600">
               Delete Account
             </button>
           </div>
         </div>
+
       </div>
     </main>
   </div>

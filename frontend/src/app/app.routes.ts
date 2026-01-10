@@ -63,6 +63,12 @@ export const routes: Routes = [
     .then(m => m.NotificationsComponent),
   canActivate: [authGuard]
 },
+{
+  path: 'admin/analytics',
+  loadComponent: () => import('./features/admin/admin-analytics/admin-analytics.component')
+    .then(m => m.AdminAnalyticsComponent),
+  canActivate: [authGuard, adminGuard]
+},
   {
     path: '**',
     redirectTo: '/dashboard'

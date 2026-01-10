@@ -1,0 +1,279 @@
+<div class="flex h-screen bg-gray-50 overflow-hidden">
+  <app-sidebar [isOpen]="sidebarOpen"></app-sidebar>
+  
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <app-header (toggleSidebar)="toggleSidebar()"></app-header>
+    
+    <main class="flex-1 overflow-y-auto p-6">
+      <app-loading *ngIf="isLoading"></app-loading>
+      
+      <div *ngIf="!isLoading" class="max-w-7xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">Admin Analytics Dashboard</h1>
+            <p class="text-gray-600 mt-1">Comprehensive member contribution insights</p>
+          </div>
+          <div class="flex gap-2">
+            <button
+              (click)="selectedView = 'overview'"
+              [class.bg-blue-600]="selectedView === 'overview'"
+              [class.text-white]="selectedView === 'overview'"
+              [class.bg-white]="selectedView !== 'overview'"
+              [class.text-gray-700]="selectedView !== 'overview'"
+              class="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-gray-100">
+              Overview
+            </button>
+            <button
+              (click)="selectedView = 'members'"
+              [class.bg-blue-600]="selectedView === 'members'"
+              [class.text-white]="selectedView === 'members'"
+              [class.bg-white]="selectedView !== 'members'"
+              [class.text-gray-700]="selectedView !== 'members'"
+              class="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-gray-100">
+              Members
+            </button>
+            <button
+              (click)="selectedView = 'trends'"
+              [class.bg-blue-600]="selectedView === 'trends'"
+              [class.text-white]="selectedView === 'trends'"
+              [class.bg-white]="selectedView !== 'trends'"
+              [class.text-gray-700]="selectedView !== 'trends'"
+              class="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-gray-100">
+              Trends
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div class="bg-white rounded-xl p-6 shadow-sm border-l-4 border-blue-600">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-600 text-sm font-medium">Total Contributions</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ summary?.total_contributions | currencyFormat }}</p>
+              </div>
+              <div class="bg-blue-100 p-3 rounded-lg">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-6 shadow-sm border-l-4 border-green-600">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-600 text-sm font-medium">Active Members</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ summary?.active_members || 0 }}</p>
+              </div>
+              <div class="bg-green-100 p-3 rounded-lg">
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-6 shadow-sm border-l-4 border-purple-600">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-600 text-sm font-medium">Avg Contribution</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ summary?.average_contribution | currencyFormat }}</p>
+              </div>
+              <div class="bg-purple-100 p-3 rounded-lg">
+                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-6 shadow-sm border-l-4 border-orange-600">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-600 text-sm font-medium">Total Deposits</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ summary?.total_deposits_count || 0 }}</p>
+              </div>
+              <div class="bg-orange-100 p-3 rounded-lg">
+                <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Members View -->
+        <div *ngIf="selectedView === 'members'" class="bg-white rounded-xl shadow-sm">
+          <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex-1 max-w-md">
+                <div class="relative">
+                  <input
+                    type="text"
+                    placeholder="Search members..."
+                    [(ngModel)]="searchTerm"
+                    class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <select
+                  [(ngModel)]="sortBy"
+                  class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <option value="total_contributions">Sort by Contributions</option>
+                  <option value="total_deposits">Sort by Deposits</option>
+                  <option value="full_name">Sort by Name</option>
+                </select>
+                <button
+                  (click)="toggleSortOrder()"
+                  class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                  {{ sortOrder === 'asc' ? '↑' : '↓' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Member</th>
+                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                  <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Contributions</th>
+                  <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Deposits</th>
+                  <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Interest Earned</th>
+                  <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr *ngFor="let member of filteredMembers" class="hover:bg-gray-50 transition-colors">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold">
+                        {{ getInitials(member.full_name) }}
+                      </div>
+                      <div class="font-medium text-gray-900">{{ member.full_name }}</div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-600">{{ member.email }}</td>
+                  <td class="px-6 py-4 text-right">
+                    <div class="font-semibold text-gray-900">{{ member.total_contributions | currencyFormat }}</div>
+                    <div class="text-xs text-gray-500">{{ member.contribution_percentage }}% of total</div>
+                  </td>
+                  <td class="px-6 py-4 text-right">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                      {{ member.total_deposits }} deposits
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-right">
+                    <span class="font-medium text-green-600">{{ member.interest_earned | currencyFormat }}</span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span [class]="'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ' + getStatusClass(member.activity_status)">
+                      {{ member.activity_status }}
+                    </span>
+                  </td>
+                </tr>
+                <tr *ngIf="filteredMembers.length === 0">
+                  <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                    No members found matching your search
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Overview View -->
+        <div *ngIf="selectedView === 'overview'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Top Contributors -->
+          <div class="bg-white rounded-xl p-6 shadow-sm lg:col-span-2">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Top 5 Contributors</h3>
+            <div class="space-y-3">
+              <div *ngFor="let member of topContributors; let i = index" 
+                   class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="text-2xl font-bold text-gray-400">#{{ i + 1 }}</div>
+                  <div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold">
+                    {{ getInitials(member.full_name) }}
+                  </div>
+                  <div>
+                    <p class="font-semibold text-gray-900">{{ member.full_name }}</p>
+                    <p class="text-sm text-gray-600">{{ member.email }}</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-xl font-bold text-gray-900">{{ member.total_contributions | currencyFormat }}</p>
+                  <p class="text-sm text-gray-600">{{ member.total_deposits }} deposits</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contribution Distribution -->
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Contribution Distribution</h3>
+            <div class="space-y-3">
+              <div *ngFor="let range of contributionDistribution" 
+                   class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span class="font-medium text-gray-700">{{ range.name }}</span>
+                <span class="text-lg font-bold text-gray-900">{{ range.count }} members</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Growth Metrics -->
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Key Metrics</h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <span class="text-gray-700">Total Interest Earned</span>
+                <span class="text-lg font-bold text-green-600">{{ summary?.total_interest_earned | currencyFormat }}</span>
+              </div>
+              <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <span class="text-gray-700">Total Members</span>
+                <span class="text-lg font-bold text-blue-600">{{ summary?.total_members || 0 }}</span>
+              </div>
+              <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                <span class="text-gray-700">Avg per Member</span>
+                <span class="text-lg font-bold text-purple-600">{{ summary?.average_contribution | currencyFormat }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export Options -->
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-gray-900">Export Data</h3>
+              <p class="text-sm text-gray-600 mt-1">Download analytics reports in various formats</p>
+            </div>
+            <div class="flex gap-3">
+              <button
+                (click)="exportToExcel()"
+                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Export to Excel
+              </button>
+              <button
+                (click)="exportToPDF()"
+                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+                Export to PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

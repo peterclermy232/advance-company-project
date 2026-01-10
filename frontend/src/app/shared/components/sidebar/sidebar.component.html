@@ -21,19 +21,33 @@
 
   <!-- Menu Items -->
   <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+
+  <ng-container *ngFor="let item of menuItems">
     <a
-      *ngFor="let item of menuItems"
+      *ngIf="!item.adminOnly || isAdmin()"
       [routerLink]="item.route"
       routerLinkActive="bg-blue-600 text-white"
-      [routerLinkActiveOptions]="{exact: false}"
+      [routerLinkActiveOptions]="{ exact: false }"
       class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
       [class.justify-center]="!isOpen">
+
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="item.icon" />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          [attr.d]="item.icon" />
       </svg>
-      <span *ngIf="isOpen" class="font-medium">{{ item.label }}</span>
+
+      <span *ngIf="isOpen" class="font-medium">
+        {{ item.label }}
+      </span>
+
     </a>
-  </nav>
+  </ng-container>
+
+</nav>
+
 
   <!-- Logout Button -->
   <div class="p-4 border-t border-gray-200">
