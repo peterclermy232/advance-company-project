@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.utils import timezone
+import secrets
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -59,6 +61,11 @@ class User(AbstractUser):
     profile_photo = models.ImageField(upload_to='profiles/', null=True, blank=True)
     identity_document = models.FileField(upload_to='identity_docs/', null=True, blank=True)
     
+    # Biometric authentication flags
+    biometric_enabled = models.BooleanField(default=False)
+    fingerprint_enabled = models.BooleanField(default=False)
+    face_id_enabled = models.BooleanField(default=False)
+    
     # Account status
     is_active = models.BooleanField(default=True)
     activity_status = models.CharField(max_length=20, default='Active')
@@ -72,3 +79,64 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.email
+
+
+class BiometricDevice(models.Model):
+    """
+    Stores registered devices for biometric authentication.
+    Each device gets a unique credential that's used for verification.
+    """
+    DEVICE_TYPE_CHOICES = [
+        ('fingerprint', 'Fingerprint'),
+        ('face_id', 'Face ID'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='biometric_devices')
+    device_type = models.CharField(max_length=20, choices=DEVICE_TYPE_CHOICES)
+    device_id = models.CharField(max_length=255, help_text="Unique device identifier")
+    device_name = models.CharField(max_length=255, help_text="User-friendly device name")
+    
+    # Credential for this device (not the actual biometric data)
+    credential_id = models.CharField(max_length=255, unique=True, editable=False)
+    public_key = models.TextField(help_text="Public key for credential verification")
+    
+    is_active = models.BooleanField(default=True)
+    registered_at = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['user', 'device_id', 'device_type']
+        ordering = ['-registered_at']
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.device_name} ({self.device_type})"
+    
+    def save(self, *args, **kwargs):
+        if not self.credential_id:
+            self.credential_id = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)
+
+
+class BiometricAuthLog(models.Model):
+    """
+    Logs all biometric authentication attempts for security auditing.
+    """
+    STATUS_CHOICES = [
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('error', 'Error'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='biometric_logs')
+    device = models.ForeignKey(BiometricDevice, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    error_message = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.status} at {self.timestamp}"
