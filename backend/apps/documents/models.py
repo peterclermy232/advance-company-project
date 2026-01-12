@@ -1,6 +1,11 @@
 from django.db import models
 from apps.accounts.models import User
+from .validators import SecureFileValidator
 
+
+def validate_document_file(file):
+    """Wrapper for file validation"""
+    return SecureFileValidator.validate_file(file)
 class Document(models.Model):
     CATEGORY_CHOICES = [
         ('identity', 'Identity'),
@@ -30,3 +35,14 @@ class Document(models.Model):
     
     def __str__(self):
         return f"{self.title} - {self.user.full_name}"
+
+    file = models.FileField(
+        upload_to='documents/%Y/%m/',
+        validators=[validate_document_file]
+    )
+    
+    def save(self, *args, **kwargs):
+        # Sanitize filename before saving
+        if self.file:
+            self.file.name = SecureFileValidator.sanitize_filename(self.file.name)
+        super().save(*args, **kwargs)

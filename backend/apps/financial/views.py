@@ -21,6 +21,9 @@ from .serializers import (
     InterestCalculationSerializer
 )
 
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +50,16 @@ class FinancialAccountViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class DepositViewSet(viewsets.ModelViewSet):
+    @method_decorator(ratelimit(key='user', rate='5/h', method='POST'))
+    def create(self, request, *args, **kwargs):
+        """Limit deposit creation to 5 per hour per user"""
+        if getattr(request, 'limited', False):
+            return Response(
+                {'error': 'You have reached the maximum number of deposit attempts. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
+        return super().create(request, *args, **kwargs)
     """
     ViewSet for managing deposits
     Users can create and view their own deposits

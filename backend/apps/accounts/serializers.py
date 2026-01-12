@@ -26,16 +26,38 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
-    password_confirm = serializers.CharField(write_only=True)
+    password = serializers.CharField(
+        write_only=True, 
+        min_length=12,
+        style={'input_type': 'password'},
+        help_text='Must be at least 12 characters with uppercase, lowercase, digits, and special characters'
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'}
+    )
     
     class Meta:
         model = User
         fields = ['email', 'phone_number', 'full_name', 'password', 'password_confirm', 'role']
     
+    def validate_password(self, value):
+        """Validate password strength"""
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        
+        return value
+    
     def validate(self, data):
         if data['password'] != data['password_confirm']:
-            raise serializers.ValidationError("Passwords don't match")
+            raise serializers.ValidationError({
+                'password_confirm': "Passwords don't match"
+            })
         return data
     
     def create(self, validated_data):
@@ -142,3 +164,20 @@ class BiometricAuthLogSerializer(serializers.ModelSerializer):
         model = BiometricAuthLog
         fields = ['id', 'status', 'ip_address', 'timestamp', 'error_message']
         read_only_fields = fields
+
+class TwoFactorSetupSerializer(serializers.Serializer):
+    """Serializer for 2FA setup"""
+    code = serializers.CharField(max_length=6, min_length=6)
+    
+    def validate_code(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("Code must be 6 digits")
+        return value
+
+
+class TwoFactorVerifySerializer(serializers.Serializer):
+    """Serializer for 2FA verification during login"""
+    email = serializers.EmailField()
+    code = serializers.CharField(max_length=8)
+    is_backup_code = serializers.BooleanField(default=False)
+       
