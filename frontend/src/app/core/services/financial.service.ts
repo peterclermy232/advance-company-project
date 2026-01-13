@@ -2,8 +2,10 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Deposit } from '../models/financial.model';
+import { CanDepositResponse, Deposit, DepositResponse } from '../models/financial.model';
 import { ToastService } from './toast.service';
+
+
 
 @Injectable({
   providedIn: 'root'
@@ -33,24 +35,18 @@ export class FinancialService {
     return this.http.get(`${this.apiUrl}/deposits/`);
   }
 
-  createDeposit(data: any): Observable<Deposit> {
-    return this.http.post<Deposit>(`${this.apiUrl}/deposits/`, data)
+  createDeposit(data: any): Observable<DepositResponse> {
+    return this.http.post<DepositResponse>(`${this.apiUrl}/deposits/`, data)
       .pipe(
-        tap(() => {
-          this.toastService.success('Deposit of KES 20,000 initiated successfully! 💰');
-        }),
         catchError(error => {
-          const message = error.error?.amount?.[0] || 
-                         error.error?.non_field_errors?.[0] ||
-                         'Failed to create deposit';
-          this.toastService.error(message);
+          console.error('Deposit creation error:', error);
           return throwError(() => error);
         })
       );
   }
 
-  canDeposit(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/deposits/can_deposit/`);
+  canDeposit(): Observable<CanDepositResponse> {
+    return this.http.get<CanDepositResponse>(`${this.apiUrl}/deposits/can_deposit/`);
   }
 
   getMonthlySummary(): Observable<any> {
@@ -92,6 +88,6 @@ export class FinancialService {
 
   // Interest calculations
   getInterestCalculations(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/interest-calculations/`);
+    return this.http.get(`${this.apiUrl}/interest/`);
   }
 }

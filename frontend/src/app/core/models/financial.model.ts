@@ -36,3 +36,23 @@ export interface MonthlySummary {
   total_deposits: number;
   count: number;
 }
+
+export interface DepositResponse {
+  id: number;
+  user: number;
+  amount: string;
+  payment_method: string;
+  status: string;
+  transaction_reference: string;
+  mpesa_phone?: string;
+  mpesa_checkout_request_id?: string;
+  mpesa_merchant_request_id?: string;
+  mpesa_receipt_number?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CanDepositResponse {
+  can_deposit: boolean;
+  message: string;
+}

@@ -1,90 +1,190 @@
 <div class="flex h-screen bg-gray-50 overflow-hidden">
   <app-sidebar [isOpen]="sidebarOpen"></app-sidebar>
-<div class="flex-1 flex flex-col overflow-hidden">
+  
+  <div class="flex-1 flex flex-col overflow-hidden">
     <app-header (toggleSidebar)="toggleSidebar()"></app-header>
 
     <main class="flex-1 overflow-y-auto p-6">
-      <!-- <app-loading *ngIf="isLoading"></app-loading> -->
-
-<div  class="bg-white rounded-xl p-6 shadow-sm border-2 border-blue-500">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-bold text-gray-800">Make Monthly Deposit</h3>
-        <div class="bg-blue-50 px-4 py-2 rounded-lg">
-          <p class="text-sm text-blue-600 font-medium">Fixed Amount: KES 20,000</p>
-        </div>
-      </div>
-
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-        <p class="text-sm text-blue-800">
-          <strong>Important:</strong> Monthly deposits are fixed at KES 20,000. You can only make one deposit per month.
-        </p>
-      </div>
-
-      <form [formGroup]="depositForm" (ngSubmit)="onSubmit()" class="space-y-4">
-        <div class="grid md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Amount (Fixed)</label>
-            <div class="relative">
-              <input
-                type="text"
-                [value]="'KES ' + MONTHLY_DEPOSIT_AMOUNT.toLocaleString()"
-                disabled
-                class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-not-allowed">
-              <div class="absolute right-3 top-2 bg-blue-600 text-white px-2 py-1 rounded text-xs">
-                FIXED
+      <!-- M-Pesa Payment Instructions Modal -->
+      <div *ngIf="showMpesaInstructions" 
+           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl animate-fade-in">
+          <div class="text-center">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-10 h-10 text-green-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Check Your Phone</h3>
+            <p class="text-gray-600 mb-6">An M-Pesa payment request has been sent to your phone</p>
+            
+            <div class="bg-green-50 border-2 border-green-200 rounded-xl p-6 mb-6">
+              <div class="space-y-3 text-left">
+                <div class="flex items-start gap-3">
+                  <div class="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
+                  <p class="text-sm text-gray-700">Check for M-Pesa notification on your phone</p>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
+                  <p class="text-sm text-gray-700">Enter your M-Pesa PIN</p>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+                  <p class="text-sm text-gray-700">Confirm payment of <strong>KES 20,000</strong></p>
+                </div>
               </div>
             </div>
-            <p class="text-xs text-gray-500 mt-1">Monthly deposit amount is fixed at KES 20,000</p>
+            
+            <div class="flex gap-3">
+              <button 
+                (click)="cancelMpesaPayment()"
+                class="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+                Close
+              </button>
+              <button 
+                (click)="checkDepositEligibility(); showMpesaInstructions = false"
+                class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                I've Paid
+              </button>
+            </div>
+            
+            <p class="text-xs text-gray-500 mt-4">
+              Payment pending admin approval after successful M-Pesa payment
+            </p>
           </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
-            <select formControlName="payment_method" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option value="mpesa">M-Pesa</option>
-              <option value="bank">Bank Transfer</option>
-              <option value="mansa_x">Mansa-X</option>
-            </select>
+        </div>
+      </div>
+
+      <!-- Deposit Form -->
+      <div class="bg-white rounded-xl p-6 shadow-sm border-2 border-blue-500">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800">Make Monthly Deposit</h3>
+          <div class="bg-blue-50 px-4 py-2 rounded-lg">
+            <p class="text-sm text-blue-600 font-medium">Fixed Amount: KES 20,000</p>
           </div>
         </div>
 
-        <div *ngIf="depositForm.get('payment_method')?.value === 'mpesa'">
-          <label class="block text-sm font-medium text-gray-700 mb-1">M-Pesa Phone Number *</label>
-          <input
-            type="tel"
-            formControlName="mpesa_phone"
-            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            placeholder="+254712345678">
-          <p *ngIf="depositForm.get('mpesa_phone')?.invalid && depositForm.get('mpesa_phone')?.touched" 
-             class="text-red-500 text-sm mt-1">
-            Please enter a valid phone number
+        <!-- Cannot Deposit Warning -->
+        <div *ngIf="!canDeposit" class="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-4">
+          <div class="flex items-start gap-3">
+            <svg class="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/>
+            </svg>
+            <div>
+              <p class="font-semibold text-yellow-800">Already Deposited This Month</p>
+              <p class="text-sm text-yellow-700 mt-1">You can only make one deposit per month. Your next deposit will be available next month.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <p class="text-sm text-blue-800">
+            <strong>Important:</strong> Monthly deposits are fixed at KES 20,000. You can only make one deposit per month.
           </p>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
-          <textarea
-            formControlName="notes"
-            rows="3"
-            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            placeholder="Add any notes about this payment..."></textarea>
-        </div>
+        <form [formGroup]="depositForm" (ngSubmit)="onSubmit()" class="space-y-4">
+          <div class="grid md:grid-cols-2 gap-4">
+            <!-- Fixed Amount Display -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Amount (Fixed)</label>
+              <div class="relative">
+                <input
+                  type="text"
+                  [value]="'KES ' + MONTHLY_DEPOSIT_AMOUNT.toLocaleString()"
+                  disabled
+                  class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-not-allowed">
+                <div class="absolute right-3 top-2 bg-blue-600 text-white px-2 py-1 rounded text-xs">
+                  FIXED
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Monthly deposit amount is fixed at KES 20,000</p>
+            </div>
+            
+            <!-- Payment Method -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
+              <select 
+                formControlName="payment_method" 
+                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="mpesa">💸 M-Pesa (Instant)</option>
+                <option value="bank">🏦 Bank Transfer</option>
+                <option value="mansa_x">💳 Mansa-X</option>
+              </select>
+            </div>
+          </div>
 
-        <button
-          type="submit"
-          [disabled]="isSubmitting || depositForm.invalid || !canDeposit"
-          class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-          <svg *ngIf="!isSubmitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <svg *ngIf="isSubmitting" class="animate-spin h-5 w-5" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {{ isSubmitting ? 'Processing Payment...' : 'Pay KES 20,000 Now' }}
-        </button>
-      </form>
-    </div>
+          <!-- M-Pesa Phone Number -->
+          <div *ngIf="depositForm.get('payment_method')?.value === 'mpesa'">
+            <label class="block text-sm font-medium text-gray-700 mb-1">M-Pesa Phone Number *</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                </svg>
+              </div>
+              <input
+                type="tel"
+                formControlName="mpesa_phone"
+                class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="0712345678 or +254712345678"
+                maxlength="13">
+            </div>
+            <p *ngIf="depositForm.get('mpesa_phone')?.invalid && depositForm.get('mpesa_phone')?.touched" 
+               class="text-red-500 text-sm mt-1 flex items-center gap-1">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"/>
+              </svg>
+              Please enter a valid Safaricom number (07XX or 01XX)
+            </p>
+            <p *ngIf="!depositForm.get('mpesa_phone')?.invalid" class="text-green-600 text-xs mt-1">
+              ✓ You'll receive a payment prompt on this number
+            </p>
+          </div>
 
+          <!-- Bank Transfer Info -->
+          <div *ngIf="depositForm.get('payment_method')?.value === 'bank'" 
+               class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <p class="text-sm font-semibold text-gray-800 mb-2">Bank Transfer Details:</p>
+            <div class="text-sm text-gray-700 space-y-1">
+              <p><strong>Bank:</strong> Example Bank</p>
+              <p><strong>Account:</strong> 1234567890</p>
+              <p><strong>Amount:</strong> KES 20,000</p>
+              <p class="text-xs text-gray-500 mt-2">Send confirmation to admin after transfer</p>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+            <textarea
+              formControlName="notes"
+              rows="3"
+              class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Add any notes about this payment..."></textarea>
+          </div>
+
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            [disabled]="isSubmitting || depositForm.invalid || !canDeposit"
+            class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+            <svg *ngIf="!isSubmitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <svg *ngIf="isSubmitting" class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span *ngIf="!isSubmitting">
+              {{ depositForm.get('payment_method')?.value === 'mpesa' ? '📱 Pay KES 20,000 via M-Pesa' : '💰 Submit Deposit' }}
+            </span>
+            <span *ngIf="isSubmitting">Processing Payment...</span>
+          </button>
+        </form>
+      </div>
     </main>
-</div>
+  </div>
 </div>
