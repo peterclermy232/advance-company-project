@@ -81,7 +81,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     # ---------- Registration ----------
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
         if getattr(request, 'limited', False):
             return Response({'error': 'Too many attempts'}, status=429)
