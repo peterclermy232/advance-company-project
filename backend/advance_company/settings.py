@@ -139,17 +139,27 @@ DATABASES = {
 # CACHE / RATE LIMIT
 # ==========================================================
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': config('REDIS_URL', default='redis://127.0.0.1:6379/0'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'PASSWORD': config('REDIS_PASSWORD', default=''),
-        },
-        'KEY_PREFIX': 'advance_company',
+REDIS_URL = config('REDIS_URL', default=None)
+
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': True,  # 🔥 prevents 500 errors
+            },
+            'KEY_PREFIX': 'advance_company',
+        }
     }
-}
+else:
+    # Fallback (prevents app crash if Redis missing)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
 
 RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = 'default'
