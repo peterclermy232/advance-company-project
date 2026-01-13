@@ -159,7 +159,7 @@ python -m venv venv
 # Windows
 venv\Scripts\activate
 
-# macOS/Linux
+# macOS/Linuxs
 source venv/bin/activate
 ```
 
