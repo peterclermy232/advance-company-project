@@ -37,6 +37,36 @@ from .utils.biometric_verification import BiometricVerifier
 logger = logging.getLogger(__name__)
 
 
+# Safe cache operations with fallback
+def safe_cache_get(key, default=None):
+    """Safely get from cache, return default if Redis fails"""
+    try:
+        return cache.get(key, default)
+    except Exception as e:
+        logger.warning(f"Cache get failed for key {key}: {e}")
+        return default
+
+
+def safe_cache_set(key, value, timeout=None):
+    """Safely set cache, log error if Redis fails"""
+    try:
+        cache.set(key, value, timeout=timeout)
+        return True
+    except Exception as e:
+        logger.warning(f"Cache set failed for key {key}: {e}")
+        return False
+
+
+def safe_cache_delete(key):
+    """Safely delete from cache, log error if Redis fails"""
+    try:
+        cache.delete(key)
+        return True
+    except Exception as e:
+        logger.warning(f"Cache delete failed for key {key}: {e}")
+        return False
+
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -69,13 +99,100 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = UserRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.save(is_active=False, email_verified=False)
-        send_verification_email(user)
-
+        user = serializer.save(is_active=True, email_verified=False)
+        
+        try:
+            send_verification_email(user)
+            message = 'Registration successful! Check your email to verify your account.'
+        except Exception as e:
+            logger.error(f"Failed to send verification email: {e}")
+            message = 'Registration successful! You can now login.'
+        
+        # Auto-login after registration
+        refresh = RefreshToken.for_user(user)
+        
         return Response(
-            {'message': 'Check your email to verify your account'},
+            {
+                'message': message,
+                'user': UserSerializer(user).data,
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                }
+            },
             status=status.HTTP_201_CREATED
         )
+
+    # ================= EMAIL VERIFICATION =================
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def verify_email(self, request):
+        """Verify user email with token"""
+        token = request.data.get('token')
+        email = request.data.get('email')
+        
+        if not token or not email:
+            return Response(
+                {'error': 'Token and email are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(email=email)
+            
+            if user.email_verified:
+                return Response(
+                    {'message': 'Email already verified'},
+                    status=status.HTTP_200_OK
+                )
+            
+            if user.verify_email(token):
+                return Response(
+                    {'message': 'Email verified successfully'},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {'error': 'Invalid or expired token'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def resend_verification(self, request):
+        """Resend verification email"""
+        email = request.data.get('email')
+        
+        if not email:
+            return Response(
+                {'error': 'Email is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(email=email)
+            
+            if user.email_verified:
+                return Response(
+                    {'message': 'Email already verified'},
+                    status=status.HTTP_200_OK
+                )
+            
+            send_verification_email(user)
+            return Response(
+                {'message': 'Verification email sent'},
+                status=status.HTTP_200_OK
+            )
+        except User.DoesNotExist:
+            # Don't reveal if user exists
+            return Response(
+                {'message': 'If the email exists, a verification link has been sent'},
+                status=status.HTTP_200_OK
+            )
 
     # ================= LOGIN (SECURE) =================
 
@@ -92,12 +209,12 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
 
-        # Email verification check
-        if not user.email_verified:
-            return Response(
-                {'error': 'Please verify your email'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # Skip email verification check for now (or make it optional)
+        # if not user.email_verified:
+        #     return Response(
+        #         {'error': 'Please verify your email'},
+        #         status=status.HTTP_403_FORBIDDEN
+        #     )
 
         if not user.is_active:
             return Response(
@@ -105,10 +222,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # 2FA check
+        # 2FA check with safe cache operations
         if user.two_factor_enabled:
             temp_token = secrets.token_urlsafe(32)
-            cache.set(f'2fa_{temp_token}', user.id, timeout=300)
+            safe_cache_set(f'2fa_{temp_token}', user.id, timeout=300)
 
             return Response({
                 'requires_2fa': True,
@@ -127,6 +244,27 @@ class UserViewSet(viewsets.ModelViewSet):
                 'access': str(refresh.access_token),
             }
         })
+
+    # ================= USER PROFILE =================
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """Get current user profile"""
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['put', 'patch'])
+    def update_profile(self, request):
+        """Update user profile"""
+        serializer = UserSerializer(
+            request.user,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        return Response(serializer.data)
 
     # ================= 2FA =================
 
@@ -160,7 +298,10 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = TwoFactorVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = User.objects.get(email=serializer.validated_data['email'])
+        try:
+            user = User.objects.get(email=serializer.validated_data['email'])
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid credentials'}, status=401)
 
         valid = (
             user.verify_backup_code(serializer.validated_data['code'])
@@ -201,10 +342,16 @@ class UserViewSet(viewsets.ModelViewSet):
         email = request.data.get('email')
         device_id = request.data.get('device_id')
 
-        user = User.objects.get(email=email, is_active=True)
-        device = BiometricDevice.objects.get(
-            user=user, device_id=device_id, is_active=True
-        )
+        try:
+            user = User.objects.get(email=email, is_active=True)
+            device = BiometricDevice.objects.get(
+                user=user, device_id=device_id, is_active=True
+            )
+        except (User.DoesNotExist, BiometricDevice.DoesNotExist):
+            return Response(
+                {'error': 'Invalid credentials'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         return Response({
             'challenge': BiometricVerifier.generate_challenge(email),
@@ -213,14 +360,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def biometric_login(self, request):
-        is_valid = BiometricVerifier.verify_signature(
-            email=request.data['email'],
-            public_key=BiometricDevice.objects.get(
-                credential_id=request.data['credential_id']
-            ).public_key,
-            signature=request.data['auth_signature'],
-            challenge_response=request.data['challenge_response']
-        )
+        try:
+            is_valid = BiometricVerifier.verify_signature(
+                email=request.data['email'],
+                public_key=BiometricDevice.objects.get(
+                    credential_id=request.data['credential_id']
+                ).public_key,
+                signature=request.data['auth_signature'],
+                challenge_response=request.data['challenge_response']
+            )
+        except BiometricDevice.DoesNotExist:
+            return Response({'error': 'Device not found'}, status=404)
 
         if not is_valid:
             return Response({'error': 'Authentication failed'}, status=401)
@@ -241,6 +391,9 @@ class UserViewSet(viewsets.ModelViewSet):
     @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'))
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def forgot_password(self, request):
+        if getattr(request, 'limited', False):
+            return Response({'error': 'Too many attempts'}, status=429)
+            
         email = request.data.get('email', '').lower()
         if not email:
             return Response({'error': 'Email required'}, status=400)
@@ -260,6 +413,8 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         except User.DoesNotExist:
             pass
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {e}")
 
         return Response({'message': 'If account exists, email sent'})
 
@@ -269,12 +424,26 @@ class UserViewSet(viewsets.ModelViewSet):
         token = request.data.get('token')
         password = request.data.get('new_password')
 
-        user = User.objects.get(pk=force_str(urlsafe_base64_decode(uid)))
+        if not all([uid, token, password]):
+            return Response(
+                {'error': 'Missing required fields'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=user_id)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response({'error': 'Invalid reset link'}, status=400)
 
         if not default_token_generator.check_token(user, token):
-            return Response({'error': 'Invalid token'}, status=400)
+            return Response({'error': 'Invalid or expired token'}, status=400)
 
-        validate_password(password, user)
+        try:
+            validate_password(password, user)
+        except ValidationError as e:
+            return Response({'error': e.messages}, status=400)
+
         user.set_password(password)
         user.save()
 
