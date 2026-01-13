@@ -1,89 +1,108 @@
 <!-- Filter Tabs -->
-<div class="bg-white rounded-lg shadow-sm p-1 flex gap-1">
-  <button
-    (click)="onFilterChange('pending')"
-    [class]="filterStatus === 'pending' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
-    class="flex-1 px-4 py-2 rounded-md font-medium transition-colors">
-    Pending ({{ pendingCount }})
-  </button>
-  <button
-    (click)="onFilterChange('completed')"
-    [class]="filterStatus === 'completed' ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
-    class="flex-1 px-4 py-2 rounded-md font-medium transition-colors">
-    Approved ({{ approvedCount }})
-  </button>
-  <button
-    (click)="onFilterChange('failed')"
-    [class]="filterStatus === 'failed' ? 'bg-red-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
-    class="flex-1 px-4 py-2 rounded-md font-medium transition-colors">
-    Rejected ({{ rejectedCount }})
-  </button>
-</div>
+    <div class="bg-white rounded-lg shadow-sm p-1 flex gap-1 mb-6">
+      <button
+        (click)="onFilterChange('pending')"
+        [class]="filterStatus === 'pending' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
+        class="flex-1 px-4 py-2 rounded-md font-medium transition-colors">
+        Pending ({{ pendingCount }})
+      </button>
+      <button
+        (click)="onFilterChange('completed')"
+        [class]="filterStatus === 'completed' ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
+        class="flex-1 px-4 py-2 rounded-md font-medium transition-colors">
+        Approved ({{ approvedCount }})
+      </button>
+      <button
+        (click)="onFilterChange('failed')"
+        [class]="filterStatus === 'failed' ? 'bg-red-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
+        class="flex-1 px-4 py-2 rounded-md font-medium transition-colors">
+        Rejected ({{ rejectedCount }})
+      </button>
+    </div>
 
-<!-- Deposits Table -->
-<div class="bg-white rounded-xl shadow-sm overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full">
-      <thead class="bg-gray-50 border-b">
-        <tr>
-          <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Member</th>
-          <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
-          <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Method</th>
-          <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-          <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Reference</th>
-          <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-          <th *ngIf="filterStatus === 'pending' && isAdmin" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-200">
-        <tr *ngFor="let deposit of deposits" class="hover:bg-gray-50">
-          <td class="px-6 py-4">
-            <div class="text-sm font-medium text-gray-900">{{ deposit.user_name }}</div>
-            <div class="text-xs text-gray-500">{{ deposit.mpesa_phone || 'N/A' }}</div>
-          </td>
-          <td class="px-6 py-4">
-            <div class="text-sm font-semibold text-gray-900">{{ deposit.amount | currencyFormat }}</div>
-          </td>
-          <td class="px-6 py-4">
-            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-              {{ getPaymentMethodLabel(deposit.payment_method) }}
-            </span>
-          </td>
-          <td class="px-6 py-4 text-sm text-gray-600">
-            {{ deposit.created_at | date:'short' }}
-          </td>
-          <td class="px-6 py-4">
-            <code class="text-xs bg-gray-100 px-2 py-1 rounded">{{ deposit.transaction_reference }}</code>
-          </td>
-          <td class="px-6 py-4">
-            <span [class]="'px-3 py-1 rounded-full text-xs font-medium ' + getStatusClass(deposit.status)">
-              {{ deposit.status }}
-            </span>
-          </td>
-          <td *ngIf="filterStatus === 'pending' && isAdmin" class="px-6 py-4 text-right">
-            <div class="flex gap-2 justify-end">
-              <button
-                (click)="onApprove(deposit)"
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                Approve
-              </button>
-              <button
-                (click)="onReject(deposit)"
-                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                Reject
-              </button>
-            </div>
-          </td>
-        </tr>
-        <tr *ngIf="deposits.length === 0">
-          <td [attr.colspan]="filterStatus === 'pending' && isAdmin ? 7 : 6" class="px-6 py-12 text-center">
-            <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            <p class="text-gray-500">No {{ filterStatus }} deposits found</p>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+    <!-- Deposits Table -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Member</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Method</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reference</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+              <th *ngIf="filterStatus === 'pending' && isAdmin" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+              <th *ngIf="filterStatus === 'failed'" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr *ngFor="let deposit of deposits" class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span class="text-blue-600 font-semibold text-sm">{{ getInitials(deposit.user_name) }}</span>
+                  </div>
+                  <div class="ml-3">
+                    <div class="text-sm font-medium text-gray-900">{{ deposit.user_name }}</div>
+                    <div class="text-xs text-gray-500">{{ deposit.mpesa_phone || 'N/A' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm font-semibold text-gray-900">{{ deposit.amount | currencyFormat }}</div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                  {{ getPaymentMethodLabel(deposit.payment_method) }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm text-gray-900">{{ deposit.created_at | date:'MMM d, y' }}</div>
+                <div class="text-xs text-gray-500">{{ deposit.created_at | date:'h:mm a' }}</div>
+              </td>
+              <td class="px-6 py-4">
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded font-mono">{{ deposit.transaction_reference }}</code>
+              </td>
+              <td class="px-6 py-4">
+                <span [class]="'px-3 py-1 rounded-full text-xs font-medium ' + getStatusClass(deposit.status)">
+                  {{ getStatusLabel(deposit.status) }}
+                </span>
+              </td>
+              <td *ngIf="filterStatus === 'pending' && isAdmin" class="px-6 py-4 text-right">
+                <div class="flex gap-2 justify-end">
+                  <button
+                    (click)="onApprove(deposit)"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm">
+                    <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Approve
+                  </button>
+                  <button
+                    (click)="onReject(deposit)"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm">
+                    <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    Reject
+                  </button>
+                </div>
+              </td>
+              <td *ngIf="filterStatus === 'failed'" class="px-6 py-4">
+                <div class="text-sm text-red-600">{{ deposit.rejection_reason || 'No reason provided' }}</div>
+              </td>
+            </tr>
+            <tr *ngIf="deposits.length === 0">
+              <td [attr.colspan]="getColspan()" class="px-6 py-12 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <p class="text-gray-500 font-medium">No {{ filterStatus }} deposits found</p>
+                <p class="text-gray-400 text-sm mt-1">Deposits will appear here once they are submitted</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>

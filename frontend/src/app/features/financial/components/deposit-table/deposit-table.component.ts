@@ -37,10 +37,22 @@ export class DepositTableComponent {
     const classes: { [key: string]: string } = {
       'completed': 'bg-green-100 text-green-800',
       'pending': 'bg-yellow-100 text-yellow-800',
+      'processing': 'bg-blue-100 text-blue-800',
       'failed': 'bg-red-100 text-red-800',
       'cancelled': 'bg-gray-100 text-gray-800'
     };
     return classes[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: { [key: string]: string } = {
+      'completed': 'Approved',
+      'pending': 'Pending',
+      'processing': 'Processing',
+      'failed': 'Rejected',
+      'cancelled': 'Cancelled'
+    };
+    return labels[status] || status;
   }
 
   getPaymentMethodLabel(method: string): string {
@@ -50,5 +62,19 @@ export class DepositTableComponent {
       'mansa_x': 'Mansa-X'
     };
     return labels[method] || method;
+  }
+
+  getInitials(name: string): string {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+
+  getColspan(): number {
+    let cols = 6; // base columns
+    if (this.filterStatus === 'pending' && this.isAdmin) cols++;
+    if (this.filterStatus === 'failed') cols++;
+    return cols;
   }
 }

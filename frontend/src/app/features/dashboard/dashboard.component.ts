@@ -84,14 +84,25 @@ export class DashboardComponent implements OnInit {
 
   loadRecentNotifications() {
     // Fetch recent notifications (limit to 5 for dashboard)
-    this.apiService.get<{ results: Notification[] }>('notifications/?limit=5')
+    this.apiService.get<Notification[] | { results: Notification[] }>('notifications/?limit=5')
       .subscribe({
         next: (response) => {
-          this.recentActivities = this.mapNotificationsToActivities(response.results || []);
+          console.log('Notifications response:', response); // Debug log
+          
+          // Handle both array response and paginated response
+          let notifications: Notification[] = [];
+          if (Array.isArray(response)) {
+            notifications = response;
+          } else if (response && response.results) {
+            notifications = response.results;
+          }
+          
+          console.log('Parsed notifications:', notifications); // Debug log
+          this.recentActivities = this.mapNotificationsToActivities(notifications);
+          console.log('Recent activities:', this.recentActivities); // Debug log
         },
         error: (error) => {
           console.error('Error loading notifications:', error);
-          // Keep empty array if error
           this.recentActivities = [];
         }
       });
@@ -119,7 +130,7 @@ export class DashboardComponent implements OnInit {
 
     // Extract key details for non-financial notifications
     if (message.includes('Birth Certificate')) return 'Birth Certificate';
-    if (message.includes('ID Document')) return 'ID Document';
+    if (message.includes('ID Document') || message.includes('Identity')) return 'ID Document';
     if (message.includes('application')) return 'Application';
     if (message.includes('beneficiary')) return 'Beneficiary';
     if (message.includes('document')) return 'Document';
@@ -149,7 +160,7 @@ export class DashboardComponent implements OnInit {
 
     // Find matching icon based on notification type
     for (const [key, icon] of Object.entries(iconMap)) {
-      if (type.includes(key)) {
+      if (type.toLowerCase().includes(key)) {
         return icon;
       }
     }

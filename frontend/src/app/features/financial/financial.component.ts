@@ -50,30 +50,54 @@ export class FinancialComponent implements OnInit {
   }
 
   get pendingDeposits() {
-    return this.allDeposits.filter(d => d.status === 'pending');
+    // Include both 'pending' and 'processing' statuses
+    return (this.allDeposits || []).filter(d => 
+      d.status === 'pending' || d.status === 'processing'
+    );
   }
 
   get approvedDeposits() {
-    return this.allDeposits.filter(d => d.status === 'completed');
+    return (this.allDeposits || []).filter(d => d.status === 'completed');
   }
 
   get rejectedDeposits() {
-    return this.allDeposits.filter(d => d.status === 'failed');
+    return (this.allDeposits || []).filter(d => d.status === 'failed');
   }
 
   get filteredDeposits() {
-    return this.allDeposits.filter(d => d.status === this.filterStatus);
+    if (this.filterStatus === 'pending') {
+      // Show both pending and processing when "pending" tab is selected
+      return (this.allDeposits || []).filter(d => 
+        d.status === 'pending' || d.status === 'processing'
+      );
+    }
+    return (this.allDeposits || []).filter(d => d.status === this.filterStatus);
   }
 
   loadDeposits() {
+    this.isLoading = true;
     this.financialService.getDeposits().subscribe({
       next: (response) => {
-        this.allDeposits = response.results;
+        console.log('Deposits loaded:', response); // Debug log
+        
+        // Handle both array response and paginated response with results
+        if (Array.isArray(response)) {
+          this.allDeposits = response;
+        } else if (response && response.results) {
+          this.allDeposits = response.results;
+        } else {
+          this.allDeposits = [];
+        }
+        
+        console.log('All deposits:', this.allDeposits); // Debug log
+        console.log('Pending deposits:', this.pendingDeposits); // Debug log
+        console.log('Filtered deposits:', this.filteredDeposits); // Debug log
         this.isLoading = false;
       },
       error: (error) => {
         console.error('Error loading deposits:', error);
         this.notificationService.error('Failed to load deposits');
+        this.allDeposits = [];
         this.isLoading = false;
       }
     });
@@ -85,6 +109,8 @@ export class FinancialComponent implements OnInit {
 
   onFilterChange(status: 'pending' | 'completed' | 'failed') {
     this.filterStatus = status;
+    console.log('Filter changed to:', status); // Debug log
+    console.log('Filtered deposits:', this.filteredDeposits); // Debug log
   }
 
   handleApprove(deposit: Deposit) {
