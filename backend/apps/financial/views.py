@@ -1,18 +1,16 @@
-"""
-backend/apps/financial/views.py
-Fixed version with proper error handling and Decimal type handling
-"""
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from django.utils import timezone
 from django.db.models import Sum, Q
 from django.db import transaction
+from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, timedelta
 from decimal import Decimal
 import uuid
 import logging
+import json
 
 from .models import FinancialAccount, Deposit, InterestCalculation
 from .serializers import (
@@ -20,7 +18,7 @@ from .serializers import (
     DepositSerializer, 
     InterestCalculationSerializer
 )
-
+from .mpesa_utils import initiate_stk_push
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 
@@ -50,16 +48,6 @@ class FinancialAccountViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class DepositViewSet(viewsets.ModelViewSet):
-    @method_decorator(ratelimit(key='user', rate='5/h', method='POST'))
-    def create(self, request, *args, **kwargs):
-        """Limit deposit creation to 5 per hour per user"""
-        if getattr(request, 'limited', False):
-            return Response(
-                {'error': 'You have reached the maximum number of deposit attempts. Please try again later.'},
-                status=status.HTTP_429_TOO_MANY_REQUESTS
-            )
-        
-        return super().create(request, *args, **kwargs)
     """
     ViewSet for managing deposits
     Users can create and view their own deposits
@@ -74,20 +62,103 @@ class DepositViewSet(viewsets.ModelViewSet):
             return Deposit.objects.all().order_by('-created_at')
         return Deposit.objects.filter(user=self.request.user).order_by('-created_at')
 
-    def perform_create(self, serializer):
+    @method_decorator(ratelimit(key='user', rate='5/h', method='POST'))
+    def create(self, request, *args, **kwargs):
         """
-        Create deposit with auto-generated transaction reference
-        Notifications are sent automatically by signals
+        Create deposit and initiate M-Pesa payment if payment method is M-Pesa
+        Limit deposit creation to 5 per hour per user
         """
-        # Generate unique transaction reference
-        transaction_ref = f"DEP{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}"
+        if getattr(request, 'limited', False):
+            return Response(
+                {'error': 'You have reached the maximum number of deposit attempts. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
         
-        # Force the amount to be 20,000
-        serializer.save(
-            user=self.request.user, 
-            transaction_reference=transaction_ref,
-            amount=self.MONTHLY_DEPOSIT_AMOUNT
-        )
+        # Check if user can deposit this month
+        current_month = timezone.now().month
+        current_year = timezone.now().year
+        
+        existing_deposit = Deposit.objects.filter(
+            user=request.user,
+            created_at__month=current_month,
+            created_at__year=current_year,
+            status__in=['pending', 'processing', 'completed']
+        ).exists()
+        
+        if existing_deposit:
+            return Response(
+                {'error': 'You have already made a deposit this month'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get payment method and phone number
+        payment_method = request.data.get('payment_method')
+        mpesa_phone = request.data.get('mpesa_phone')
+        
+        # Validate M-Pesa requirements
+        if payment_method == 'mpesa' and not mpesa_phone:
+            return Response(
+                {'error': 'Phone number is required for M-Pesa payments'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                # Generate unique transaction reference
+                transaction_ref = f"DEP{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}"
+                
+                # Create deposit
+                deposit = Deposit.objects.create(
+                    user=request.user,
+                    amount=self.MONTHLY_DEPOSIT_AMOUNT,
+                    payment_method=payment_method,
+                    transaction_reference=transaction_ref,
+                    mpesa_phone=mpesa_phone,
+                    status='pending' if payment_method != 'mpesa' else 'processing',
+                    notes=request.data.get('notes', '')
+                )
+                
+                # Initiate M-Pesa STK Push if payment method is M-Pesa
+                if payment_method == 'mpesa':
+                    result = initiate_stk_push(
+                        phone_number=mpesa_phone,
+                        amount=self.MONTHLY_DEPOSIT_AMOUNT,
+                        account_reference=transaction_ref,
+                        transaction_desc='Deposit'
+                    )
+                    
+                    if result.get('success'):
+                        mpesa_data = result.get('data', {})
+                        deposit.mpesa_checkout_request_id = mpesa_data.get('CheckoutRequestID')
+                        deposit.mpesa_merchant_request_id = mpesa_data.get('MerchantRequestID')
+                        deposit.mpesa_response_code = mpesa_data.get('ResponseCode')
+                        deposit.mpesa_response_description = mpesa_data.get('ResponseDescription')
+                        deposit.save()
+                        
+                        logger.info(f"STK Push initiated for deposit {deposit.id}")
+                    else:
+                        # STK Push failed
+                        deposit.status = 'failed'
+                        deposit.notes = f"M-Pesa error: {result.get('error', 'Unknown error')}"
+                        deposit.save()
+                        
+                        return Response(
+                            {
+                                'error': 'Failed to initiate M-Pesa payment',
+                                'details': result.get('error')
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                
+                serializer = self.get_serializer(deposit)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                
+        except Exception as e:
+            logger.error(f"Error creating deposit: {str(e)}", exc_info=True)
+            return Response(
+                {'error': f'Failed to create deposit: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=['get'])
     def can_deposit(self, request):
@@ -102,7 +173,7 @@ class DepositViewSet(viewsets.ModelViewSet):
             user=request.user,
             created_at__month=current_month,
             created_at__year=current_year,
-            status__in=['pending', 'completed']
+            status__in=['pending', 'processing', 'completed']
         ).exists()
         
         return Response({
@@ -146,13 +217,12 @@ class DepositViewSet(viewsets.ModelViewSet):
     def approve_deposit(self, request, pk=None):
         """
         Admin endpoint to approve a deposit and update financial account
-        Fixed: Proper Decimal type handling for interest calculation
         """
         deposit = self.get_object()
         
-        if deposit.status != 'pending':
+        if deposit.status not in ['pending', 'processing']:
             return Response(
-                {'error': 'Deposit is not pending'},
+                {'error': 'Deposit is not in a state that can be approved'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -170,8 +240,7 @@ class DepositViewSet(viewsets.ModelViewSet):
                 )
                 account.total_contributions += deposit.amount
                 
-                # Calculate and add interest (e.g., 5% per deposit)
-                # Fix: Convert to Decimal to ensure type consistency
+                # Calculate and add interest
                 interest_rate = Decimal(str(account.interest_rate))
                 deposit_amount = Decimal(str(deposit.amount))
                 interest = deposit_amount * (interest_rate / Decimal('100'))
@@ -206,22 +275,18 @@ class DepositViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def reject_deposit(self, request, pk=None):
-        """
-        Admin endpoint to reject a deposit
-        Fixed: Better error handling
-        """
+        """Admin endpoint to reject a deposit"""
         deposit = self.get_object()
         
-        if deposit.status != 'pending':
+        if deposit.status not in ['pending', 'processing']:
             return Response(
-                {'error': 'Deposit is not pending'},
+                {'error': 'Deposit is not in a state that can be rejected'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         try:
             reason = request.data.get('reason', 'No reason provided')
             
-            # Update deposit status
             deposit.status = 'failed'
             deposit.rejection_reason = reason
             deposit.rejected_by = request.user
@@ -260,3 +325,65 @@ class InterestCalculationViewSet(viewsets.ReadOnlyModelViewSet):
         return InterestCalculation.objects.filter(
             user=self.request.user
         ).order_by('-calculation_date')
+
+
+# M-Pesa Callback View
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def mpesa_callback(request):
+    """
+    M-Pesa callback endpoint to receive payment notifications
+    """
+    try:
+        data = json.loads(request.body)
+        logger.info(f"M-Pesa Callback received: {data}")
+        
+        # Extract callback data
+        callback_body = data.get('Body', {}).get('stkCallback', {})
+        result_code = callback_body.get('ResultCode')
+        checkout_request_id = callback_body.get('CheckoutRequestID')
+        
+        # Find the deposit
+        try:
+            deposit = Deposit.objects.get(mpesa_checkout_request_id=checkout_request_id)
+        except Deposit.DoesNotExist:
+            logger.error(f"Deposit not found for CheckoutRequestID: {checkout_request_id}")
+            return Response({'ResultCode': 0, 'ResultDesc': 'Accepted'})
+        
+        if result_code == 0:
+            # Payment successful
+            callback_metadata = callback_body.get('CallbackMetadata', {}).get('Item', [])
+            
+            # Extract transaction details
+            for item in callback_metadata:
+                if item.get('Name') == 'MpesaReceiptNumber':
+                    deposit.mpesa_receipt_number = item.get('Value')
+                elif item.get('Name') == 'TransactionDate':
+                    # Convert timestamp to datetime (format: 20220101123456)
+                    trans_date = str(item.get('Value'))
+                    deposit.mpesa_transaction_date = datetime.strptime(
+                        trans_date, '%Y%m%d%H%M%S'
+                    )
+            
+            deposit.status = 'pending'  # Pending admin approval
+            deposit.mpesa_response_code = str(result_code)
+            deposit.mpesa_response_description = callback_body.get('ResultDesc', 'Success')
+            deposit.save()
+            
+            logger.info(f"M-Pesa payment successful for deposit {deposit.id}")
+            
+        else:
+            # Payment failed
+            deposit.status = 'failed'
+            deposit.mpesa_response_code = str(result_code)
+            deposit.mpesa_response_description = callback_body.get('ResultDesc', 'Failed')
+            deposit.save()
+            
+            logger.warning(f"M-Pesa payment failed for deposit {deposit.id}: {result_code}")
+        
+        return Response({'ResultCode': 0, 'ResultDesc': 'Accepted'})
+        
+    except Exception as e:
+        logger.error(f"Error processing M-Pesa callback: {str(e)}", exc_info=True)
+        return Response({'ResultCode': 1, 'ResultDesc': 'Failed'})

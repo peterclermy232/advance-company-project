@@ -1,6 +1,7 @@
 from django.db import models
 from apps.accounts.models import User
 
+
 class FinancialAccount(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='financial_account')
     total_contributions = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -11,6 +12,11 @@ class FinancialAccount(models.Model):
     
     def __str__(self):
         return f"{self.user.full_name} - Account"
+    
+    @property
+    def total_balance(self):
+        """Total balance including contributions and interest"""
+        return self.total_contributions + self.interest_earned
 
 
 class Deposit(models.Model):
@@ -22,6 +28,7 @@ class Deposit(models.Model):
     
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('processing', 'Processing'),  # Added for M-Pesa pending state
         ('completed', 'Completed'),
         ('failed', 'Failed'),
         ('cancelled', 'Cancelled'),
@@ -34,6 +41,14 @@ class Deposit(models.Model):
     transaction_reference = models.CharField(max_length=100, unique=True)
     mpesa_phone = models.CharField(max_length=15, null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
+    
+    # M-Pesa specific fields
+    mpesa_checkout_request_id = models.CharField(max_length=100, null=True, blank=True)
+    mpesa_merchant_request_id = models.CharField(max_length=100, null=True, blank=True)
+    mpesa_receipt_number = models.CharField(max_length=50, null=True, blank=True)
+    mpesa_transaction_date = models.DateTimeField(null=True, blank=True)
+    mpesa_response_code = models.CharField(max_length=10, null=True, blank=True)
+    mpesa_response_description = models.TextField(null=True, blank=True)
     
     # Admin approval fields
     approved_by = models.ForeignKey(
@@ -59,9 +74,14 @@ class Deposit(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['mpesa_checkout_request_id']),
+            models.Index(fields=['transaction_reference']),
+        ]
     
     def __str__(self):
-        return f"{self.user.full_name} - KES {self.amount}"
+        return f"{self.user.full_name} - KES {self.amount} ({self.status})"
 
 
 class InterestCalculation(models.Model):

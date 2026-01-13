@@ -1,11 +1,24 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+from datetime import timedelta
+import logging
+import secrets
+
+from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+
 from django_ratelimit.decorators import ratelimit
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User, BiometricDevice, BiometricAuthLog
 from .serializers import (
@@ -15,13 +28,11 @@ from .serializers import (
     BiometricDeviceSerializer,
     BiometricRegistrationSerializer,
     BiometricAuthLogSerializer,
+    TwoFactorSetupSerializer,
+    TwoFactorVerifySerializer,
 )
 from .emails import send_verification_email
 from .utils.biometric_verification import BiometricVerifier
-
-import secrets
-import logging
-from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -30,27 +41,24 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    # ---------------- PERMISSIONS ----------------
+    # ================= PERMISSIONS =================
 
     def get_permissions(self):
-        if self.action in [
-            'register',
-            'login',
-            'verify_email',
-            'resend_verification',
-            'biometric_challenge',
-            'biometric_login',
-        ]:
-            return [AllowAny()]
-        return [IsAuthenticated()]
+        public_actions = [
+            'register', 'login', 'verify_email', 'resend_verification',
+            'forgot_password', 'reset_password_validate',
+            'reset_password_confirm', 'verify_2fa',
+            'biometric_challenge', 'biometric_login'
+        ]
+        return [AllowAny()] if self.action in public_actions else [IsAuthenticated()]
 
-    # ---------------- UTILITIES ----------------
+    # ================= UTILITIES =================
 
     def get_client_ip(self, request):
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        return x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        return xff.split(',')[0] if xff else request.META.get('REMOTE_ADDR')
 
-    # ================= AUTH =================
+    # ================= REGISTRATION =================
 
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
     @action(detail=False, methods=['post'])
@@ -59,128 +67,59 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Too many attempts'}, status=429)
 
         serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save(is_active=False)
-            try:
-                send_verification_email(user)
-            except Exception as e:
-                logger.error(e)
-                return Response({'error': 'Email failed'}, status=500)
+        serializer.is_valid(raise_exception=True)
 
+        user = serializer.save(is_active=False, email_verified=False)
+        send_verification_email(user)
+
+        return Response(
+            {'message': 'Check your email to verify your account'},
+            status=status.HTTP_201_CREATED
+        )
+
+    # ================= LOGIN (SECURE) =================
+
+    @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
+    @action(detail=False, methods=['post'])
+    def login(self, request):
+        if getattr(request, 'limited', False):
             return Response(
-                {'message': 'Check your email to verify your account'},
-                status=status.HTTP_201_CREATED
+                {'error': 'Too many login attempts'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
             )
-        return Response(serializer.errors, status=400)
 
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
 
-    
-    @action(detail=False, methods=['post'])
-    def enable_2fa(self, request):
-        """Enable 2FA for user account"""
-        user = request.user
-        
-        # Generate secret and QR code
-        secret = user.generate_2fa_secret()
-        qr_code = user.get_2fa_qr_code()
-        
-        return Response({
-            'secret': secret,
-            'qr_code': qr_code,
-            'message': 'Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.)'
-        })
-    
-    @action(detail=False, methods=['post'])
-    def confirm_2fa(self, request):
-        """Confirm and activate 2FA"""
-        serializer = TwoFactorSetupSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        user = request.user
-        code = serializer.validated_data['code']
-        
-        if not user.two_factor_secret:
+        # Email verification check
+        if not user.email_verified:
+            return Response(
+                {'error': 'Please verify your email'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if not user.is_active:
+            return Response(
+                {'error': 'Account disabled'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 2FA check
+        if user.two_factor_enabled:
+            temp_token = secrets.token_urlsafe(32)
+            cache.set(f'2fa_{temp_token}', user.id, timeout=300)
+
             return Response({
-                'error': 'Please enable 2FA first'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Verify the code
-        import pyotp
-        totp = pyotp.TOTP(user.two_factor_secret)
-        
-        if not totp.verify(code, valid_window=1):
-            return Response({
-                'error': 'Invalid verification code'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Activate 2FA and generate backup codes
-        user.two_factor_enabled = True
-        backup_codes = user.generate_backup_codes()
-        user.save()
-        
-        return Response({
-            'message': '2FA enabled successfully',
-            'backup_codes': backup_codes,
-            'warning': 'Save these backup codes in a secure location. You will need them if you lose access to your authenticator app.'
-        })
-    
-    @action(detail=False, methods=['post'])
-    def disable_2fa(self, request):
-        """Disable 2FA (requires current password)"""
-        password = request.data.get('password')
-        
-        if not password:
-            return Response({
-                'error': 'Password is required to disable 2FA'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        user = request.user
-        
-        if not user.check_password(password):
-            return Response({
-                'error': 'Invalid password'
-            }, status=status.HTTP_401_UNAUTHORIZED)
-        
-        user.two_factor_enabled = False
-        user.two_factor_secret = None
-        user.backup_codes = []
-        user.save()
-        
-        return Response({
-            'message': '2FA disabled successfully'
-        })
-    
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
-    def verify_2fa(self, request):
-        """Verify 2FA code during login"""
-        serializer = TwoFactorVerifySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        email = serializer.validated_data['email']
-        code = serializer.validated_data['code']
-        is_backup = serializer.validated_data['is_backup_code']
-        
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({
-                'error': 'Invalid credentials'
-            }, status=status.HTTP_401_UNAUTHORIZED)
-        
-        # Verify code
-        if is_backup:
-            verified = user.verify_backup_code(code)
-        else:
-            verified = user.verify_2fa_code(code)
-        
-        if not verified:
-            return Response({
-                'error': 'Invalid verification code'
-            }, status=status.HTTP_401_UNAUTHORIZED)
-        
-        # Generate tokens
+                'requires_2fa': True,
+                'temp_token': temp_token,
+                'email': user.email
+            }, status=status.HTTP_202_ACCEPTED)
+
         refresh = RefreshToken.for_user(user)
-        
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
+
         return Response({
             'user': UserSerializer(user).data,
             'tokens': {
@@ -188,140 +127,60 @@ class UserViewSet(viewsets.ModelViewSet):
                 'access': str(refresh.access_token),
             }
         })
-    
-    @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
+
+    # ================= 2FA =================
+
     @action(detail=False, methods=['post'])
-    def login(self, request):
-        if getattr(request, 'limited', False):
-            return Response({'error': 'Too many attempts'}, status=429)
-
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data['user']
-            # Check if 2FA is enabled
-            if user.two_factor_enabled:
-                return Response({
-                    'requires_2fa': True,
-                    'email': user.email,
-                    'message': 'Please enter your 2FA code'
-                }, status=status.HTTP_202_ACCEPTED)
-            
-            # No 2FA, proceed with login
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'user': UserSerializer(user).data,
-                'tokens': {
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                }
-            })
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    # ================= BIOMETRIC =================
-
-    @method_decorator(ratelimit(key='ip', rate='3/m', method='POST'))
-    @action(detail=False, methods=['post'])
-    def biometric_challenge(self, request):
-        """
-        Step 1: Generate cryptographic challenge
-        """
-        email = request.data.get('email')
-        device_id = request.data.get('device_id')
-
-        if not email or not device_id:
-            return Response({'error': 'email and device_id required'}, status=400)
-
-        try:
-            user = User.objects.get(email=email, is_active=True)
-            device = BiometricDevice.objects.get(
-                user=user,
-                device_id=device_id,
-                is_active=True
-            )
-        except (User.DoesNotExist, BiometricDevice.DoesNotExist):
-            return Response({'error': 'Invalid credentials'}, status=401)
-
-        challenge = BiometricVerifier.generate_challenge(email)
-
+    def enable_2fa(self, request):
+        secret = request.user.generate_2fa_secret()
         return Response({
-            'challenge': challenge,
-            'credential_id': device.credential_id
+            'secret': secret,
+            'qr_code': request.user.get_2fa_qr_code()
         })
 
-    @method_decorator(ratelimit(key='ip', rate='3/m', method='POST'))
     @action(detail=False, methods=['post'])
-    def biometric_login(self, request):
-        """
-        Step 2: Verify biometric signature
-        """
-        email = request.data.get('email')
-        device_id = request.data.get('device_id')
-        credential_id = request.data.get('credential_id')
-        auth_signature = request.data.get('auth_signature')
-        challenge_response = request.data.get('challenge_response')
+    def confirm_2fa(self, request):
+        serializer = TwoFactorSetupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not all([email, device_id, credential_id, auth_signature, challenge_response]):
-            return Response({'error': 'Missing fields'}, status=400)
+        if not request.user.verify_2fa_code(serializer.validated_data['code']):
+            return Response({'error': 'Invalid code'}, status=400)
 
-        try:
-            user = User.objects.get(email=email, is_active=True)
-            device = BiometricDevice.objects.get(
-                user=user,
-                device_id=device_id,
-                credential_id=credential_id,
-                is_active=True
-            )
-        except (User.DoesNotExist, BiometricDevice.DoesNotExist):
-            BiometricAuthLog.objects.create(
-                status='failed',
-                ip_address=self.get_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                error_message='Invalid credentials'
-            )
-            return Response({'error': 'Authentication failed'}, status=401)
+        request.user.two_factor_enabled = True
+        backup_codes = request.user.generate_backup_codes()
+        request.user.save()
 
-        is_valid = BiometricVerifier.verify_signature(
-            email=email,
-            public_key=device.public_key,
-            signature=auth_signature,
-            challenge_response=challenge_response
+        return Response({
+            'message': '2FA enabled',
+            'backup_codes': backup_codes
+        })
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def verify_2fa(self, request):
+        serializer = TwoFactorVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = User.objects.get(email=serializer.validated_data['email'])
+
+        valid = (
+            user.verify_backup_code(serializer.validated_data['code'])
+            if serializer.validated_data['is_backup_code']
+            else user.verify_2fa_code(serializer.validated_data['code'])
         )
 
-        if not is_valid:
-            BiometricAuthLog.objects.create(
-                user=user,
-                device=device,
-                status='failed',
-                ip_address=self.get_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                error_message='Signature verification failed'
-            )
-            return Response({'error': 'Authentication failed'}, status=401)
-
-        device.last_used = timezone.now()
-        device.save(update_fields=['last_used'])
-
-        BiometricAuthLog.objects.create(
-            user=user,
-            device=device,
-            status='success',
-            ip_address=self.get_client_ip(request),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
+        if not valid:
+            return Response({'error': 'Invalid code'}, status=401)
 
         refresh = RefreshToken.for_user(user)
-
         return Response({
             'user': UserSerializer(user).data,
             'tokens': {
                 'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            },
-            'message': 'Biometric authentication successful'
+                'access': str(refresh.access_token)
+            }
         })
 
-    # ================= BIOMETRIC MANAGEMENT =================
+    # ================= BIOMETRIC =================
 
     @action(detail=False, methods=['post'])
     def register_biometric(self, request):
@@ -329,26 +188,94 @@ class UserViewSet(viewsets.ModelViewSet):
             data=request.data,
             context={'request': request}
         )
+        serializer.is_valid(raise_exception=True)
+        device = serializer.save(user=request.user)
 
-        if serializer.is_valid():
-            device = serializer.save(user=request.user)
+        request.user.biometric_enabled = True
+        request.user.save(update_fields=['biometric_enabled'])
 
-            request.user.biometric_enabled = True
-            request.user.save(update_fields=['biometric_enabled'])
+        return Response(BiometricDeviceSerializer(device).data, status=201)
 
-            return Response(
-                BiometricDeviceSerializer(device).data,
-                status=201
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def biometric_challenge(self, request):
+        email = request.data.get('email')
+        device_id = request.data.get('device_id')
+
+        user = User.objects.get(email=email, is_active=True)
+        device = BiometricDevice.objects.get(
+            user=user, device_id=device_id, is_active=True
+        )
+
+        return Response({
+            'challenge': BiometricVerifier.generate_challenge(email),
+            'credential_id': device.credential_id
+        })
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def biometric_login(self, request):
+        is_valid = BiometricVerifier.verify_signature(
+            email=request.data['email'],
+            public_key=BiometricDevice.objects.get(
+                credential_id=request.data['credential_id']
+            ).public_key,
+            signature=request.data['auth_signature'],
+            challenge_response=request.data['challenge_response']
+        )
+
+        if not is_valid:
+            return Response({'error': 'Authentication failed'}, status=401)
+
+        user = User.objects.get(email=request.data['email'])
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'user': UserSerializer(user).data,
+            'tokens': {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token)
+            }
+        })
+
+    # ================= PASSWORD RESET =================
+
+    @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'))
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def forgot_password(self, request):
+        email = request.data.get('email', '').lower()
+        if not email:
+            return Response({'error': 'Email required'}, status=400)
+
+        try:
+            user = User.objects.get(email=email, is_active=True)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+
+            send_mail(
+                'Password Reset',
+                f'Reset your password: {reset_url}',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
             )
+        except User.DoesNotExist:
+            pass
 
-        return Response(serializer.errors, status=400)
+        return Response({'message': 'If account exists, email sent'})
 
-    @action(detail=False, methods=['get'])
-    def biometric_devices(self, request):
-        devices = request.user.biometric_devices.filter(is_active=True)
-        return Response(BiometricDeviceSerializer(devices, many=True).data)
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def reset_password_confirm(self, request):
+        uid = request.data.get('uid')
+        token = request.data.get('token')
+        password = request.data.get('new_password')
 
-    @action(detail=False, methods=['get'])
-    def biometric_logs(self, request):
-        logs = request.user.biometric_logs.order_by('-created_at')[:20]
-        return Response(BiometricAuthLogSerializer(logs, many=True).data)
+        user = User.objects.get(pk=force_str(urlsafe_base64_decode(uid)))
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'error': 'Invalid token'}, status=400)
+
+        validate_password(password, user)
+        user.set_password(password)
+        user.save()
+
+        return Response({'message': 'Password reset successful'})
