@@ -76,11 +76,25 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    # 🔑 MUST come before CsrfViewMiddleware
+    'advance_company.middleware.CSRFExemptMiddleware',
     # CSRF disabled for JWT API
      'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+CSRF_EXEMPT_URLS = [
+    r'^api/auth/users/login/?$',
+    r'^api/auth/users/register/?$',
+    r'^api/auth/users/verify_email/?$',
+    r'^api/auth/users/resend_verification/?$',
+    r'^api/auth/users/forgot_password/?$',
+    r'^api/auth/users/reset_password_confirm/?$',
+    r'^api/auth/users/verify_2fa/?$',
+    r'^api/auth/users/biometric_challenge/?$',
+    r'^api/auth/users/biometric_login/?$',
 ]
 
 ROOT_URLCONF = 'advance_company.urls'
@@ -178,8 +192,12 @@ if not DEBUG:
 # REST Framework - CRITICAL FIX
 REST_FRAMEWORK = {
     # Don't set default authentication for public endpoints
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
-    'DEFAULT_PERMISSION_CLASSES': [],  # Let views handle permissions
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],# Let views handle permissions
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
