@@ -7,21 +7,20 @@ logger = logging.getLogger(__name__)
 
 class CSRFExemptMiddleware(MiddlewareMixin):
     """
-    Middleware to exempt specific URL patterns from CSRF verification.
+    Exempts certain API endpoints from CSRF verification.
+    Safe for JWT-auth APIs because JWTs are in headers (not cookies).
     """
 
     def process_request(self, request):
+        path = request.path_info.lstrip('/')
         exempt_urls = getattr(settings, 'CSRF_EXEMPT_URLS', [])
-        path = request.path_info  # includes leading slash
 
-        # ✅ Initialize before the loop
         csrf_exempted = False
-
         for pattern in exempt_urls:
-            if re.fullmatch(pattern, path):
+            if re.match(pattern, path):
                 setattr(request, '_dont_enforce_csrf_checks', True)
                 csrf_exempted = True
                 break
 
-        # DEBUG logging for all requests
+        # 🔹 Optional debug
         logger.debug(f"Request path: {path}, CSRF exempt: {csrf_exempted}")

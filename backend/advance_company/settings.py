@@ -87,15 +87,15 @@ MIDDLEWARE = [
 ]
 
 CSRF_EXEMPT_URLS = [
-    r'api/auth/users/login/?',
-    r'api/auth/users/register/?',
-    r'api/auth/users/verify_email/?',
-    r'api/auth/users/resend_verification/?',
-    r'api/auth/users/forgot_password/?',
-    r'api/auth/users/reset_password_confirm/?',
-    r'api/auth/users/verify_2fa/?',
-    r'api/auth/users/biometric_challenge/?',
-    r'api/auth/users/biometric_login/?',
+    r'^api/auth/users/login/?$',
+    r'^api/auth/users/register/?$',
+    r'^api/auth/users/verify_email/?$',
+    r'^api/auth/users/resend_verification/?$',
+    r'^api/auth/users/forgot_password/?$',
+    r'^api/auth/users/reset_password_confirm/?$',
+    r'^api/auth/users/verify_2fa/?$',
+    r'^api/auth/users/biometric_challenge/?$',
+    r'^api/auth/users/biometric_login/?$',
 ]
 
 ROOT_URLCONF = 'advance_company.urls'
@@ -126,10 +126,15 @@ DATABASES = {
     )
 }
 
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:4200',  # dev
-    'https://advance-company.netlify.app',  # frontend prod
-]
+CSRF_TRUSTED_ORIGINS = []
+
+# Keep only one CORS_ALLOWED_ORIGINS
+CORS_ALLOWED_ORIGINS = parse_list(config('CORS_ALLOWED_ORIGINS', default=''))
+
+# CSRF Cookie settings
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:4200',
