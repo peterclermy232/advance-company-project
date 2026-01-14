@@ -83,7 +83,8 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # CSRF disabled for JWT API - Django admin still protected
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # COMMENTED OUT
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -169,11 +170,11 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# CSRF Configuration
-CSRF_TRUSTED_ORIGINS = parse_list(config('CSRF_TRUSTED_ORIGINS', default=''))
+# CSRF Configuration - Disabled for API
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_TRUSTED_ORIGINS = parse_list(config('CSRF_TRUSTED_ORIGINS', default=''))
 
 # Session Configuration
 SESSION_COOKIE_SECURE = not DEBUG
@@ -300,12 +301,12 @@ LOGGING = {
 }
 
 # Debug output for production troubleshooting
-if not DEBUG:
-    print("="*50)
-    print("PRODUCTION SETTINGS LOADED")
-    print("="*50)
-    print(f"DEBUG: {DEBUG}")
-    print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
-    print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
-    print(f"CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
-    print("="*50)
+print("="*50)
+print("SETTINGS LOADED")
+print("="*50)
+print(f"DEBUG: {DEBUG}")
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+print(f"CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
+print(f"CSRF Middleware: DISABLED (JWT API)")
+print("="*50)
