@@ -15,13 +15,38 @@ dotenv.load_dotenv()
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+# Helper to strip quotes from Railway env vars
+def strip_quotes(value):
+    """Strip surrounding quotes that Railway adds automatically."""
+    if isinstance(value, str):
+        return value.strip('"').strip("'")
+    return value
+
+
+def parse_list(value):
+    """Parse comma-separated string into list, handling quotes."""
+    if not value:
+        return []
+    value = strip_quotes(value)
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+def parse_bool(value):
+    """Parse boolean, handling quoted strings from Railway."""
+    if isinstance(value, bool):
+        return value
+    value = strip_quotes(str(value)).lower()
+    return value in ('true', '1', 'yes', 'on')
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY')
+SECRET_KEY = strip_quotes(config('SECRET_KEY'))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = parse_bool(config('DEBUG', default=False))
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=lambda v: [s.strip() for s in v.split(',')])
+ALLOWED_HOSTS = parse_list(config('ALLOWED_HOSTS', default=''))
 
 # Application definition
 INSTALLED_APPS = [
@@ -87,7 +112,7 @@ WSGI_APPLICATION = 'advance_company.wsgi.application'
 # Database
 DATABASES = {
     'default': dj_database_url.parse(
-        config('DATABASE_URL'),
+        strip_quotes(config('DATABASE_URL')),
         conn_max_age=600,
         conn_health_checks=True,
     )
@@ -114,7 +139,7 @@ TIME_ZONE = 'Africa/Nairobi'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
+# Static files
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -130,10 +155,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.User'
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = config(
-    'CORS_ALLOWED_ORIGINS',
-    cast=lambda v: [s.strip() for s in v.split(',')]
-)
+CORS_ALLOWED_ORIGINS = parse_list(config('CORS_ALLOWED_ORIGINS', default=''))
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -148,10 +170,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # CSRF Configuration
-CSRF_TRUSTED_ORIGINS = config(
-    'CSRF_TRUSTED_ORIGINS',
-    cast=lambda v: [s.strip() for s in v.split(',')]
-)
+CSRF_TRUSTED_ORIGINS = parse_list(config('CSRF_TRUSTED_ORIGINS', default=''))
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
@@ -202,6 +221,7 @@ SIMPLE_JWT = {
 # Cache Configuration
 REDIS_URL = config('REDIS_URL', default=None)
 if REDIS_URL:
+    REDIS_URL = strip_quotes(REDIS_URL)
     CACHES = {
         'default': {
             'BACKEND': 'django_redis.cache.RedisCache',
@@ -225,24 +245,24 @@ RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = 'default'
 
 # Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST')
-EMAIL_PORT = config('EMAIL_PORT', cast=int)
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
+EMAIL_BACKEND = strip_quotes(config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend'))
+EMAIL_HOST = strip_quotes(config('EMAIL_HOST'))
+EMAIL_PORT = int(strip_quotes(config('EMAIL_PORT', default='587')))
+EMAIL_USE_TLS = parse_bool(config('EMAIL_USE_TLS', default=True))
+EMAIL_HOST_USER = strip_quotes(config('EMAIL_HOST_USER'))
+EMAIL_HOST_PASSWORD = strip_quotes(config('EMAIL_HOST_PASSWORD'))
+DEFAULT_FROM_EMAIL = strip_quotes(config('DEFAULT_FROM_EMAIL'))
 
 # M-PESA Configuration
-MPESA_ENVIRONMENT = config('MPESA_ENVIRONMENT', default='sandbox')
-MPESA_CONSUMER_KEY = config('MPESA_CONSUMER_KEY', default='')
-MPESA_CONSUMER_SECRET = config('MPESA_CONSUMER_SECRET', default='')
-MPESA_SHORTCODE = config('MPESA_SHORTCODE', default='174379')
-MPESA_PASSKEY = config('MPESA_PASSKEY', default='bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919')
-MPESA_CALLBACK_URL = config('MPESA_CALLBACK_URL', default='')
+MPESA_ENVIRONMENT = strip_quotes(config('MPESA_ENVIRONMENT', default='sandbox'))
+MPESA_CONSUMER_KEY = strip_quotes(config('MPESA_CONSUMER_KEY', default=''))
+MPESA_CONSUMER_SECRET = strip_quotes(config('MPESA_CONSUMER_SECRET', default=''))
+MPESA_SHORTCODE = strip_quotes(config('MPESA_SHORTCODE', default='174379'))
+MPESA_PASSKEY = strip_quotes(config('MPESA_PASSKEY', default='bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'))
+MPESA_CALLBACK_URL = strip_quotes(config('MPESA_CALLBACK_URL', default=''))
 
 # Frontend URL
-FRONTEND_URL = config('FRONTEND_URL')
+FRONTEND_URL = strip_quotes(config('FRONTEND_URL'))
 
 # Logging
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
@@ -256,18 +276,15 @@ LOGGING = {
         },
     },
     'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
         'file': {
             'level': 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs/django.log',
-            'maxBytes': 10485760,  # 10MB
-            'backupCount': 5,
-            'formatter': 'verbose',
-        },
-        'security': {
-            'level': 'WARNING',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs/security.log',
             'maxBytes': 10485760,
             'backupCount': 5,
             'formatter': 'verbose',
@@ -275,14 +292,20 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
-            'level': 'WARNING',
-            'propagate': False,
-        },
-        'django.security': {
-            'handlers': ['security'],
-            'level': 'WARNING',
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
             'propagate': False,
         },
     },
 }
+
+# Debug output for production troubleshooting
+if not DEBUG:
+    print("="*50)
+    print("PRODUCTION SETTINGS LOADED")
+    print("="*50)
+    print(f"DEBUG: {DEBUG}")
+    print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+    print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+    print(f"CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
+    print("="*50)
