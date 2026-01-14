@@ -87,15 +87,15 @@ MIDDLEWARE = [
 ]
 
 CSRF_EXEMPT_URLS = [
-    r'^api/auth/users/login/?$',
-    r'^api/auth/users/register/?$',
-    r'^api/auth/users/verify_email/?$',
-    r'^api/auth/users/resend_verification/?$',
-    r'^api/auth/users/forgot_password/?$',
-    r'^api/auth/users/reset_password_confirm/?$',
-    r'^api/auth/users/verify_2fa/?$',
-    r'^api/auth/users/biometric_challenge/?$',
-    r'^api/auth/users/biometric_login/?$',
+    r'api/auth/users/login/?',
+    r'api/auth/users/register/?',
+    r'api/auth/users/verify_email/?',
+    r'api/auth/users/resend_verification/?',
+    r'api/auth/users/forgot_password/?',
+    r'api/auth/users/reset_password_confirm/?',
+    r'api/auth/users/verify_2fa/?',
+    r'api/auth/users/biometric_challenge/?',
+    r'api/auth/users/biometric_login/?',
 ]
 
 ROOT_URLCONF = 'advance_company.urls'
