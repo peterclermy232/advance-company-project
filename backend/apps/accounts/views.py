@@ -12,7 +12,6 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from django.views.decorators.csrf import csrf_exempt
 
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
@@ -89,7 +88,6 @@ class UserViewSet(viewsets.ModelViewSet):
             return x_forwarded_for.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
 
-    @method_decorator(csrf_exempt)
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
@@ -121,7 +119,6 @@ class UserViewSet(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_201_CREATED)
 
-    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def verify_email(self, request):
         """Verify user email address."""
@@ -152,7 +149,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def resend_verification(self, request):
         """Resend email verification link."""
@@ -175,22 +171,31 @@ class UserViewSet(viewsets.ModelViewSet):
             # Don't reveal if user exists
             return Response({'message': 'If the email exists, a verification link has been sent.'})
 
-    @method_decorator(csrf_exempt)
-    @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
+    @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
         """Authenticate user and return tokens."""
+        logger.info(f"Login attempt - IP: {self.get_client_ip(request)}")
+        
         if getattr(request, 'limited', False):
+            logger.warning(f"Rate limit exceeded for IP: {self.get_client_ip(request)}")
             return Response(
                 {'error': 'Too many login attempts. Please try again later.'},
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
 
         serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception as e:
+            logger.error(f"Login validation failed: {str(e)}")
+            raise
+            
         user = serializer.validated_data['user']
+        logger.info(f"User authenticated: {user.email}, 2FA: {user.two_factor_enabled}")
 
         if not user.is_active:
+            logger.warning(f"Inactive user login attempt: {user.email}")
             return Response(
                 {'error': 'Account is disabled. Please contact support.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -199,26 +204,42 @@ class UserViewSet(viewsets.ModelViewSet):
         # Check if 2FA is enabled
         if user.two_factor_enabled:
             temp_token = secrets.token_urlsafe(32)
-            safe_cache_set(f'2fa_{temp_token}', user.id, timeout=300)
-            return Response({
-                'requires_2fa': True,
-                'temp_token': temp_token,
-                'email': user.email
-            }, status=status.HTTP_202_ACCEPTED)
+            cache_key = f'2fa_{temp_token}'
+            
+            if safe_cache_set(cache_key, user.id, timeout=300):
+                logger.info(f"2FA required for user {user.email}")
+                return Response({
+                    'requires_2fa': True,
+                    'temp_token': temp_token,
+                    'email': user.email
+                }, status=status.HTTP_202_ACCEPTED)
+            else:
+                logger.warning(f"Cache unavailable, bypassing 2FA for {user.email}")
 
         # Update last login
-        user.last_login = timezone.now()
-        user.save(update_fields=['last_login'])
+        try:
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
+        except Exception as e:
+            logger.error(f"Failed to update last_login: {str(e)}")
 
         # Generate tokens
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
-        })
+        try:
+            refresh = RefreshToken.for_user(user)
+            logger.info(f"Login successful for user {user.email}")
+            return Response({
+                'user': UserSerializer(user).data,
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                }
+            })
+        except Exception as e:
+            logger.error(f"Token generation failed: {str(e)}")
+            return Response(
+                {'error': 'Authentication successful but token generation failed.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=['post'])
     def enable_2fa(self, request):
@@ -250,7 +271,6 @@ class UserViewSet(viewsets.ModelViewSet):
             'backup_codes': backup_codes
         })
 
-    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def verify_2fa(self, request):
         """Verify 2FA code and complete login."""
@@ -301,7 +321,6 @@ class UserViewSet(viewsets.ModelViewSet):
         
         return Response(device.serialized, status=status.HTTP_201_CREATED)
 
-    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def biometric_challenge(self, request):
         """Generate biometric authentication challenge."""
@@ -326,7 +345,6 @@ class UserViewSet(viewsets.ModelViewSet):
             'credential_id': device.credential_id
         })
 
-    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def biometric_login(self, request):
         """Authenticate user with biometric data."""
@@ -364,7 +382,6 @@ class UserViewSet(viewsets.ModelViewSet):
             }
         })
 
-    @method_decorator(csrf_exempt)
     @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'))
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def forgot_password(self, request):
@@ -405,7 +422,6 @@ class UserViewSet(viewsets.ModelViewSet):
             'message': 'If your email exists in our system, you will receive a password reset link.'
         })
 
-    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def reset_password_confirm(self, request):
         """Confirm password reset with new password."""
