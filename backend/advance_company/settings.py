@@ -12,9 +12,11 @@ import dotenv
 
 dotenv.load_dotenv()
 
+# Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+# Helper to strip quotes from Railway env vars
 def strip_quotes(value):
     """Strip surrounding quotes that Railway adds automatically."""
     if isinstance(value, str):
@@ -38,10 +40,15 @@ def parse_bool(value):
     return value in ('true', '1', 'yes', 'on')
 
 
+# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = strip_quotes(config('SECRET_KEY'))
+
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = parse_bool(config('DEBUG', default=False))
+
 ALLOWED_HOSTS = parse_list(config('ALLOWED_HOSTS', default=''))
 
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -76,26 +83,11 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-
-    # Custom CSRF exempt middleware MUST come before CsrfViewMiddleware
-    'advance_company.middleware.middleware.CSRFExemptMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-
+    # CSRF disabled for JWT API - Django admin still protected
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # COMMENTED OUT
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-CSRF_EXEMPT_URLS = [
-    r'^api/auth/users/login/?$',
-    r'^api/auth/users/register/?$',
-    r'^api/auth/users/verify_email/?$',
-    r'^api/auth/users/resend_verification/?$',
-    r'^api/auth/users/forgot_password/?$',
-    r'^api/auth/users/reset_password_confirm/?$',
-    r'^api/auth/users/verify_2fa/?$',
-    r'^api/auth/users/biometric_challenge/?$',
-    r'^api/auth/users/biometric_login/?$',
 ]
 
 ROOT_URLCONF = 'advance_company.urls'
@@ -118,6 +110,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'advance_company.wsgi.application'
 
+# Database
 DATABASES = {
     'default': dj_database_url.parse(
         strip_quotes(config('DATABASE_URL')),
@@ -126,23 +119,7 @@ DATABASES = {
     )
 }
 
-CSRF_TRUSTED_ORIGINS = []
-
-# Keep only one CORS_ALLOWED_ORIGINS
-CORS_ALLOWED_ORIGINS = parse_list(config('CORS_ALLOWED_ORIGINS', default=''))
-
-# CSRF Cookie settings
-CSRF_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'Lax'
-
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:4200',
-    'https://advance-company.netlify.app',
-    'https://advance-company-backend-production.up.railway.app',  # backend prod
-]
-
-
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 12}},
@@ -157,19 +134,25 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
 ]
 
+# Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Africa/Nairobi'
 USE_I18N = True
 USE_TZ = True
 
+# Static files
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Custom user model
 AUTH_USER_MODEL = 'accounts.User'
 
 # CORS Configuration
@@ -187,7 +170,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# CSRF Configuration
+# CSRF Configuration - Disabled for API
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
@@ -199,23 +182,22 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_AGE = 3600
 
-# Security Settings
+# Security Settings for Production
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT = False
+    SECURE_SSL_REDIRECT = False  # Railway handles SSL at load balancer
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
 
-# REST Framework - CRITICAL FIX
+# REST Framework
 REST_FRAMEWORK = {
-    # Don't set default authentication for public endpoints
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],# Let views handle permissions
+        'rest_framework.permissions.AllowAny',  # Changed from IsAuthenticated
+    ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
@@ -224,7 +206,6 @@ REST_FRAMEWORK = {
         'anon': '100/hour',
         'user': '1000/hour',
     },
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
 # JWT Settings
@@ -260,6 +241,7 @@ else:
         }
     }
 
+# Rate Limiting
 RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = 'default'
 
@@ -280,6 +262,7 @@ MPESA_SHORTCODE = strip_quotes(config('MPESA_SHORTCODE', default='174379'))
 MPESA_PASSKEY = strip_quotes(config('MPESA_PASSKEY', default='bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'))
 MPESA_CALLBACK_URL = strip_quotes(config('MPESA_CALLBACK_URL', default=''))
 
+# Frontend URL
 FRONTEND_URL = strip_quotes(config('FRONTEND_URL'))
 
 # Logging
@@ -295,7 +278,7 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
@@ -314,19 +297,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'apps.accounts': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'rest_framework': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
     },
 }
 
+# Debug output for production troubleshooting
 print("="*50)
 print("SETTINGS LOADED")
 print("="*50)
@@ -334,6 +308,5 @@ print(f"DEBUG: {DEBUG}")
 print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
 print(f"CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
-print(f"REST Framework Auth: {REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']}")
-print(f"REST Framework Perms: {REST_FRAMEWORK['DEFAULT_PERMISSION_CLASSES']}")
+print(f"CSRF Middleware: DISABLED (JWT API)")
 print("="*50)
