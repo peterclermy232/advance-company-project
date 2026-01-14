@@ -77,8 +77,9 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
 
-    'django.middleware.csrf.CsrfViewMiddleware',  # CSRF runs first
-    'advance_company.middleware.middleware.CSRFExemptMiddleware',  # our custom middleware
+    # Custom CSRF exempt middleware MUST come before CsrfViewMiddleware
+    'advance_company.middleware.middleware.CSRFExemptMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
 
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -124,6 +125,18 @@ DATABASES = {
         conn_health_checks=True,
     )
 }
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:4200',  # dev
+    'https://advance-company.netlify.app',  # frontend prod
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:4200',
+    'https://advance-company.netlify.app',
+    'https://advance-company-backend-production.up.railway.app',  # backend prod
+]
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
