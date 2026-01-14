@@ -175,7 +175,7 @@ class UserViewSet(viewsets.ModelViewSet):
             # Don't reveal if user exists
             return Response({'message': 'If the email exists, a verification link has been sent.'})
 
-    # @method_decorator(csrf_exempt)
+    @method_decorator(csrf_exempt)
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
