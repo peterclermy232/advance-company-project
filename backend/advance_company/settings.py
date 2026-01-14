@@ -114,6 +114,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'advance_company.middleware.middleware.CSRFExemptMiddleware',
 ]
 
 # ==========================================================
@@ -350,3 +351,32 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ==========================================================
 
 print("✅ Settings loaded | DEBUG =", DEBUG)
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-csrftoken',
+]
+
+CSRF_EXEMPT_URLS = [
+    r'^api/auth/users/login/?$',
+    r'^api/auth/users/register/?$',
+    r'^api/auth/users/verify_email/?$',
+    r'^api/auth/users/resend_verification/?$',
+    r'^api/auth/users/forgot_password/?$',
+    r'^api/auth/users/reset_password_confirm/?$',
+    r'^api/auth/users/verify_2fa/?$',
+    r'^api/auth/users/biometric_challenge/?$',
+    r'^api/auth/users/biometric_login/?$',
+]
