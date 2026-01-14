@@ -64,6 +64,24 @@ CSRF_TRUSTED_ORIGINS = config(
 )
 
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-csrftoken',
+]
+
 FRONTEND_URL = config('FRONTEND_URL')
 
 # ==========================================================
@@ -107,14 +125,31 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'advance_company.middleware.CSRFExemptMiddleware',  # Must be BEFORE CsrfViewMiddleware
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'advance_company.middleware.middleware.CSRFExemptMiddleware',
+]
+
+# ==========================================================
+# CSRF EXEMPTIONS
+# ==========================================================
+
+# Exempt API authentication endpoints from CSRF since we use JWT
+# JWT tokens in Authorization headers are not vulnerable to CSRF attacks
+CSRF_EXEMPT_URLS = [
+    r'^api/auth/users/login/?$',
+    r'^api/auth/users/register/?$',
+    r'^api/auth/users/verify_email/?$',
+    r'^api/auth/users/resend_verification/?$',
+    r'^api/auth/users/forgot_password/?$',
+    r'^api/auth/users/reset_password_confirm/?$',
+    r'^api/auth/users/verify_2fa/?$',
+    r'^api/auth/users/biometric_challenge/?$',
+    r'^api/auth/users/biometric_login/?$',
 ]
 
 # ==========================================================
@@ -149,13 +184,12 @@ if REDIS_URL:
             'LOCATION': REDIS_URL,
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-                'IGNORE_EXCEPTIONS': True,  # 🔥 prevents 500 errors
+                'IGNORE_EXCEPTIONS': True,
             },
             'KEY_PREFIX': 'advance_company',
         }
     }
 else:
-    # Fallback (prevents app crash if Redis missing)
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -193,11 +227,11 @@ SESSION_COOKIE_AGE = 3600
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Strict'
+SESSION_COOKIE_SAMESITE = 'Lax'  # Changed from 'Strict' for better compatibility
 
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'Strict'
+CSRF_COOKIE_SAMESITE = 'Lax'  # Changed from 'Strict' for better compatibility
 CSRF_USE_SESSIONS = True
 
 # ==========================================================
@@ -234,6 +268,26 @@ SIMPLE_JWT = {
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# ==========================================================
+# TEMPLATES
+# ==========================================================
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 # ==========================================================
 # STATIC & MEDIA
@@ -294,10 +348,19 @@ LOGGING = {
 # ==========================================================
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    # Railway/proxy detection - Railway sets X-Forwarded-Proto header
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # Disable SSL redirect - Railway handles this at load balancer level
+    SECURE_SSL_REDIRECT = False
+    
+    # HSTS settings (commented out to prevent redirect loops)
+    # Uncomment only if SSL redirect is working properly
+    # SECURE_HSTS_SECONDS = 31536000
+    # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # SECURE_HSTS_PRELOAD = True
+    
+    # Browser security
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
@@ -325,58 +388,14 @@ MPESA_PASSKEY = config(
 )
 MPESA_CALLBACK_URL = config('MPESA_CALLBACK_URL', default='')
 
-
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
 # ==========================================================
-# DEFAULT AUTO FIELD (Fix the warnings)
+# DEFAULT AUTO FIELD
 # ==========================================================
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 # ==========================================================
 # FINAL CHECK
 # ==========================================================
 
 print("✅ Settings loaded | DEBUG =", DEBUG)
-
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
-CORS_EXPOSE_HEADERS = [
-    'content-type',
-    'x-csrftoken',
-]
-
-CSRF_EXEMPT_URLS = [
-    r'^api/auth/users/login/?$',
-    r'^api/auth/users/register/?$',
-    r'^api/auth/users/verify_email/?$',
-    r'^api/auth/users/resend_verification/?$',
-    r'^api/auth/users/forgot_password/?$',
-    r'^api/auth/users/reset_password_confirm/?$',
-    r'^api/auth/users/verify_2fa/?$',
-    r'^api/auth/users/biometric_challenge/?$',
-    r'^api/auth/users/biometric_login/?$',
-]
