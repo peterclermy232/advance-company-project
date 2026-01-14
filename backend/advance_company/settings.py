@@ -76,10 +76,10 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 🔑 MUST come before CsrfViewMiddleware
-    'advance_company.middleware.CSRFExemptMiddleware',
-    # CSRF disabled for JWT API
-     'django.middleware.csrf.CsrfViewMiddleware',
+
+    'django.middleware.csrf.CsrfViewMiddleware',  # CSRF runs first
+    'advance_company.middleware.middleware.CSRFExemptMiddleware',  # our custom middleware
+
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',

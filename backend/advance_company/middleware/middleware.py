@@ -2,28 +2,31 @@ import re
 from django.conf import settings
 from django.utils.deprecation import MiddlewareMixin
 
-
 class CSRFExemptMiddleware(MiddlewareMixin):
     """
-    Middleware to exempt specific URL patterns from CSRF verification.
-    
-    This is safe for JWT-based APIs since JWT tokens in Authorization headers
-    are not vulnerable to CSRF attacks (they're not automatically sent by browsers).
-    
-    CSRF protection is still active for:
-    - Django admin panel
-    - Any endpoints not matching CSRF_EXEMPT_URLS patterns
+    Exempts requests from CSRF checks if:
+    1. They match a URL in CSRF_EXEMPT_URLS
+    2. OR they contain a JWT Authorization header
+
+    This ensures JWT-based APIs are safe from CSRF issues without disabling CSRF
+    globally.
     """
-    
+
     def process_request(self, request):
-        """
-        Check if the current request path matches any exempt URL pattern.
-        If it does, disable CSRF checks for this request.
-        """
-        exempt_urls = getattr(settings, 'CSRF_EXEMPT_URLS', [])
         path = request.path_info.lstrip('/')
-        
+
+        # 1️⃣ Explicit URL exemptions
+        exempt_urls = getattr(settings, 'CSRF_EXEMPT_URLS', [])
         for pattern in exempt_urls:
             if re.match(pattern, path):
                 setattr(request, '_dont_enforce_csrf_checks', True)
-                break
+                # Optional debug logging:
+                # print(f"[CSRF] Exempted by URL pattern: {path}")
+                return
+
+        # 2️⃣ Exempt automatically if JWT token is present
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if auth_header.startswith('Bearer '):
+            setattr(request, '_dont_enforce_csrf_checks', True)
+            # Optional debug logging:
+            # print(f"[CSRF] Exempted by JWT header: {path}")
