@@ -12,7 +12,6 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from django.views.decorators.csrf import csrf_exempt
 
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
@@ -89,9 +88,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return x_forwarded_for.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
 
-    @method_decorator(csrf_exempt)
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def register(self, request):
         """Register a new user."""
         if getattr(request, 'limited', False):
@@ -121,8 +119,7 @@ class UserViewSet(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_201_CREATED)
 
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def verify_email(self, request):
         """Verify user email address."""
         token = request.data.get('token')
@@ -152,8 +149,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def resend_verification(self, request):
         """Resend email verification link."""
         email = request.data.get('email')
@@ -175,9 +171,8 @@ class UserViewSet(viewsets.ModelViewSet):
             # Don't reveal if user exists
             return Response({'message': 'If the email exists, a verification link has been sent.'})
 
-    @method_decorator(csrf_exempt)
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def login(self, request):
         """Authenticate user and return tokens."""
         if getattr(request, 'limited', False):
@@ -250,8 +245,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'backup_codes': backup_codes
         })
 
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def verify_2fa(self, request):
         """Verify 2FA code and complete login."""
         serializer = TwoFactorVerifySerializer(data=request.data)
@@ -301,8 +295,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
         return Response(device.serialized, status=status.HTTP_201_CREATED)
 
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def biometric_challenge(self, request):
         """Generate biometric authentication challenge."""
         email = request.data.get('email')
@@ -326,8 +319,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'credential_id': device.credential_id
         })
 
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def biometric_login(self, request):
         """Authenticate user with biometric data."""
         try:
@@ -364,9 +356,8 @@ class UserViewSet(viewsets.ModelViewSet):
             }
         })
 
-    @method_decorator(csrf_exempt)
     @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'))
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def forgot_password(self, request):
         """Send password reset email."""
         if getattr(request, 'limited', False):
@@ -405,8 +396,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'message': 'If your email exists in our system, you will receive a password reset link.'
         })
 
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def reset_password_confirm(self, request):
         """Confirm password reset with new password."""
         uid = request.data.get('uid')
