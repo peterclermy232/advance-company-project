@@ -69,6 +69,8 @@ class UserViewSet(viewsets.ModelViewSet):
     
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    # Override default permission classes at ViewSet level
+    permission_classes = []  # Clear default, let get_permissions handle it
 
     def get_permissions(self):
         """Set permissions based on action."""
@@ -77,6 +79,10 @@ class UserViewSet(viewsets.ModelViewSet):
             'forgot_password', 'reset_password_confirm', 'verify_2fa',
             'biometric_challenge', 'biometric_login'
         ]
+        
+        # Debug logging
+        logger.info(f"Action: {self.action}, Public: {self.action in public_actions}")
+        
         if self.action in public_actions:
             return [AllowAny()]
         return [IsAuthenticated()]
@@ -89,9 +95,11 @@ class UserViewSet(viewsets.ModelViewSet):
         return request.META.get('REMOTE_ADDR')
 
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
         """Register a new user."""
+        logger.info(f"Register endpoint hit - Action: {self.action}")
+        
         if getattr(request, 'limited', False):
             return Response(
                 {'error': 'Too many registration attempts. Please try again later.'},
@@ -119,7 +127,7 @@ class UserViewSet(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def verify_email(self, request):
         """Verify user email address."""
         token = request.data.get('token')
@@ -149,7 +157,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def resend_verification(self, request):
         """Resend email verification link."""
         email = request.data.get('email')
@@ -168,13 +176,14 @@ class UserViewSet(viewsets.ModelViewSet):
             send_verification_email(user)
             return Response({'message': 'Verification email sent.'})
         except User.DoesNotExist:
-            # Don't reveal if user exists
             return Response({'message': 'If the email exists, a verification link has been sent.'})
 
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
         """Authenticate user and return tokens."""
+        logger.info(f"Login endpoint hit - Action: {self.action}")
+        
         if getattr(request, 'limited', False):
             return Response(
                 {'error': 'Too many login attempts. Please try again later.'},
@@ -245,7 +254,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'backup_codes': backup_codes
         })
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def verify_2fa(self, request):
         """Verify 2FA code and complete login."""
         serializer = TwoFactorVerifySerializer(data=request.data)
@@ -295,7 +304,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
         return Response(device.serialized, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def biometric_challenge(self, request):
         """Generate biometric authentication challenge."""
         email = request.data.get('email')
@@ -319,7 +328,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'credential_id': device.credential_id
         })
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def biometric_login(self, request):
         """Authenticate user with biometric data."""
         try:
@@ -357,7 +366,7 @@ class UserViewSet(viewsets.ModelViewSet):
         })
 
     @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def forgot_password(self, request):
         """Send password reset email."""
         if getattr(request, 'limited', False):
@@ -388,7 +397,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 fail_silently=False,
             )
         except User.DoesNotExist:
-            pass  # Don't reveal if user exists
+            pass
         except Exception as e:
             logger.error(f"Failed to send password reset email: {e}")
         
@@ -396,7 +405,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'message': 'If your email exists in our system, you will receive a password reset link.'
         })
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def reset_password_confirm(self, request):
         """Confirm password reset with new password."""
         uid = request.data.get('uid')
