@@ -35,6 +35,15 @@ from .utils.biometric_verification import BiometricVerifier
 logger = logging.getLogger(__name__)
 
 
+class DebugAllowAny(AllowAny):
+    """AllowAny with debug logging."""
+    def has_permission(self, request, view):
+        logger.info(f"DebugAllowAny.has_permission called - User: {request.user}, Authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
+        result = super().has_permission(request, view)
+        logger.info(f"DebugAllowAny.has_permission result: {result}")
+        return result
+
+
 def safe_cache_get(key, default=None):
     """Safely get value from cache with exception handling."""
     try:
@@ -69,8 +78,9 @@ class UserViewSet(viewsets.ModelViewSet):
     
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    # Override default permission classes at ViewSet level
-    permission_classes = []  # Clear default, let get_permissions handle it
+    # Explicitly set empty defaults - views will override
+    authentication_classes = []
+    permission_classes = []
 
     def get_permissions(self):
         """Set permissions based on action."""
@@ -84,8 +94,26 @@ class UserViewSet(viewsets.ModelViewSet):
         logger.info(f"Action: {self.action}, Public: {self.action in public_actions}")
         
         if self.action in public_actions:
-            return [AllowAny()]
+            return [DebugAllowAny()]  # Use debug version
         return [IsAuthenticated()]
+    
+    def get_authenticators(self):
+        """Set authentication based on action."""
+        public_actions = [
+            'register', 'login', 'verify_email', 'resend_verification',
+            'forgot_password', 'reset_password_confirm', 'verify_2fa',
+            'biometric_challenge', 'biometric_login'
+        ]
+        
+        logger.info(f"get_authenticators called - Action: {self.action}, Public: {self.action in public_actions}")
+        
+        # No authentication required for public actions
+        if self.action in public_actions:
+            return []
+        
+        # JWT authentication for protected actions
+        from rest_framework_simplejwt.authentication import JWTAuthentication
+        return [JWTAuthentication()]
 
     def get_client_ip(self, request):
         """Get client IP address from request."""
