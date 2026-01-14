@@ -195,7 +195,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # Allow anonymous access by default
+        'rest_framework.permissions.IsAuthenticated',  # Changed from AllowAny
     ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
@@ -205,9 +205,9 @@ REST_FRAMEWORK = {
         'anon': '100/hour',
         'user': '1000/hour',
     },
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',  # Add this
-    'UNAUTHENTICATED_USER': None,  # Add this - allows None for anonymous users
-    'UNAUTHENTICATED_TOKEN': None,  # Add this
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'UNAUTHENTICATED_USER': None,
+    'UNAUTHENTICATED_TOKEN': None,
 }
 
 # JWT Settings

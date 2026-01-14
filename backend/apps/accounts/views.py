@@ -69,17 +69,24 @@ class UserViewSet(viewsets.ModelViewSet):
     
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    # Set default permission to authenticated
+    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         """Set permissions based on action."""
+        # Actions that don't require authentication
         public_actions = [
             'register', 'login', 'verify_email', 'resend_verification',
             'forgot_password', 'reset_password_confirm', 'verify_2fa',
             'biometric_challenge', 'biometric_login'
         ]
+        
         if self.action in public_actions:
-            return [AllowAny()]
-        return [IsAuthenticated()]
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAuthenticated]
+        
+        return [permission() for permission in permission_classes]
 
     def get_client_ip(self, request):
         """Get client IP address from request."""
@@ -89,7 +96,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return request.META.get('REMOTE_ADDR')
 
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def register(self, request):
         """Register a new user."""
         if getattr(request, 'limited', False):
@@ -119,7 +126,7 @@ class UserViewSet(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def verify_email(self, request):
         """Verify user email address."""
         token = request.data.get('token')
@@ -145,11 +152,11 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         except User.DoesNotExist:
             return Response(
-                {'error': 'User not found.'},
-                status=status.HTTP_404_NOT_FOUND
+                {'error': 'Invalid credentials.'},
+                status=status.HTTP_401_UNAUTHORIZED
             )
 
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def resend_verification(self, request):
         """Resend email verification link."""
         email = request.data.get('email')
@@ -172,7 +179,7 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'message': 'If the email exists, a verification link has been sent.'})
 
     @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def login(self, request):
         """Authenticate user and return tokens."""
         logger.info(f"Login attempt - IP: {self.get_client_ip(request)}")
@@ -206,15 +213,20 @@ class UserViewSet(viewsets.ModelViewSet):
             temp_token = secrets.token_urlsafe(32)
             cache_key = f'2fa_{temp_token}'
             
-            if safe_cache_set(cache_key, user.id, timeout=300):
-                logger.info(f"2FA required for user {user.email}")
-                return Response({
-                    'requires_2fa': True,
-                    'temp_token': temp_token,
-                    'email': user.email
-                }, status=status.HTTP_202_ACCEPTED)
-            else:
-                logger.warning(f"Cache unavailable, bypassing 2FA for {user.email}")
+            # CRITICAL FIX: Never bypass 2FA
+            if not safe_cache_set(cache_key, user.id, timeout=300):
+                logger.error(f"Cache unavailable, cannot process 2FA for {user.email}")
+                return Response(
+                    {'error': 'Authentication service temporarily unavailable. Please try again.'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            logger.info(f"2FA required for user {user.email}")
+            return Response({
+                'requires_2fa': True,
+                'temp_token': temp_token,
+                'email': user.email
+            }, status=status.HTTP_202_ACCEPTED)
 
         # Update last login
         try:
@@ -271,14 +283,38 @@ class UserViewSet(viewsets.ModelViewSet):
             'backup_codes': backup_codes
         })
 
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @method_decorator(ratelimit(key='ip', rate='5/5m', method='POST'))
+    @action(detail=False, methods=['post'])
     def verify_2fa(self, request):
         """Verify 2FA code and complete login."""
+        if getattr(request, 'limited', False):
+            return Response(
+                {'error': 'Too many verification attempts. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
         serializer = TwoFactorVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
+        # CRITICAL FIX: Verify temp_token
+        temp_token = request.data.get('temp_token')
+        if not temp_token:
+            return Response(
+                {'error': 'Invalid request.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        cache_key = f'2fa_{temp_token}'
+        user_id = safe_cache_get(cache_key)
+        
+        if not user_id:
+            return Response(
+                {'error': 'Session expired. Please login again.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
         try:
-            user = User.objects.get(email=serializer.validated_data['email'])
+            user = User.objects.get(id=user_id, email=serializer.validated_data['email'])
         except User.DoesNotExist:
             return Response(
                 {'error': 'Invalid credentials.'},
@@ -287,7 +323,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
         is_valid = (
             user.verify_backup_code(serializer.validated_data['code'])
-            if serializer.validated_data['is_backup_code']
+            if serializer.validated_data.get('is_backup_code')
             else user.verify_2fa_code(serializer.validated_data['code'])
         )
         
@@ -296,6 +332,16 @@ class UserViewSet(viewsets.ModelViewSet):
                 {'error': 'Invalid verification code.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+        
+        # Delete the temp token after successful verification
+        safe_cache_delete(cache_key)
+        
+        # Update last login
+        try:
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
+        except Exception as e:
+            logger.error(f"Failed to update last_login: {str(e)}")
         
         refresh = RefreshToken.for_user(user)
         return Response({
@@ -321,9 +367,16 @@ class UserViewSet(viewsets.ModelViewSet):
         
         return Response(device.serialized, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
+    @action(detail=False, methods=['post'])
     def biometric_challenge(self, request):
         """Generate biometric authentication challenge."""
+        if getattr(request, 'limited', False):
+            return Response(
+                {'error': 'Too many attempts. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
         email = request.data.get('email')
         device_id = request.data.get('device_id')
         
@@ -345,9 +398,16 @@ class UserViewSet(viewsets.ModelViewSet):
             'credential_id': device.credential_id
         })
 
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
+    @action(detail=False, methods=['post'])
     def biometric_login(self, request):
         """Authenticate user with biometric data."""
+        if getattr(request, 'limited', False):
+            return Response(
+                {'error': 'Too many attempts. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
         try:
             device = BiometricDevice.objects.get(
                 credential_id=request.data['credential_id']
@@ -372,6 +432,14 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         
         user = User.objects.get(email=request.data['email'])
+        
+        # Update last login
+        try:
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
+        except Exception as e:
+            logger.error(f"Failed to update last_login: {str(e)}")
+        
         refresh = RefreshToken.for_user(user)
         
         return Response({
@@ -383,7 +451,7 @@ class UserViewSet(viewsets.ModelViewSet):
         })
 
     @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'))
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def forgot_password(self, request):
         """Send password reset email."""
         if getattr(request, 'limited', False):
@@ -422,7 +490,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'message': 'If your email exists in our system, you will receive a password reset link.'
         })
 
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'])
     def reset_password_confirm(self, request):
         """Confirm password reset with new password."""
         uid = request.data.get('uid')
