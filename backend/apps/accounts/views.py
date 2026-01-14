@@ -69,11 +69,12 @@ class UserViewSet(viewsets.ModelViewSet):
     
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    # Set default permission to authenticated
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         """Set permissions based on action."""
+        # Debug logging
+        logger.info(f"🔍 get_permissions called for action: {self.action}")
+        
         # Actions that don't require authentication
         public_actions = [
             'register', 'login', 'verify_email', 'resend_verification',
@@ -82,11 +83,11 @@ class UserViewSet(viewsets.ModelViewSet):
         ]
         
         if self.action in public_actions:
-            permission_classes = [AllowAny]
-        else:
-            permission_classes = [IsAuthenticated]
+            logger.info(f"✅ Action '{self.action}' is public - using AllowAny")
+            return [AllowAny()]
         
-        return [permission() for permission in permission_classes]
+        logger.info(f"🔒 Action '{self.action}' requires authentication - using IsAuthenticated")
+        return [IsAuthenticated()]
 
     def get_client_ip(self, request):
         """Get client IP address from request."""
@@ -95,10 +96,20 @@ class UserViewSet(viewsets.ModelViewSet):
             return x_forwarded_for.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
 
+    def check_permissions(self, request):
+        """Override to add debug logging."""
+        logger.info(f"🔍 check_permissions called - action: {self.action}")
+        logger.info(f"🔍 Request user: {request.user}")
+        logger.info(f"🔍 Request auth: {request.auth}")
+        logger.info(f"🔍 Permissions: {[p.__class__.__name__ for p in self.get_permissions()]}")
+        return super().check_permissions(request)
+
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
     @action(detail=False, methods=['post'])
     def register(self, request):
         """Register a new user."""
+        logger.info("📝 Register endpoint called")
+        
         if getattr(request, 'limited', False):
             return Response(
                 {'error': 'Too many registration attempts. Please try again later.'},
@@ -129,6 +140,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def verify_email(self, request):
         """Verify user email address."""
+        logger.info("📧 Verify email endpoint called")
+        
         token = request.data.get('token')
         email = request.data.get('email')
         
@@ -159,6 +172,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def resend_verification(self, request):
         """Resend email verification link."""
+        logger.info("🔄 Resend verification endpoint called")
+        
         email = request.data.get('email')
         
         if not email:
@@ -182,10 +197,11 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def login(self, request):
         """Authenticate user and return tokens."""
-        logger.info(f"Login attempt - IP: {self.get_client_ip(request)}")
+        logger.info(f"🔐 Login endpoint called - IP: {self.get_client_ip(request)}")
+        logger.info(f"🔐 Request data keys: {request.data.keys()}")
         
         if getattr(request, 'limited', False):
-            logger.warning(f"Rate limit exceeded for IP: {self.get_client_ip(request)}")
+            logger.warning(f"⚠️ Rate limit exceeded for IP: {self.get_client_ip(request)}")
             return Response(
                 {'error': 'Too many login attempts. Please try again later.'},
                 status=status.HTTP_429_TOO_MANY_REQUESTS
@@ -195,14 +211,14 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             serializer.is_valid(raise_exception=True)
         except Exception as e:
-            logger.error(f"Login validation failed: {str(e)}")
+            logger.error(f"❌ Login validation failed: {str(e)}")
             raise
             
         user = serializer.validated_data['user']
-        logger.info(f"User authenticated: {user.email}, 2FA: {user.two_factor_enabled}")
+        logger.info(f"✅ User authenticated: {user.email}, 2FA: {user.two_factor_enabled}")
 
         if not user.is_active:
-            logger.warning(f"Inactive user login attempt: {user.email}")
+            logger.warning(f"⚠️ Inactive user login attempt: {user.email}")
             return Response(
                 {'error': 'Account is disabled. Please contact support.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -213,15 +229,14 @@ class UserViewSet(viewsets.ModelViewSet):
             temp_token = secrets.token_urlsafe(32)
             cache_key = f'2fa_{temp_token}'
             
-            # CRITICAL FIX: Never bypass 2FA
             if not safe_cache_set(cache_key, user.id, timeout=300):
-                logger.error(f"Cache unavailable, cannot process 2FA for {user.email}")
+                logger.error(f"❌ Cache unavailable, cannot process 2FA for {user.email}")
                 return Response(
                     {'error': 'Authentication service temporarily unavailable. Please try again.'},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
             
-            logger.info(f"2FA required for user {user.email}")
+            logger.info(f"🔐 2FA required for user {user.email}")
             return Response({
                 'requires_2fa': True,
                 'temp_token': temp_token,
@@ -233,12 +248,12 @@ class UserViewSet(viewsets.ModelViewSet):
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
         except Exception as e:
-            logger.error(f"Failed to update last_login: {str(e)}")
+            logger.error(f"❌ Failed to update last_login: {str(e)}")
 
         # Generate tokens
         try:
             refresh = RefreshToken.for_user(user)
-            logger.info(f"Login successful for user {user.email}")
+            logger.info(f"✅ Login successful for user {user.email}")
             return Response({
                 'user': UserSerializer(user).data,
                 'tokens': {
@@ -247,7 +262,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 }
             })
         except Exception as e:
-            logger.error(f"Token generation failed: {str(e)}")
+            logger.error(f"❌ Token generation failed: {str(e)}")
             return Response(
                 {'error': 'Authentication successful but token generation failed.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -256,6 +271,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def enable_2fa(self, request):
         """Enable two-factor authentication for user."""
+        logger.info("🔐 Enable 2FA endpoint called")
         secret = request.user.generate_2fa_secret()
         return Response({
             'secret': secret,
@@ -265,6 +281,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def confirm_2fa(self, request):
         """Confirm 2FA setup with verification code."""
+        logger.info("✅ Confirm 2FA endpoint called")
         serializer = TwoFactorSetupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -287,6 +304,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def verify_2fa(self, request):
         """Verify 2FA code and complete login."""
+        logger.info("🔐 Verify 2FA endpoint called")
+        
         if getattr(request, 'limited', False):
             return Response(
                 {'error': 'Too many verification attempts. Please try again later.'},
@@ -296,7 +315,6 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = TwoFactorVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # CRITICAL FIX: Verify temp_token
         temp_token = request.data.get('temp_token')
         if not temp_token:
             return Response(
@@ -333,10 +351,8 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        # Delete the temp token after successful verification
         safe_cache_delete(cache_key)
         
-        # Update last login
         try:
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
@@ -355,6 +371,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def register_biometric(self, request):
         """Register biometric device for user."""
+        logger.info("👆 Register biometric endpoint called")
         serializer = BiometricRegistrationSerializer(
             data=request.data,
             context={'request': request}
@@ -371,6 +388,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def biometric_challenge(self, request):
         """Generate biometric authentication challenge."""
+        logger.info("👆 Biometric challenge endpoint called")
+        
         if getattr(request, 'limited', False):
             return Response(
                 {'error': 'Too many attempts. Please try again later.'},
@@ -402,6 +421,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def biometric_login(self, request):
         """Authenticate user with biometric data."""
+        logger.info("👆 Biometric login endpoint called")
+        
         if getattr(request, 'limited', False):
             return Response(
                 {'error': 'Too many attempts. Please try again later.'},
@@ -433,7 +454,6 @@ class UserViewSet(viewsets.ModelViewSet):
         
         user = User.objects.get(email=request.data['email'])
         
-        # Update last login
         try:
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
@@ -454,6 +474,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def forgot_password(self, request):
         """Send password reset email."""
+        logger.info("🔑 Forgot password endpoint called")
+        
         if getattr(request, 'limited', False):
             return Response(
                 {'error': 'Too many password reset attempts.'},
@@ -482,7 +504,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 fail_silently=False,
             )
         except User.DoesNotExist:
-            pass  # Don't reveal if user exists
+            pass
         except Exception as e:
             logger.error(f"Failed to send password reset email: {e}")
         
@@ -493,6 +515,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def reset_password_confirm(self, request):
         """Confirm password reset with new password."""
+        logger.info("🔑 Reset password confirm endpoint called")
+        
         uid = request.data.get('uid')
         token = request.data.get('token')
         new_password = request.data.get('new_password')

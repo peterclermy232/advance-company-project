@@ -299,6 +299,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'apps.accounts': {  # Add this
+        'handlers': ['console'],
+        'level': 'INFO',
+        'propagate': False,
+    },
     },
 }
 
