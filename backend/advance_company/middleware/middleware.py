@@ -29,3 +29,8 @@ class CSRFExemptMiddleware(MiddlewareMixin):
                 setattr(request, '_dont_enforce_csrf_checks', True)
                 logger.debug(f"CSRF exempted for path: {path}")
                 break
+
+            # DEBUG logging for all requests
+        logger.debug(
+            f"Request path: {path}, CSRF exempt: {csrf_exempted}"
+        )
