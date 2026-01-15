@@ -492,12 +492,17 @@ def reset_password_confirm(request):
     
     return Response({'message': 'Password has been reset successfully.'})
 
-@api_view(['GET', 'POST'])
+@api_view(['POST'])
 @permission_classes([AllowAny])
+@ratelimit(key='ip', rate='10/m', method='POST')
 def test_endpoint(request):
     """Test endpoint to verify API is accessible."""
+    if getattr(request, 'limited', False):
+        return Response({'error': 'Rate limited'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    
     return Response({
         'message': 'API is working!',
         'method': request.method,
-        'headers': dict(request.headers)
+        'data': request.data,
+        'limited': getattr(request, 'limited', False)
     })
