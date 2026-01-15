@@ -31,6 +31,7 @@ from .serializers import (
 )
 from .emails import send_verification_email
 from .utils.biometric_verification import BiometricVerifier
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ def get_client_ip(request):
         return x_forwarded_for.split(',')[0].strip()
     return request.META.get('REMOTE_ADDR')
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='5/m', method='POST')
@@ -106,7 +107,7 @@ def register(request):
         }
     }, status=status.HTTP_201_CREATED)
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def verify_email(request):
@@ -140,7 +141,7 @@ def verify_email(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def resend_verification(request):
@@ -165,7 +166,7 @@ def resend_verification(request):
     except User.DoesNotExist:
         return Response({'message': 'If the email exists, a verification link has been sent.'})
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='10/m', method='POST')
@@ -242,7 +243,7 @@ def login(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='5/5m', method='POST')
@@ -312,7 +313,7 @@ def verify_2fa(request):
         }
     })
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='10/m', method='POST')
@@ -347,7 +348,7 @@ def biometric_challenge(request):
         'credential_id': device.credential_id
     })
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='10/m', method='POST')
@@ -402,7 +403,7 @@ def biometric_login(request):
         }
     })
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='3/h', method='POST')
@@ -446,7 +447,7 @@ def forgot_password(request):
         'message': 'If your email exists in our system, you will receive a password reset link.'
     })
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password_confirm(request):
