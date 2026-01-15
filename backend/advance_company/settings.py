@@ -254,7 +254,7 @@ else:
     }
 
 # Rate Limiting
-RATELIMIT_ENABLE = True
+RATELIMIT_ENABLE = False
 RATELIMIT_USE_CACHE = 'default'
 
 # Email Configuration
