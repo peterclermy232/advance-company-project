@@ -20,7 +20,7 @@ urlpatterns = [
     path('biometric-login/', auth_views.biometric_login, name='biometric-login'),
     path('forgot-password/', auth_views.forgot_password, name='forgot-password'),
     path('reset-password-confirm/', auth_views.reset_password_confirm, name='reset-password-confirm'),
-    
+    path('test/', auth_views.test_endpoint, name='test'),
     # Protected user endpoints (require authentication)
     path('', include(router.urls)),
 ]
