@@ -8,12 +8,12 @@ export class ToastService {
   constructor(private snackBar: MatSnackBar) {}
 
   private defaultConfig: MatSnackBarConfig = {
-    horizontalPosition: 'right',
+    horizontalPosition: 'left',  
     verticalPosition: 'top',
-    duration: 4000
+    duration: 3000  
   };
 
-  success(message: string, duration: number = 4000): void {
+  success(message: string, duration: number = 3000): void {
     this.snackBar.open(message, '✓', {
       ...this.defaultConfig,
       duration,
@@ -21,7 +21,7 @@ export class ToastService {
     });
   }
 
-  error(message: string, duration: number = 5000): void {
+  error(message: string, duration: number = 3000): void {  
     this.snackBar.open(message, '✕', {
       ...this.defaultConfig,
       duration,
@@ -29,7 +29,7 @@ export class ToastService {
     });
   }
 
-  warning(message: string, duration: number = 4000): void {
+  warning(message: string, duration: number = 3000): void { 
     this.snackBar.open(message, '⚠', {
       ...this.defaultConfig,
       duration,
@@ -37,7 +37,7 @@ export class ToastService {
     });
   }
 
-  info(message: string, duration: number = 4000): void {
+  info(message: string, duration: number = 3000): void {  
     this.snackBar.open(message, 'ℹ', {
       ...this.defaultConfig,
       duration,
@@ -46,7 +46,7 @@ export class ToastService {
   }
 
   // Custom toast with action button
-  withAction(message: string, action: string, duration: number = 6000) {
+  withAction(message: string, action: string, duration: number = 3000) { 
     return this.snackBar.open(message, action, {
       ...this.defaultConfig,
       duration
