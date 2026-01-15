@@ -1,5 +1,3 @@
-# backend/apps/accounts/auth_views.py
-
 import logging
 import secrets
 from datetime import timedelta
@@ -14,9 +12,8 @@ from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from django_ratelimit.decorators import ratelimit
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -31,7 +28,14 @@ from .serializers import (
 )
 from .emails import send_verification_email
 from .utils.biometric_verification import BiometricVerifier
-from django.views.decorators.csrf import csrf_exempt
+from .throttles import (
+    LoginRateThrottle,
+    RegisterRateThrottle,
+    TwoFactorRateThrottle,
+    BiometricRateThrottle,
+    PasswordResetRateThrottle,
+    EmailVerificationRateThrottle,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,19 +76,13 @@ def get_client_ip(request):
         return x_forwarded_for.split(',')[0].strip()
     return request.META.get('REMOTE_ADDR')
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@ratelimit(key='ip', rate='5/m', method='POST')
+@throttle_classes([RegisterRateThrottle])
 def register(request):
     """Register a new user."""
     logger.info("📝 Register endpoint called")
-    
-    if getattr(request, 'limited', False):
-        return Response(
-            {'error': 'Too many registration attempts. Please try again later.'},
-            status=status.HTTP_429_TOO_MANY_REQUESTS
-        )
 
     serializer = UserRegistrationSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -107,9 +105,10 @@ def register(request):
         }
     }, status=status.HTTP_201_CREATED)
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([EmailVerificationRateThrottle])
 def verify_email(request):
     """Verify user email address."""
     logger.info("📧 Verify email endpoint called")
@@ -141,9 +140,10 @@ def verify_email(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([EmailVerificationRateThrottle])
 def resend_verification(request):
     """Resend email verification link."""
     logger.info("🔄 Resend verification endpoint called")
@@ -166,21 +166,14 @@ def resend_verification(request):
     except User.DoesNotExist:
         return Response({'message': 'If the email exists, a verification link has been sent.'})
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@ratelimit(key='ip', rate='10/m', method='POST')
+@throttle_classes([LoginRateThrottle])
 def login(request):
     """Authenticate user and return tokens."""
     logger.info(f"🔐 Login endpoint called - IP: {get_client_ip(request)}")
     logger.info(f"🔐 Request data keys: {request.data.keys()}")
-    
-    if getattr(request, 'limited', False):
-        logger.warning(f"⚠️ Rate limit exceeded for IP: {get_client_ip(request)}")
-        return Response(
-            {'error': 'Too many login attempts. Please try again later.'},
-            status=status.HTTP_429_TOO_MANY_REQUESTS
-        )
 
     serializer = LoginSerializer(data=request.data)
     try:
@@ -243,19 +236,13 @@ def login(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@ratelimit(key='ip', rate='5/5m', method='POST')
+@throttle_classes([TwoFactorRateThrottle])
 def verify_2fa(request):
     """Verify 2FA code and complete login."""
     logger.info("🔐 Verify 2FA endpoint called")
-    
-    if getattr(request, 'limited', False):
-        return Response(
-            {'error': 'Too many verification attempts. Please try again later.'},
-            status=status.HTTP_429_TOO_MANY_REQUESTS
-        )
     
     serializer = TwoFactorVerifySerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -313,19 +300,13 @@ def verify_2fa(request):
         }
     })
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@ratelimit(key='ip', rate='10/m', method='POST')
+@throttle_classes([BiometricRateThrottle])
 def biometric_challenge(request):
     """Generate biometric authentication challenge."""
     logger.info("👆 Biometric challenge endpoint called")
-    
-    if getattr(request, 'limited', False):
-        return Response(
-            {'error': 'Too many attempts. Please try again later.'},
-            status=status.HTTP_429_TOO_MANY_REQUESTS
-        )
     
     email = request.data.get('email')
     device_id = request.data.get('device_id')
@@ -348,19 +329,13 @@ def biometric_challenge(request):
         'credential_id': device.credential_id
     })
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@ratelimit(key='ip', rate='10/m', method='POST')
+@throttle_classes([BiometricRateThrottle])
 def biometric_login(request):
     """Authenticate user with biometric data."""
     logger.info("👆 Biometric login endpoint called")
-    
-    if getattr(request, 'limited', False):
-        return Response(
-            {'error': 'Too many attempts. Please try again later.'},
-            status=status.HTTP_429_TOO_MANY_REQUESTS
-        )
     
     try:
         device = BiometricDevice.objects.get(
@@ -403,19 +378,13 @@ def biometric_login(request):
         }
     })
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@ratelimit(key='ip', rate='3/h', method='POST')
+@throttle_classes([PasswordResetRateThrottle])
 def forgot_password(request):
     """Send password reset email."""
     logger.info("🔑 Forgot password endpoint called")
-    
-    if getattr(request, 'limited', False):
-        return Response(
-            {'error': 'Too many password reset attempts.'},
-            status=status.HTTP_429_TOO_MANY_REQUESTS
-        )
     
     email = request.data.get('email', '').lower()
     
@@ -447,9 +416,10 @@ def forgot_password(request):
         'message': 'If your email exists in our system, you will receive a password reset link.'
     })
 
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([PasswordResetRateThrottle])
 def reset_password_confirm(request):
     """Confirm password reset with new password."""
     logger.info("🔑 Reset password confirm endpoint called")
@@ -492,17 +462,14 @@ def reset_password_confirm(request):
     
     return Response({'message': 'Password has been reset successfully.'})
 
-@api_view(['POST'])
+
+# Test endpoint
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
-@ratelimit(key='ip', rate='10/m', method='POST')
 def test_endpoint(request):
     """Test endpoint to verify API is accessible."""
-    if getattr(request, 'limited', False):
-        return Response({'error': 'Rate limited'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-    
     return Response({
         'message': 'API is working!',
         'method': request.method,
-        'data': request.data,
-        'limited': getattr(request, 'limited', False)
+        'headers': dict(request.headers)
     })
