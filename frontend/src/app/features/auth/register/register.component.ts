@@ -29,21 +29,20 @@ export class RegisterComponent {
 
   constructor() {
     this.registerForm = this.fb.group({
-      full_name: ['', [Validators.required, Validators.minLength(3)]],
+      first_name: ['', [Validators.required, Validators.minLength(2)]],
+      last_name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
       phone_number: ['', [Validators.required, Validators.pattern(/^\+?[0-9]{10,15}$/)]],
       password: ['', [
         Validators.required,
         Validators.minLength(12),
-        Validators.maxLength(12),
         this.passwordComplexityValidator
       ]],
-      password_confirm: ['', [Validators.required]],
-      role: ['user']
+      password_confirm: ['', [Validators.required]]
     }, { validators: this.passwordMatchValidator });
   }
 
-  // Custom validator for password complexity
+  // Custom validator for password complexity (matches Django backend)
   passwordComplexityValidator(control: AbstractControl): ValidationErrors | null {
     const value = control.value;
     
@@ -125,58 +124,93 @@ export class RegisterComponent {
   }
 
   onSubmit(): void {
-    if (this.registerForm.valid) {
-      this.isLoading = true;
-      
-      // Create FormData for multipart upload
+    if (this.registerForm.invalid) {
+      Object.keys(this.registerForm.controls).forEach(key => {
+        this.registerForm.get(key)?.markAsTouched();
+      });
+      return;
+    }
+
+    this.isLoading = true;
+    
+    // Check if photo is included
+    if (this.selectedPhoto) {
+      // Use FormData for multipart upload with photo
       const formData = new FormData();
       
-      // Append all form fields
-      Object.keys(this.registerForm.value).forEach(key => {
-        const value = this.registerForm.value[key];
-        if (value !== null && value !== '') {
-          formData.append(key, value);
-        }
-      });
+      // Append form fields (matching Django backend field names)
+      formData.append('email', this.registerForm.get('email')?.value);
+      formData.append('password', this.registerForm.get('password')?.value);
+      formData.append('password_confirm', this.registerForm.get('password_confirm')?.value);
+      formData.append('first_name', this.registerForm.get('first_name')?.value);
+      formData.append('last_name', this.registerForm.get('last_name')?.value);
+      formData.append('phone_number', this.registerForm.get('phone_number')?.value || '');
       
-      // Append photo if selected
-      if (this.selectedPhoto) {
-        formData.append('profile_photo', this.selectedPhoto);
-      }
+      // Append photo
+      formData.append('profile_photo', this.selectedPhoto);
       
-      this.authService.registerWithPhoto(formData).subscribe({
+      // Use registerWithPhoto method (you'll need to add this to AuthService)
+      this.authService.register(formData as any).subscribe({
         next: (response) => {
-          this.notificationService.success('Registration successful!');
-          this.router.navigate(['/dashboard']);
+          this.notificationService.success('Registration successful! 🎉');
+          this.router.navigate(['/login']);
+          this.isLoading = false;
         },
         error: (error) => {
-          this.isLoading = false;
-          
-          // Handle backend password errors
-          if (error.error?.password) {
-            const passwordErrors = error.error.password;
-            if (Array.isArray(passwordErrors)) {
-              passwordErrors.forEach((err: string) => {
-                this.notificationService.error(err);
-              });
-            } else {
-              this.notificationService.error(passwordErrors);
-            }
-          } else {
-            const errorMessage = error.error?.email?.[0] || 
-                               error.error?.phone_number?.[0] || 
-                               'Registration failed. Please try again.';
-            this.notificationService.error(errorMessage);
-          }
-        },
-        complete: () => {
+          this.handleRegistrationError(error);
           this.isLoading = false;
         }
       });
     } else {
-      Object.keys(this.registerForm.controls).forEach(key => {
-        this.registerForm.get(key)?.markAsTouched();
+      // Use regular JSON payload without photo
+      const payload = {
+        email: this.registerForm.get('email')?.value,
+        password: this.registerForm.get('password')?.value,
+        password_confirm: this.registerForm.get('password_confirm')?.value,
+        first_name: this.registerForm.get('first_name')?.value,
+        last_name: this.registerForm.get('last_name')?.value,
+        phone_number: this.registerForm.get('phone_number')?.value || ''
+      };
+
+      this.authService.register(payload).subscribe({
+        next: (response) => {
+          this.notificationService.success('Registration successful! 🎉');
+          this.router.navigate(['/dashboard']);
+          this.isLoading = false;
+        },
+        error: (error) => {
+          this.handleRegistrationError(error);
+          this.isLoading = false;
+        }
       });
+    }
+  }
+
+  private handleRegistrationError(error: any): void {
+    // Handle backend password errors
+    if (error.error?.password) {
+      const passwordErrors = error.error.password;
+      if (Array.isArray(passwordErrors)) {
+        passwordErrors.forEach((err: string) => {
+          this.notificationService.error(err);
+        });
+      } else {
+        this.notificationService.error(passwordErrors);
+      }
+    } else if (error.error?.email) {
+      const emailErrors = Array.isArray(error.error.email) 
+        ? error.error.email[0] 
+        : error.error.email;
+      this.notificationService.error(emailErrors);
+    } else if (error.error?.phone_number) {
+      const phoneErrors = Array.isArray(error.error.phone_number)
+        ? error.error.phone_number[0]
+        : error.error.phone_number;
+      this.notificationService.error(phoneErrors);
+    } else if (error.error?.error) {
+      this.notificationService.error(error.error.error);
+    } else {
+      this.notificationService.error('Registration failed. Please try again.');
     }
   }
 
@@ -188,7 +222,7 @@ export class RegisterComponent {
     }
 
     if (control.hasError('required')) {
-      return `${fieldName.replace('_', ' ')} is required`;
+      return `${this.getFieldDisplayName(fieldName)} is required`;
     }
     
     if (fieldName === 'email' && control.hasError('email')) {
@@ -196,12 +230,12 @@ export class RegisterComponent {
     }
     
     if (fieldName === 'phone_number' && control.hasError('pattern')) {
-      return 'Please enter a valid phone number';
+      return 'Please enter a valid phone number (e.g., +254712345678)';
     }
     
     if (fieldName === 'password') {
-      if (control.hasError('minlength') || control.hasError('maxlength')) {
-        return 'Password must be exactly 12 characters';
+      if (control.hasError('minlength')) {
+        return 'Password must be at least 12 characters';
       }
       if (control.hasError('noUpperCase')) {
         return 'Password must contain at least one uppercase letter';
@@ -230,6 +264,18 @@ export class RegisterComponent {
     }
     
     return '';
+  }
+
+  private getFieldDisplayName(fieldName: string): string {
+    const displayNames: { [key: string]: string } = {
+      'first_name': 'First name',
+      'last_name': 'Last name',
+      'email': 'Email',
+      'phone_number': 'Phone number',
+      'password': 'Password',
+      'password_confirm': 'Password confirmation'
+    };
+    return displayNames[fieldName] || fieldName;
   }
 
   togglePassword(): void {

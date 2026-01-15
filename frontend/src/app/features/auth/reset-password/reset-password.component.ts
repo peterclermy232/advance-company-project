@@ -1,10 +1,8 @@
-
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
@@ -16,7 +14,7 @@ import { NotificationService } from '../../../core/services/notification.service
 })
 export class ResetPasswordComponent implements OnInit {
   private fb = inject(FormBuilder);
-  private http = inject(HttpClient);
+  private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
@@ -35,10 +33,11 @@ export class ResetPasswordComponent implements OnInit {
   hasUpperCase = false;
   hasLowerCase = false;
   hasNumber = false;
+  hasSpecialChar = false;
 
   constructor() {
     this.resetPasswordForm = this.fb.group({
-      new_password: ['', [Validators.required, Validators.minLength(8)]],
+      new_password: ['', [Validators.required, Validators.minLength(12)]],
       confirm_password: ['', [Validators.required]]
     }, { validators: this.passwordMatchValidator });
 
@@ -53,6 +52,10 @@ export class ResetPasswordComponent implements OnInit {
     this.route.queryParams.subscribe(params => {
       this.uid = params['uid'];
       this.token = params['token'];
+
+      if (!this.uid || !this.token) {
+        this.notificationService.error('Invalid reset link');
+      }
     });
   }
 
@@ -68,10 +71,11 @@ export class ResetPasswordComponent implements OnInit {
   }
 
   checkPasswordStrength(password: string): void {
-    this.hasMinLength = password.length >= 8;
+    this.hasMinLength = password.length >= 12;
     this.hasUpperCase = /[A-Z]/.test(password);
     this.hasLowerCase = /[a-z]/.test(password);
     this.hasNumber = /[0-9]/.test(password);
+    this.hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
   }
 
   getConfirmPasswordError(): string {
@@ -86,17 +90,18 @@ export class ResetPasswordComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.resetPasswordForm.invalid || !this.uid || !this.token) return;
+    if (this.resetPasswordForm.invalid || !this.uid || !this.token) {
+      if (!this.uid || !this.token) {
+        this.notificationService.error('Invalid reset link');
+      }
+      return;
+    }
 
     this.isLoading = true;
 
-    const payload = {
-      uid: this.uid,
-      token: this.token,
-      new_password: this.resetPasswordForm.get('new_password')?.value
-    };
+    const newPassword = this.resetPasswordForm.get('new_password')?.value;
 
-    this.http.post(`${environment.apiUrl}/auth/users/reset_password_confirm/`, payload)
+    this.authService.resetPasswordConfirm(this.uid, this.token, newPassword)
       .subscribe({
         next: () => {
           this.resetSuccess = true;
