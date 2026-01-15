@@ -491,3 +491,13 @@ def reset_password_confirm(request):
     user.save()
     
     return Response({'message': 'Password has been reset successfully.'})
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def test_endpoint(request):
+    """Test endpoint to verify API is accessible."""
+    return Response({
+        'message': 'API is working!',
+        'method': request.method,
+        'headers': dict(request.headers)
+    })
