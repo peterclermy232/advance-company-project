@@ -69,25 +69,7 @@ class UserViewSet(viewsets.ModelViewSet):
     
     queryset = User.objects.all()
     serializer_class = UserSerializer
-
-    def get_permissions(self):
-        """Set permissions based on action."""
-        # Debug logging
-        logger.info(f"🔍 get_permissions called for action: {self.action}")
-        
-        # Actions that don't require authentication
-        public_actions = [
-            'register', 'login', 'verify_email', 'resend_verification',
-            'forgot_password', 'reset_password_confirm', 'verify_2fa',
-            'biometric_challenge', 'biometric_login'
-        ]
-        
-        if self.action in public_actions:
-            logger.info(f"✅ Action '{self.action}' is public - using AllowAny")
-            return [AllowAny()]
-        
-        logger.info(f"🔒 Action '{self.action}' requires authentication - using IsAuthenticated")
-        return [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]  # Default permission
 
     def get_client_ip(self, request):
         """Get client IP address from request."""
@@ -96,16 +78,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return x_forwarded_for.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
 
-    def check_permissions(self, request):
-        """Override to add debug logging."""
-        logger.info(f"🔍 check_permissions called - action: {self.action}")
-        logger.info(f"🔍 Request user: {request.user}")
-        logger.info(f"🔍 Request auth: {request.auth}")
-        logger.info(f"🔍 Permissions: {[p.__class__.__name__ for p in self.get_permissions()]}")
-        return super().check_permissions(request)
-
     @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
         """Register a new user."""
         logger.info("📝 Register endpoint called")
@@ -137,7 +111,7 @@ class UserViewSet(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def verify_email(self, request):
         """Verify user email address."""
         logger.info("📧 Verify email endpoint called")
@@ -169,7 +143,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def resend_verification(self, request):
         """Resend email verification link."""
         logger.info("🔄 Resend verification endpoint called")
@@ -194,7 +168,7 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'message': 'If the email exists, a verification link has been sent.'})
 
     @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
         """Authenticate user and return tokens."""
         logger.info(f"🔐 Login endpoint called - IP: {self.get_client_ip(request)}")
@@ -268,7 +242,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def enable_2fa(self, request):
         """Enable two-factor authentication for user."""
         logger.info("🔐 Enable 2FA endpoint called")
@@ -278,7 +252,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'qr_code': request.user.get_2fa_qr_code()
         })
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def confirm_2fa(self, request):
         """Confirm 2FA setup with verification code."""
         logger.info("✅ Confirm 2FA endpoint called")
@@ -301,7 +275,7 @@ class UserViewSet(viewsets.ModelViewSet):
         })
 
     @method_decorator(ratelimit(key='ip', rate='5/5m', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def verify_2fa(self, request):
         """Verify 2FA code and complete login."""
         logger.info("🔐 Verify 2FA endpoint called")
@@ -368,7 +342,7 @@ class UserViewSet(viewsets.ModelViewSet):
             }
         })
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def register_biometric(self, request):
         """Register biometric device for user."""
         logger.info("👆 Register biometric endpoint called")
@@ -377,15 +351,26 @@ class UserViewSet(viewsets.ModelViewSet):
             context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
-        device = serializer.save(user=request.user)
+        
+        device = BiometricDevice.objects.create(
+            user=request.user,
+            device_type=serializer.validated_data['device_type'],
+            device_id=serializer.validated_data['device_id'],
+            device_name=serializer.validated_data['device_name'],
+            public_key=serializer.validated_data['public_key']
+        )
         
         request.user.biometric_enabled = True
         request.user.save(update_fields=['biometric_enabled'])
         
-        return Response(device.serialized, status=status.HTTP_201_CREATED)
+        from .serializers import BiometricDeviceSerializer
+        return Response(
+            BiometricDeviceSerializer(device).data, 
+            status=status.HTTP_201_CREATED
+        )
 
     @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def biometric_challenge(self, request):
         """Generate biometric authentication challenge."""
         logger.info("👆 Biometric challenge endpoint called")
@@ -418,7 +403,7 @@ class UserViewSet(viewsets.ModelViewSet):
         })
 
     @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def biometric_login(self, request):
         """Authenticate user with biometric data."""
         logger.info("👆 Biometric login endpoint called")
@@ -436,7 +421,7 @@ class UserViewSet(viewsets.ModelViewSet):
             
             is_valid = BiometricVerifier.verify_signature(
                 email=request.data['email'],
-                public_key=device.public_key,
+                public_key_pem=device.public_key,
                 signature=request.data['auth_signature'],
                 challenge_response=request.data['challenge_response']
             )
@@ -471,7 +456,7 @@ class UserViewSet(viewsets.ModelViewSet):
         })
 
     @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'))
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def forgot_password(self, request):
         """Send password reset email."""
         logger.info("🔑 Forgot password endpoint called")
@@ -512,7 +497,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'message': 'If your email exists in our system, you will receive a password reset link.'
         })
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def reset_password_confirm(self, request):
         """Confirm password reset with new password."""
         logger.info("🔑 Reset password confirm endpoint called")
