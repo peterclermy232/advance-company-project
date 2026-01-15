@@ -52,27 +52,37 @@ export class DocumentListComponent implements OnInit {
   }
 
   loadDocuments() {
-    this.documentService.getDocuments().subscribe({
-      next: (response) => {
-        this.documents = response.results;
-        this.groupDocumentsByCategory();
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading documents:', error);
-        this.isLoading = false;
-      }
-    });
-  }
+  this.documentService.getDocuments().subscribe({
+    next: (response: any) => {
+      // ✅ handle both array and paginated response
+      this.documents = Array.isArray(response)
+        ? response
+        : response?.results ?? [];
+
+      this.groupDocumentsByCategory();
+      this.isLoading = false;
+    },
+    error: (error) => {
+      console.error('Error loading documents:', error);
+      this.isLoading = false;
+    }
+  });
+}
 
   groupDocumentsByCategory() {
-    this.documentsByCategory = {};
-    this.categories.forEach(cat => {
-      this.documentsByCategory[cat.value] = this.documents.filter(
-        doc => doc.category === cat.value
-      );
-    });
+  this.documentsByCategory = {};
+
+  if (!Array.isArray(this.documents)) {
+    return;
   }
+
+  this.categories.forEach(cat => {
+    this.documentsByCategory[cat.value] = this.documents.filter(
+      doc => doc.category === cat.value
+    );
+  });
+}
+
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
