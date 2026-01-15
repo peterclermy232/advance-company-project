@@ -1,3 +1,4 @@
+import os
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -322,3 +323,92 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({
             'message': 'Your account has been deleted successfully.'
         })
+    
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload_profile_photo(self, request):
+        """
+        Upload profile photo for current user
+        POST /api/auth/users/upload_profile_photo/
+        """
+        logger.info(f"📸 Upload profile photo called for user {request.user.email}")
+
+        if 'profile_photo' not in request.FILES:
+            return Response(
+                {'error': 'No profile photo provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        profile_photo = request.FILES['profile_photo']
+
+        # Validate file size (max 5MB)
+        if profile_photo.size > 5 * 1024 * 1024:
+            return Response(
+                {'error': 'File size too large. Maximum size is 5MB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate file type
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+        if profile_photo.content_type not in allowed_types:
+            return Response(
+                {'error': 'Invalid file type. Only JPEG, PNG, and GIF are allowed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            if request.user.profile_photo:
+                old_photo_path = request.user.profile_photo.path
+                if os.path.exists(old_photo_path):
+                    os.remove(old_photo_path)
+
+            request.user.profile_photo = profile_photo
+            request.user.save(update_fields=['profile_photo'])
+
+            serializer = self.get_serializer(request.user)
+            return Response({
+                'message': 'Profile photo uploaded successfully',
+                'user': serializer.data,
+                'profile_photo_url': request.build_absolute_uri(
+                    request.user.profile_photo.url
+                )
+            })
+
+        except Exception as e:
+            logger.error(f"❌ Error uploading profile photo: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Failed to upload profile photo'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['delete'])
+    def delete_profile_photo(self, request):
+        """
+        Delete profile photo for current user
+        DELETE /api/auth/users/delete_profile_photo/
+        """
+        logger.info(f"🗑️ Delete profile photo called for user {request.user.email}")
+
+        try:
+            if not request.user.profile_photo:
+                return Response(
+                    {'error': 'No profile photo to delete'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            photo_path = request.user.profile_photo.path
+            if os.path.exists(photo_path):
+                os.remove(photo_path)
+
+            request.user.profile_photo = None
+            request.user.save(update_fields=['profile_photo'])
+
+            return Response({
+                'message': 'Profile photo deleted successfully'
+            })
+
+        except Exception as e:
+            logger.error(f"❌ Error deleting profile photo: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Failed to delete profile photo'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

@@ -1,0 +1,20 @@
+<div 
+      [class]="containerClass"
+      [title]="fullName">
+      <img 
+        *ngIf="photoUrl" 
+        [src]="photoUrl" 
+        [alt]="fullName"
+        class="w-full h-full object-cover"
+        (error)="onImageError()">
+      <span 
+        *ngIf="!photoUrl && initials"
+        [class]="textClass">
+        {{ initials }}
+      </span>
+      <span 
+        *ngIf="!photoUrl && !initials"
+        [class]="textClass">
+        👤
+      </span>
+    </div>

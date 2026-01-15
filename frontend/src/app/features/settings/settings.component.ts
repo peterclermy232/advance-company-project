@@ -7,11 +7,12 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { User } from '../../core/models/user.model';
 import { environment } from '../../environments/environment';
+import { ProfileAvatarComponent } from '../../shared/components/profile-avatar/profile-avatar.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, HeaderComponent, SidebarComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, HeaderComponent, SidebarComponent,ProfileAvatarComponent],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss']
 })
@@ -149,46 +150,83 @@ export class SettingsComponent implements OnInit {
   }
 
   onUpdateProfile() {
-    if (this.profileForm.invalid) {
-      this.notificationService.error('Please fill in all required fields correctly');
-      return;
-    }
+  if (this.profileForm.invalid) {
+    this.notificationService.error('Please fill in all required fields correctly');
+    return;
+  }
 
-    this.isUpdating = true;
-    const formData = new FormData();
-    
-    Object.keys(this.profileForm.value).forEach(key => {
-      const value = this.profileForm.value[key];
-      if (value !== null && value !== undefined && value !== '') {
-        formData.append(key, value.toString());
-      }
-    });
-    
-    if (this.selectedPhoto) {
-      formData.append('profile_photo', this.selectedPhoto, this.selectedPhoto.name);
-    }
-    
-    this.authService.updateProfileWithPhoto(formData).subscribe({
+  this.isUpdating = true;
+
+  if (this.selectedPhoto) {
+    // Upload photo separately first
+    this.authService.uploadProfilePhoto(this.selectedPhoto).subscribe({
       next: (user) => {
-        this.currentUser = user;
-        this.selectedPhoto = null;
-        this.photoPreview = null;
-        this.isUpdating = false;
-        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-        if (fileInput) {
-          fileInput.value = '';
-        }
+        // Then update other profile fields
+        this.updateProfileFields();
       },
       error: (error) => {
-        console.error('Profile update error:', error);
-        const errorMessage = error.error?.detail || 
-                           error.error?.error || 
-                           'Failed to update profile. Please try again.';
-        this.notificationService.error(errorMessage);
+        console.error('Photo upload error:', error);
         this.isUpdating = false;
       }
     });
+  } else {
+    // Just update profile fields
+    this.updateProfileFields();
   }
+}
+
+private updateProfileFields() {
+  const userId = this.currentUser?.id;
+  if (!userId) {
+    this.isUpdating = false;
+    return;
+  }
+
+  this.authService.updateProfile(userId, this.profileForm.value).subscribe({
+    next: (user) => {
+      this.currentUser = user;
+      this.selectedPhoto = null;
+      this.photoPreview = null;
+      this.isUpdating = false;
+      
+      // Clear file input
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    },
+    error: (error) => {
+      console.error('Profile update error:', error);
+      this.isUpdating = false;
+    }
+  });
+}
+
+// Add method to delete photo
+deleteProfilePhoto() {
+  const confirmed = confirm('Are you sure you want to delete your profile photo?');
+  if (!confirmed) return;
+
+  this.authService.deleteProfilePhoto().subscribe({
+    next: () => {
+      if (this.currentUser) {
+        this.currentUser.profile_photo = null;
+        this.currentUser.profile_photo_url = null;
+      }
+      this.selectedPhoto = null;
+      this.photoPreview = null;
+      
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    },
+    error: (error) => {
+      console.error('Failed to delete photo:', error);
+    }
+  });
+}
+
 
   // Password Change
   openPasswordModal() {

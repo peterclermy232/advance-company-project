@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { User } from '../../../core/models/user.model';
 import { NotificationDropdownComponent } from '../notification-dropdown/notification-dropdown.component';
+import { ProfileAvatarComponent } from '../profile-avatar/profile-avatar.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, NotificationDropdownComponent],
+  imports: [CommonModule, NotificationDropdownComponent,ProfileAvatarComponent],
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss']
 })

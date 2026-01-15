@@ -17,6 +17,23 @@ class UserSerializer(serializers.ModelSerializer):
             'has_biometric', 'biometric_devices_count'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+    def get_profile_photo_url(self, obj):
+        """Return full URL for profile photo"""
+        if obj.profile_photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_photo.url)
+        return None
+
+    def get_identity_document(self, obj):
+        request = self.context.get('request')
+        if obj.identity_document:
+            if request:
+                return request.build_absolute_uri(obj.identity_document.url)
+            return obj.identity_document.url
+        return None
     
     def get_has_biometric(self, obj):
         return obj.biometric_devices.filter(is_active=True).exists()

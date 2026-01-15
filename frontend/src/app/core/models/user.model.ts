@@ -1,4 +1,3 @@
-
 export interface User {
   id: number;
   email: string;
@@ -6,30 +5,42 @@ export interface User {
   last_name: string;
   full_name: string;
   phone_number?: string;
-  profile_photo?: string;
+
+  profile_photo?: string | null;
+  profile_photo_url?: string | null;
+
   date_joined: string;
   last_login?: string;
+
   is_active: boolean;
   is_staff: boolean;
   is_superuser: boolean;
+
   email_verified: boolean;
   two_factor_enabled: boolean;
   biometric_enabled: boolean;
-  role?: string; // Optional, if you add custom roles
+
+  role?: string;
+
   age?: number;
   gender?: 'M' | 'F' | 'O';
   marital_status?: string;
   number_of_kids?: number;
   profession?: string;
   salary_range?: string;
-  identity_document?: string;
-  activity_status: string;
+
   spouse_name?: string;
   spouse_age?: number;
   spouse_profession?: string;
+
+  identity_document?: string;
+  activity_status: string;
+
   created_at: string;
   updated_at: string;
 }
+
+/* ================= AUTH ================= */
 
 export interface AuthResponse {
   user: User;
@@ -38,12 +49,6 @@ export interface AuthResponse {
     refresh: string;
   };
   message?: string;
-}
-
-export interface TwoFactorRequiredResponse {
-  requires_2fa: true;
-  temp_token: string;
-  email: string;
 }
 
 export interface LoginRequest {
@@ -60,15 +65,23 @@ export interface RegisterRequest {
   phone_number?: string;
 }
 
+export interface TwoFactorRequiredResponse {
+  requires_2fa: true;
+  temp_token: string;
+  email: string;
+}
+
 export interface TwoFactorSetup {
   secret: string;
-  qr_code: string; // Base64 encoded QR code image
+  qr_code: string;
 }
 
 export interface TwoFactorConfirmResponse {
   message: string;
   backup_codes: string[];
 }
+
+/* ================= BIOMETRIC ================= */
 
 export interface BiometricDevice {
   id: number;
@@ -81,10 +94,7 @@ export interface BiometricDevice {
   last_used?: string;
 }
 
-export interface BiometricChallenge {
-  challenge: string;
-  credential_id: string;
-}
+/* ================= PASSWORD ================= */
 
 export interface PasswordResetRequest {
   email: string;
@@ -98,11 +108,11 @@ export interface PasswordResetConfirm {
 
 export interface TokenRefreshResponse {
   access: string;
-  refresh?: string; // Optional, returned if rotation is enabled
+  refresh?: string;
 }
 
 export interface ErrorResponse {
   error?: string;
   detail?: string;
-  [key: string]: any; // For field-specific errors
+  [key: string]: any;
 }

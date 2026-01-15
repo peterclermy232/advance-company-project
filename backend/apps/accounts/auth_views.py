@@ -13,10 +13,11 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes,parser_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from .models import User, BiometricDevice
 from .serializers import (
@@ -80,9 +81,13 @@ def get_client_ip(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterRateThrottle])
+@parser_classes([JSONParser, MultiPartParser, FormParser])
 def register(request):
-    """Register a new user."""
+    """Register a new user with optional profile photo."""
     logger.info("📝 Register endpoint called")
+    logger.info(f"Content-Type: {request.content_type}")
+    logger.info(f"Data keys: {request.data.keys()}")
+    logger.info(f"Files keys: {request.FILES.keys()}")
 
     serializer = UserRegistrationSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -98,7 +103,7 @@ def register(request):
     refresh = RefreshToken.for_user(user)
     return Response({
         'message': message,
-        'user': UserSerializer(user).data,
+        'user': UserSerializer(user, context={'request': request}).data,
         'tokens': {
             'refresh': str(refresh),
             'access': str(refresh.access_token),

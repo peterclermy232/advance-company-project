@@ -146,8 +146,10 @@ export class RegisterComponent {
       formData.append('last_name', this.registerForm.get('last_name')?.value);
       formData.append('phone_number', this.registerForm.get('phone_number')?.value || '');
       
-      // Append photo
-      formData.append('profile_photo', this.selectedPhoto);
+      // Append photo if selected
+  if (this.selectedPhoto) {
+    formData.append('profile_photo', this.selectedPhoto);
+  }
       
       // Use registerWithPhoto method (you'll need to add this to AuthService)
       this.authService.register(formData as any).subscribe({

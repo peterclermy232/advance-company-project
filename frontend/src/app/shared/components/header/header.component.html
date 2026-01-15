@@ -14,14 +14,16 @@
     <app-notification-dropdown></app-notification-dropdown>
 
     <!-- User Menu -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors">
       <div class="text-right">
         <p class="text-sm font-medium text-gray-800">{{ currentUser?.full_name }}</p>
         <p class="text-xs text-gray-500">{{ currentUser?.role === 'admin' ? 'Administrator' : 'Member' }}</p>
       </div>
-      <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold cursor-pointer">
-        {{ currentUser?.full_name?.charAt(0) || 'U' }}
-      </div>
+      <app-profile-avatar
+        [photoUrl]="currentUser?.profile_photo_url || null"
+        [fullName]="currentUser?.full_name || ''"
+        size="md">
+      </app-profile-avatar>
     </div>
   </div>
 </header>

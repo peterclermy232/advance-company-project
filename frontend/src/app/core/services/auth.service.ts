@@ -460,4 +460,46 @@ export class AuthService {
   isBiometricEnabled(): boolean {
     return !!this.getCurrentUser()?.biometric_enabled;
   }
+
+  uploadProfilePhoto(file: File): Observable<User> {
+  const formData = new FormData();
+  formData.append('profile_photo', file);
+
+  return this.http.post<any>(
+    `${environment.apiUrl}/auth/users/upload_profile_photo/`,
+    formData
+  ).pipe(
+    tap(response => {
+      const user = response.user;
+      localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+      this.currentUserSubject.next(user);
+      this.toastService.success('Profile photo updated successfully! ✓');
+    }),
+    catchError(error => {
+      const message = error.error?.error || 'Failed to upload photo';
+      this.toastService.error(message);
+      return throwError(() => error);
+    })
+  );
+}
+
+deleteProfilePhoto(): Observable<any> {
+  return this.http.delete(`${environment.apiUrl}/auth/users/delete_profile_photo/`)
+    .pipe(
+      tap(() => {
+        const currentUser = this.getCurrentUser();
+        if (currentUser) {
+          currentUser.profile_photo = null;
+          currentUser.profile_photo_url = null;
+          localStorage.setItem(this.USER_KEY, JSON.stringify(currentUser));
+          this.currentUserSubject.next(currentUser);
+        }
+        this.toastService.success('Profile photo deleted successfully');
+      }),
+      catchError(error => {
+        this.toastService.error('Failed to delete photo');
+        return throwError(() => error);
+      })
+    );
+}
 }

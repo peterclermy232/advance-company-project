@@ -18,34 +18,41 @@
 
           <!-- Profile Photo -->
           <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Profile Photo
-            </label>
+  <label class="block text-sm font-medium text-gray-700 mb-2">
+    Profile Photo
+  </label>
 
-            <div class="flex items-center gap-4">
-              <div class="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
-                <!-- Preview -->
-                <img *ngIf="photoPreview" [src]="photoPreview" alt="Preview" class="w-full h-full object-cover">
-                <!-- Existing profile photo -->
-                <img *ngIf="!photoPreview && currentUser?.profile_photo as photo" [src]="getProfilePhotoUrl(photo)" alt="Profile" class="w-full h-full object-cover">
-                <!-- Initials -->
-                <span *ngIf="!photoPreview && !currentUser?.profile_photo">
-                  {{ currentUser?.full_name?.charAt(0) || 'U' }}
-                </span>
-              </div>
+  <div class="flex items-center gap-4">
+    <!-- Avatar Preview -->
+    <app-profile-avatar
+      [photoUrl]="photoPreview || currentUser?.profile_photo_url || null"
+      [fullName]="currentUser?.full_name || ''"
+      size="xl">
+    </app-profile-avatar>
 
-              <div class="flex flex-col gap-2">
-                <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  <input type="file" #fileInput (change)="onPhotoSelected($event)" accept="image/*" class="hidden">
-                  Choose Photo
-                </label>
-                <button *ngIf="selectedPhoto || photoPreview" type="button" (click)="clearPhotoSelection(fileInput)" class="text-xs text-red-600 hover:text-red-700 font-medium">
-                  Remove photo
-                </button>
-              </div>
-            </div>
-            <p class="text-xs text-gray-500 mt-2">JPG, PNG or GIF (Max 5MB)</p>
-          </div>
+    <!-- Upload Controls -->
+    <div class="flex flex-col gap-2">
+      <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+        <input 
+          type="file" 
+          #fileInput 
+          (change)="onPhotoSelected($event)" 
+          accept="image/*" 
+          class="hidden">
+        {{ selectedPhoto ? 'Change Photo' : 'Upload Photo' }}
+      </label>
+      
+      <button 
+        *ngIf="selectedPhoto || currentUser?.profile_photo_url"
+        type="button"
+        (click)="selectedPhoto ? clearPhotoSelection(fileInput) : deleteProfilePhoto()"
+        class="text-xs text-red-600 hover:text-red-700 font-medium text-left">
+        {{ selectedPhoto ? 'Cancel selection' : 'Delete photo' }}
+      </button>
+    </div>
+  </div>
+  <p class="text-xs text-gray-500 mt-2">JPG, PNG or GIF (Max 5MB)</p>
+</div>
 
           <!-- Profile Form -->
           <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()" class="space-y-4">
