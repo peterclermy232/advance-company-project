@@ -1,18 +1,15 @@
 <div class="flex h-screen bg-gray-50 overflow-hidden">
-
   <!-- Sidebar -->
   <app-sidebar [isOpen]="sidebarOpen"></app-sidebar>
 
   <!-- Main Content Wrapper -->
   <div class="flex-1 flex flex-col overflow-hidden">
-
     <!-- Header -->
     <app-header (toggleSidebar)="toggleSidebar()"></app-header>
 
     <!-- Page Content -->
     <main class="flex-1 overflow-y-auto p-6">
       <div class="max-w-4xl mx-auto space-y-6">
-
         <h2 class="text-2xl font-bold text-gray-800">Settings</h2>
 
         <!-- ================= Account Settings ================= -->
@@ -26,23 +23,11 @@
             </label>
 
             <div class="flex items-center gap-4">
-              <div
-                class="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
-
+              <div class="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
                 <!-- Preview -->
-                <img
-                  *ngIf="photoPreview"
-                  [src]="photoPreview"
-                  alt="Preview"
-                  class="w-full h-full object-cover">
-
+                <img *ngIf="photoPreview" [src]="photoPreview" alt="Preview" class="w-full h-full object-cover">
                 <!-- Existing profile photo -->
-                <img
-               *ngIf="!photoPreview && currentUser?.profile_photo as photo"
-              [src]="getProfilePhotoUrl(photo)"
-              alt="Profile"
-              class="w-full h-full object-cover">
-
+                <img *ngIf="!photoPreview && currentUser?.profile_photo as photo" [src]="getProfilePhotoUrl(photo)" alt="Profile" class="w-full h-full object-cover">
                 <!-- Initials -->
                 <span *ngIf="!photoPreview && !currentUser?.profile_photo">
                   {{ currentUser?.full_name?.charAt(0) || 'U' }}
@@ -50,101 +35,49 @@
               </div>
 
               <div class="flex flex-col gap-2">
-                <label
-                  class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  <input
-                    type="file"
-                    #fileInput
-                    (change)="onPhotoSelected($event)"
-                    accept="image/*"
-                    class="hidden">
+                <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  <input type="file" #fileInput (change)="onPhotoSelected($event)" accept="image/*" class="hidden">
                   Choose Photo
                 </label>
-
-                <button
-                  *ngIf="selectedPhoto || photoPreview"
-                  type="button"
-                  (click)="clearPhotoSelection(fileInput)"
-                  class="text-xs text-red-600 hover:text-red-700 font-medium">
+                <button *ngIf="selectedPhoto || photoPreview" type="button" (click)="clearPhotoSelection(fileInput)" class="text-xs text-red-600 hover:text-red-700 font-medium">
                   Remove photo
                 </button>
               </div>
             </div>
-
-            <p class="text-xs text-gray-500 mt-2">
-              JPG, PNG or GIF (Max 5MB)
-            </p>
+            <p class="text-xs text-gray-500 mt-2">JPG, PNG or GIF (Max 5MB)</p>
           </div>
 
           <!-- Profile Form -->
-          <form
-            [formGroup]="profileForm"
-            (ngSubmit)="onUpdateProfile()"
-            class="space-y-4">
-
+          <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()" class="space-y-4">
             <div class="grid md:grid-cols-2 gap-4">
-
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  formControlName="full_name"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input type="text" formControlName="full_name" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
               </div>
-
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  formControlName="email"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" formControlName="email" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
               </div>
-
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  formControlName="phone_number"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input type="tel" formControlName="phone_number" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
               </div>
-
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Age
-                </label>
-                <input
-                  type="number"
-                  formControlName="age"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                <input type="number" formControlName="age" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
               </div>
-
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Gender
-                </label>
-                <select
-                  formControlName="gender"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                <select formControlName="gender" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                   <option value="">Select gender</option>
                   <option value="M">Male</option>
                   <option value="F">Female</option>
                   <option value="O">Other</option>
                 </select>
               </div>
-
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Marital Status
-                </label>
-                <select
-                  formControlName="marital_status"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Marital Status</label>
+                <select formControlName="marital_status" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                   <option value="">Select status</option>
                   <option value="single">Single</option>
                   <option value="married">Married</option>
@@ -152,79 +85,197 @@
                   <option value="widowed">Widowed</option>
                 </select>
               </div>
-
               <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Profession
-                </label>
-                <input
-                  type="text"
-                  formControlName="profession"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                <input type="text" formControlName="profession" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
               </div>
             </div>
 
-            <button
-              type="submit"
-              [disabled]="isUpdating || profileForm.invalid"
-              class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
+            <button type="submit" [disabled]="isUpdating || profileForm.invalid" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
               {{ isUpdating ? 'Saving...' : 'Save Changes' }}
             </button>
-
           </form>
         </div>
 
         <!-- ================= Notification Preferences ================= -->
         <div class="bg-white rounded-xl p-6 shadow-sm">
-          <h3 class="text-lg font-bold text-gray-800 mb-4">
-            Notification Preferences
-          </h3>
-
+          <h3 class="text-lg font-bold text-gray-800 mb-4">Notification Preferences</h3>
           <div class="space-y-3">
             <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
               <span>Email Notifications</span>
-              <input type="checkbox" [(ngModel)]="notificationPreferences.email">
+              <input type="checkbox" [(ngModel)]="notificationPreferences.email" class="w-5 h-5">
             </label>
-
             <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
               <span>SMS Notifications</span>
-              <input type="checkbox" [(ngModel)]="notificationPreferences.sms">
+              <input type="checkbox" [(ngModel)]="notificationPreferences.sms" class="w-5 h-5">
             </label>
-
             <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
               <span>Push Notifications</span>
-              <input type="checkbox" [(ngModel)]="notificationPreferences.push">
+              <input type="checkbox" [(ngModel)]="notificationPreferences.push" class="w-5 h-5">
             </label>
-
             <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
               <span>Monthly Reports</span>
-              <input type="checkbox" [(ngModel)]="notificationPreferences.reports">
+              <input type="checkbox" [(ngModel)]="notificationPreferences.reports" class="w-5 h-5">
             </label>
           </div>
+          <button (click)="saveNotificationPreferences()" class="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700">
+            Save Preferences
+          </button>
         </div>
 
         <!-- ================= Privacy & Security ================= -->
         <div class="bg-white rounded-xl p-6 shadow-sm">
-          <h3 class="text-lg font-bold text-gray-800 mb-4">
-            Privacy & Security
-          </h3>
-
+          <h3 class="text-lg font-bold text-gray-800 mb-4">Privacy & Security</h3>
           <div class="space-y-3">
-            <button class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+            <button (click)="openPasswordModal()" class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
               Change Password
             </button>
-
-            <button class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-              Two-Factor Authentication
+            <button (click)="open2FAModal()" class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-between">
+              <span>Two-Factor Authentication</span>
+              <span *ngIf="currentUser?.two_factor_enabled" class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Enabled</span>
+              <span *ngIf="!currentUser?.two_factor_enabled" class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Disabled</span>
             </button>
-
-            <button class="w-full text-left p-3 bg-red-50 rounded-lg hover:bg-red-100 text-red-600">
+            <button (click)="openDeleteModal()" class="w-full text-left p-3 bg-red-50 rounded-lg hover:bg-red-100 text-red-600 transition-colors">
               Delete Account
             </button>
           </div>
         </div>
-
       </div>
     </main>
+  </div>
+</div>
+
+<!-- ================= Password Change Modal ================= -->
+<div *ngIf="showPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl p-6 max-w-md w-full">
+    <h3 class="text-xl font-bold text-gray-800 mb-4">Change Password</h3>
+    <form [formGroup]="passwordForm" (ngSubmit)="onChangePassword()" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+        <input type="password" formControlName="current_password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+        <input type="password" formControlName="new_password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+        <p class="text-xs text-gray-500 mt-1">At least 8 characters</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+        <input type="password" formControlName="confirm_password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+        <p *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirm_password')?.touched" class="text-xs text-red-600 mt-1">
+          Passwords do not match
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <button type="submit" [disabled]="passwordForm.invalid" class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
+          Change Password
+        </button>
+        <button type="button" (click)="closePasswordModal()" class="flex-1 bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= 2FA Modal ================= -->
+<div *ngIf="show2FAModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl p-6 max-w-md w-full">
+    <h3 class="text-xl font-bold text-gray-800 mb-4">Two-Factor Authentication</h3>
+    
+    <!-- Initial 2FA Screen -->
+    <div *ngIf="!show2FASetup && backupCodes.length === 0">
+      <div *ngIf="!currentUser?.two_factor_enabled">
+        <p class="text-gray-600 mb-4">Enhance your account security by enabling two-factor authentication.</p>
+        <button (click)="enable2FA()" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 mb-2">
+          Enable 2FA
+        </button>
+      </div>
+      <div *ngIf="currentUser?.two_factor_enabled">
+        <p class="text-gray-600 mb-4">Two-factor authentication is currently enabled for your account.</p>
+        <button (click)="disable2FA()" class="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 mb-2">
+          Disable 2FA
+        </button>
+      </div>
+      <button (click)="close2FAModal()" class="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300">
+        Close
+      </button>
+    </div>
+
+    <!-- QR Code Setup Screen -->
+    <div *ngIf="show2FASetup && backupCodes.length === 0">
+      <div class="text-center mb-4">
+        <p class="text-sm text-gray-600 mb-3">Scan this QR code with your authenticator app:</p>
+        <div *ngIf="qrCodeUrl" class="bg-white p-4 inline-block rounded-lg border-2">
+          <img [src]="qrCodeUrl" alt="QR Code" class="w-48 h-48">
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Or enter this key manually:</p>
+        <code class="text-xs bg-gray-100 px-2 py-1 rounded">{{ secretKey }}</code>
+      </div>
+      
+      <form [formGroup]="twoFactorForm" (ngSubmit)="confirm2FA()" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Enter 6-digit code</label>
+          <input type="text" formControlName="code" maxlength="6" class="w-full px-4 py-2 border rounded-lg text-center text-2xl tracking-widest focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="flex gap-3">
+          <button type="submit" [disabled]="twoFactorForm.invalid" class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
+            Verify & Enable
+          </button>
+          <button type="button" (click)="close2FAModal()" class="flex-1 bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Backup Codes Screen -->
+    <div *ngIf="backupCodes.length > 0">
+      <p class="text-sm text-gray-600 mb-3">Save these backup codes in a safe place. Each can be used once:</p>
+      <div class="bg-gray-50 p-4 rounded-lg mb-4 max-h-60 overflow-y-auto">
+        <div *ngFor="let code of backupCodes" class="font-mono text-sm py-1">{{ code }}</div>
+      </div>
+      <div class="flex gap-3 mb-3">
+        <button (click)="copyBackupCodes()" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">
+          Copy Codes
+        </button>
+        <button (click)="downloadBackupCodes()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700">
+          Download Codes
+        </button>
+      </div>
+      <button (click)="close2FAModal()" class="w-full bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300">
+        Done
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Delete Account Modal ================= -->
+<div *ngIf="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl p-6 max-w-md w-full">
+    <h3 class="text-xl font-bold text-red-600 mb-4">Delete Account</h3>
+    <div class="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+      <p class="text-sm text-red-800">
+        <strong>Warning:</strong> This action cannot be undone. All your data will be permanently deleted.
+      </p>
+    </div>
+    <form [formGroup]="deleteAccountForm" (ngSubmit)="onDeleteAccount()" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Enter your password</label>
+        <input type="password" formControlName="password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Type "DELETE" to confirm</label>
+        <input type="text" formControlName="confirmation" placeholder="DELETE" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+      </div>
+      <div class="flex gap-3">
+        <button type="submit" [disabled]="deleteAccountForm.invalid" class="flex-1 bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50">
+          Delete Account
+        </button>
+        <button type="button" (click)="closeDeleteModal()" class="flex-1 bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300">
+          Cancel
+        </button>
+      </div>
+    </form>
   </div>
 </div>
