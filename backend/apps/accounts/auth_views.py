@@ -1,3 +1,5 @@
+# backend/apps/accounts/auth_views.py
+
 import logging
 import secrets
 from datetime import timedelta
@@ -9,7 +11,6 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.utils import timezone
-from django.utils.decorators import method_decorator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
@@ -73,7 +74,7 @@ def get_client_ip(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='dispatch')
+@ratelimit(key='ip', rate='5/m', method='POST')
 def register(request):
     """Register a new user."""
     logger.info("📝 Register endpoint called")
@@ -167,7 +168,7 @@ def resend_verification(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@method_decorator(ratelimit(key='ip', rate='10/m', method='POST'), name='dispatch')
+@ratelimit(key='ip', rate='10/m', method='POST')
 def login(request):
     """Authenticate user and return tokens."""
     logger.info(f"🔐 Login endpoint called - IP: {get_client_ip(request)}")
@@ -244,7 +245,7 @@ def login(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@method_decorator(ratelimit(key='ip', rate='5/5m', method='POST'), name='dispatch')
+@ratelimit(key='ip', rate='5/5m', method='POST')
 def verify_2fa(request):
     """Verify 2FA code and complete login."""
     logger.info("🔐 Verify 2FA endpoint called")
@@ -314,7 +315,7 @@ def verify_2fa(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@method_decorator(ratelimit(key='ip', rate='10/m', method='POST'), name='dispatch')
+@ratelimit(key='ip', rate='10/m', method='POST')
 def biometric_challenge(request):
     """Generate biometric authentication challenge."""
     logger.info("👆 Biometric challenge endpoint called")
@@ -349,7 +350,7 @@ def biometric_challenge(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@method_decorator(ratelimit(key='ip', rate='10/m', method='POST'), name='dispatch')
+@ratelimit(key='ip', rate='10/m', method='POST')
 def biometric_login(request):
     """Authenticate user with biometric data."""
     logger.info("👆 Biometric login endpoint called")
@@ -404,7 +405,7 @@ def biometric_login(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@method_decorator(ratelimit(key='ip', rate='3/h', method='POST'), name='dispatch')
+@ratelimit(key='ip', rate='3/h', method='POST')
 def forgot_password(request):
     """Send password reset email."""
     logger.info("🔑 Forgot password endpoint called")
