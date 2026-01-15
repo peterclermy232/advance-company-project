@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, tap, catchError, throwError } from 'rxjs';
+import { Observable, tap, catchError, throwError, map } from 'rxjs';
 import { ApiService, PaginatedResponse } from './api.service';
 import { Document } from '../models/document.model';
 import { ToastService } from './toast.service';
@@ -11,9 +11,24 @@ export class DocumentService {
   private apiService = inject(ApiService);
   private toastService = inject(ToastService);
 
-  getDocuments(params?: any): Observable<PaginatedResponse<Document>> {
-    return this.apiService.get<PaginatedResponse<Document>>('documents/', params);
-  }
+  getDocuments(params?: any): Observable<Document[]> {
+  return this.apiService
+    .get<PaginatedResponse<Document> | Document[]>('documents/', params)
+    .pipe(
+      tap(response => {
+        console.log('Documents API response:', response);
+      }),
+      catchError(error => {
+        this.toastService.error('Failed to load documents');
+        return throwError(() => error);
+      }),
+      // ✅ normalize response
+      map(response =>
+        Array.isArray(response) ? response : response?.results ?? []
+      )
+    );
+}
+
 
   uploadDocument(data: FormData): Observable<Document> {
     return this.apiService.upload<Document>('documents/', data)
