@@ -70,22 +70,6 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def get_authenticators(self):
-        """
-        Override to skip authentication for public endpoints.
-        This prevents JWT authentication from blocking AllowAny endpoints.
-        """
-        public_actions = [
-            'register', 'login', 'verify_email', 'resend_verification',
-            'forgot_password', 'reset_password_confirm', 'verify_2fa',
-            'biometric_challenge', 'biometric_login'
-        ]
-        
-        if self.action in public_actions:
-            return []
-        
-        return super().get_authenticators()
-
     def get_permissions(self):
         """Set permissions based on action."""
         # Debug logging
