@@ -35,17 +35,18 @@ export class ApplicationListComponent implements OnInit {
   }
 
   loadApplications() {
-    this.applicationService.getApplications().subscribe({
-      next: (response) => {
-        this.applications = response.results;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading applications:', error);
-        this.isLoading = false;
-      }
-    });
-  }
+  this.applicationService.getApplications().subscribe({
+    next: (response) => {
+      this.applications = response ?? [];
+      this.isLoading = false;
+    },
+    error: (error) => {
+      console.error('Error loading applications:', error);
+      this.applications = [];
+      this.isLoading = false;
+    }
+  });
+}
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;

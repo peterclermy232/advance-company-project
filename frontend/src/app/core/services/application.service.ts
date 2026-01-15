@@ -11,9 +11,10 @@ export class ApplicationService {
   private apiService = inject(ApiService);
   private toastService = inject(ToastService);
 
-  getApplications(params?: any): Observable<PaginatedResponse<Application>> {
-    return this.apiService.get<PaginatedResponse<Application>>('applications/', params);
-  }
+  getApplications(): Observable<Application[]> {
+  return this.apiService.get<Application[]>('applications/');
+}
+
 
   getApplication(id: number): Observable<Application> {
     return this.apiService.get<Application>(`applications/${id}/`);
