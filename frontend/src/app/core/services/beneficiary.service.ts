@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, tap, catchError, throwError } from 'rxjs';
+import { Observable, tap, catchError, throwError, map } from 'rxjs';
 import { ApiService, PaginatedResponse } from './api.service';
 import { Beneficiary } from '../models/beneficiary.model';
 import { ToastService } from './toast.service';
@@ -12,8 +12,21 @@ export class BeneficiaryService {
   private toastService = inject(ToastService);
 
   getBeneficiaries(params?: any): Observable<PaginatedResponse<Beneficiary>> {
-    return this.apiService.get<PaginatedResponse<Beneficiary>>('beneficiary/', params);
-  }
+  return this.apiService.get<PaginatedResponse<Beneficiary>>('beneficiary/', params).pipe(
+    map(response => {
+      // Handle case where API returns array instead of paginated response
+      if (Array.isArray(response)) {
+        return {
+          count: response.length,
+          next: null,
+          previous: null,
+          results: response
+        } as PaginatedResponse<Beneficiary>;
+      }
+      return response;
+    })
+  );
+}
 
   getBeneficiary(id: number): Observable<Beneficiary> {
     return this.apiService.get<Beneficiary>(`beneficiary/${id}/`);

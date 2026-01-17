@@ -250,15 +250,19 @@ deleteProfilePhoto() {
       return;
     }
 
+    const loadingToast = this.notificationService.loading('Changing password...');
+
     this.authService.changePassword(this.passwordForm.value).subscribe({
       next: (response) => {
-        this.notificationService.success('Password changed successfully! Please login again.');
+        loadingToast.dismiss();
+        this.notificationService.success('✓ Password changed successfully! Please login again.');
         this.closePasswordModal();
         setTimeout(() => {
           this.authService.logout();
         }, 2000);
       },
       error: (error) => {
+        loadingToast.dismiss();
         const errorMessage = error.error?.error || 
                            (Array.isArray(error.error?.error) ? error.error.error.join(', ') : '') ||
                            'Failed to change password';
@@ -266,6 +270,7 @@ deleteProfilePhoto() {
       }
     });
   }
+
 
   // Two-Factor Authentication
   open2FAModal() {
@@ -284,14 +289,18 @@ deleteProfilePhoto() {
   }
 
   enable2FA() {
+    const loadingToast = this.notificationService.loading('Setting up 2FA...');
+    
     this.authService.enable2FA().subscribe({
       next: (response) => {
+        loadingToast.dismiss();
         this.qrCodeUrl = response.qr_code;
         this.secretKey = response.secret;
         this.show2FASetup = true;
         this.notificationService.info('Scan the QR code with your authenticator app');
       },
       error: (error) => {
+        loadingToast.dismiss();
         this.notificationService.error('Failed to enable 2FA');
       }
     });
@@ -303,44 +312,54 @@ deleteProfilePhoto() {
       return;
     }
 
+    const loadingToast = this.notificationService.loading('Verifying code...');
+
     this.authService.confirm2FA(this.twoFactorForm.value.code).subscribe({
       next: (response) => {
+        loadingToast.dismiss();
         this.backupCodes = response.backup_codes;
-        this.notificationService.success('2FA enabled successfully!');
+        this.notificationService.success('✓ 2FA enabled successfully! Save your backup codes.');
         if (this.currentUser) {
           this.currentUser.two_factor_enabled = true;
         }
       },
       error: (error) => {
+        loadingToast.dismiss();
         this.notificationService.error('Invalid verification code');
       }
     });
   }
 
   disable2FA() {
-    const password = prompt('Enter your password to disable 2FA:');
+    const password = prompt('🔐 Enter your password to disable 2FA:');
     if (!password) return;
+
+    const loadingToast = this.notificationService.loading('Disabling 2FA...');
 
     this.authService.disable2FA(password).subscribe({
       next: () => {
-        this.notificationService.success('2FA disabled successfully');
+        loadingToast.dismiss();
+        this.notificationService.success('✓ 2FA disabled successfully');
         if (this.currentUser) {
           this.currentUser.two_factor_enabled = false;
         }
         this.close2FAModal();
       },
       error: (error) => {
+        loadingToast.dismiss();
         this.notificationService.error('Failed to disable 2FA. Please check your password.');
       }
     });
   }
-
   copyBackupCodes() {
     const codesText = this.backupCodes.join('\n');
     navigator.clipboard.writeText(codesText).then(() => {
-      this.notificationService.success('Backup codes copied to clipboard');
+      this.notificationService.success('✓ Backup codes copied to clipboard!');
+    }).catch(() => {
+      this.notificationService.error('Failed to copy codes');
     });
   }
+
 
   downloadBackupCodes() {
     const codesText = this.backupCodes.join('\n');

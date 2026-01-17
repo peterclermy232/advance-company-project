@@ -1,70 +1,79 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, tap, catchError, throwError } from 'rxjs';
+import { Observable, tap, catchError, map } from 'rxjs';
 import { ApiService, PaginatedResponse } from './api.service';
 import { Application } from '../models/application.model';
-import { ToastService } from './toast.service';
+import { BackendResponse, BackendResponseHandler } from './backend-response-handler.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApplicationService {
   private apiService = inject(ApiService);
-  private toastService = inject(ToastService);
+  private responseHandler = inject(BackendResponseHandler);
 
   getApplications(): Observable<Application[]> {
-  return this.apiService.get<Application[]>('applications/');
-}
-
+    return this.apiService.get<BackendResponse<Application[]>>('applications/')
+      .pipe(
+        tap(response => {
+          // Don't show toast for list operations
+          this.responseHandler.showToast(response, true);
+        }),
+        map(response => response.data || []),
+        catchError(error => this.responseHandler.handleError(error, 'Failed to load applications'))
+      );
+  }
 
   getApplication(id: number): Observable<Application> {
-    return this.apiService.get<Application>(`applications/${id}/`);
+    return this.apiService.get<BackendResponse<Application>>(`applications/${id}/`)
+      .pipe(
+        tap(response => this.responseHandler.showToast(response, true)),
+        map(response => response.data as Application),
+        catchError(error => this.responseHandler.handleError(error, 'Failed to load application'))
+      );
   }
 
   createApplication(data: FormData): Observable<Application> {
-    return this.apiService.upload<Application>('applications/', data)
+    return this.apiService.upload<BackendResponse<Application>>('applications/', data)
       .pipe(
-        tap(() => {
-          this.toastService.success('Application submitted successfully! 📝');
+        tap(response => {
+          // Show backend success message
+          this.responseHandler.showToast(response);
         }),
-        catchError(error => {
-          this.toastService.error('Failed to submit application. Please try again.');
-          return throwError(() => error);
-        })
+        map(response => response.data as Application),
+        catchError(error => this.responseHandler.handleError(error, 'Failed to submit application'))
       );
   }
 
   approveApplication(id: number, comments: string): Observable<any> {
-    return this.apiService.post<any>(`applications/${id}/approve/`, { comments })
+    return this.apiService.post<BackendResponse>(`applications/${id}/approve/`, { comments })
       .pipe(
-        tap(() => {
-          this.toastService.success('Application approved! ✓');
+        tap(response => {
+          // Show backend success message (e.g., "Application approved successfully")
+          this.responseHandler.showToast(response);
         }),
-        catchError(error => {
-          this.toastService.error('Failed to approve application');
-          return throwError(() => error);
-        })
+        catchError(error => this.responseHandler.handleError(error, 'Failed to approve application'))
       );
   }
 
   rejectApplication(id: number, comments: string): Observable<any> {
-    return this.apiService.post<any>(`applications/${id}/reject/`, { comments })
+    return this.apiService.post<BackendResponse>(`applications/${id}/reject/`, { comments })
       .pipe(
-        tap(() => {
-          this.toastService.warning('Application rejected');
+        tap(response => {
+          // Show backend warning/error message (e.g., "Application rejected")
+          this.responseHandler.showToast(response);
         }),
-        catchError(error => {
-          this.toastService.error('Failed to reject application');
-          return throwError(() => error);
-        })
+        catchError(error => this.responseHandler.handleError(error, 'Failed to reject application'))
       );
   }
 
   reviewApplication(id: number): Observable<any> {
-    return this.apiService.post<any>(`applications/${id}/review/`, {})
+    return this.apiService.post<BackendResponse>(`applications/${id}/review/`, {})
       .pipe(
-        tap(() => {
-          this.toastService.info('Application marked as under review');
-        })
+        tap(response => {
+          // Show backend info message
+          this.responseHandler.showToast(response);
+        }),
+        catchError(error => this.responseHandler.handleError(error))
       );
   }
 }

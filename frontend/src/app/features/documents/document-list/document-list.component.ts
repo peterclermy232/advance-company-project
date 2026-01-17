@@ -122,14 +122,18 @@ export class DocumentListComponent implements OnInit {
   }
 
   deleteDocument(doc: Document) {
-    if (confirm(`Are you sure you want to delete ${doc.title}?`)) {
+    if (confirm(` Delete "${doc.title}"? This action cannot be undone.`)) {
+      const loadingToast = this.notificationService.loading('Deleting document...');
+      
       this.documentService.deleteDocument(doc.id).subscribe({
         next: () => {
-          this.notificationService.success('Document deleted successfully');
+          loadingToast.dismiss();
+          this.notificationService.success(`✓ "${doc.title}" deleted successfully`);
           this.documents = this.documents.filter(d => d.id !== doc.id);
           this.groupDocumentsByCategory();
         },
         error: (error) => {
+          loadingToast.dismiss();
           this.notificationService.error('Failed to delete document');
         }
       });
@@ -137,13 +141,17 @@ export class DocumentListComponent implements OnInit {
   }
 
   verifyDocument(doc: Document) {
+    const loadingToast = this.notificationService.loading('Verifying document...');
+    
     this.documentService.verifyDocument(doc.id).subscribe({
       next: () => {
-        this.notificationService.success('Document verified');
+        loadingToast.dismiss();
+        this.notificationService.success(`✓ "${doc.title}" verified successfully`);
         doc.status = 'verified';
       },
       error: (error) => {
-        this.notificationService.error('Failed to verify document');
+        loadingToast.dismiss();
+        this.notificationService.error('Verification failed');
       }
     });
   }

@@ -1,148 +1,129 @@
 import logging
 import secrets
-from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
-from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
-from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, throttle_classes,parser_classes
+from rest_framework.decorators import (
+    api_view,
+    permission_classes,
+    throttle_classes,
+    parser_classes,
+)
 from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import User, BiometricDevice
+from .models import User
 from .serializers import (
     UserSerializer,
     UserRegistrationSerializer,
     LoginSerializer,
-    BiometricRegistrationSerializer,
-    TwoFactorVerifySerializer,
 )
 from .emails import send_verification_email
-from .utils.biometric_verification import BiometricVerifier
 from .throttles import (
     LoginRateThrottle,
     RegisterRateThrottle,
     TwoFactorRateThrottle,
-    BiometricRateThrottle,
-    PasswordResetRateThrottle,
     EmailVerificationRateThrottle,
+    PasswordResetRateThrottle,
+)
+from .response_utils import APIResponse, Messages
+from .utils.cache_utils import (
+    safe_cache_get,
+    safe_cache_set,
+    safe_cache_delete,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def safe_cache_get(key, default=None):
-    """Safely get value from cache with exception handling."""
-    try:
-        return cache.get(key, default)
-    except Exception as e:
-        logger.warning(f"Cache get failed for key {key}: {e}")
-        return default
-
-
-def safe_cache_set(key, value, timeout=None):
-    """Safely set value in cache with exception handling."""
-    try:
-        cache.set(key, value, timeout=timeout)
-        return True
-    except Exception as e:
-        logger.warning(f"Cache set failed for key {key}: {e}")
-        return False
-
-
-def safe_cache_delete(key):
-    """Safely delete value from cache with exception handling."""
-    try:
-        cache.delete(key)
-        return True
-    except Exception as e:
-        logger.warning(f"Cache delete failed for key {key}: {e}")
-        return False
-
-
-def get_client_ip(request):
-    """Get client IP address from request."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        return x_forwarded_for.split(',')[0].strip()
-    return request.META.get('REMOTE_ADDR')
-
-
+# ---------------------------------------------------------------------
+# REGISTER
+# ---------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterRateThrottle])
 @parser_classes([JSONParser, MultiPartParser, FormParser])
 def register(request):
-    """Register a new user with optional profile photo."""
+    """Register a new user"""
     logger.info("📝 Register endpoint called")
-    logger.info(f"Content-Type: {request.content_type}")
-    logger.info(f"Data keys: {request.data.keys()}")
-    logger.info(f"Files keys: {request.FILES.keys()}")
 
     serializer = UserRegistrationSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    user = serializer.save(is_active=True, email_verified=False)
+
+    if not serializer.is_valid():
+        return APIResponse.validation_error(
+            message=Messages.REGISTER_FAILED,
+            errors=serializer.errors,
+        )
 
     try:
-        send_verification_email(user)
-        message = 'Registration successful. Please check your email to verify your account.'
+        user = serializer.save(is_active=True, email_verified=False)
+
+        try:
+            send_verification_email(user)
+        except Exception as e:
+            logger.error(f"Verification email failed: {e}")
+
+        refresh = RefreshToken.for_user(user)
+
+        return APIResponse.created(
+            message=Messages.REGISTER_SUCCESS,
+            data={
+                "user": UserSerializer(user, context={"request": request}).data,
+                "tokens": {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                },
+            },
+        )
+
     except Exception as e:
-        logger.error(f"Failed to send verification email: {e}")
-        message = 'Registration successful. You can now log in.'
-
-    refresh = RefreshToken.for_user(user)
-    return Response({
-        'message': message,
-        'user': UserSerializer(user, context={'request': request}).data,
-        'tokens': {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }
-    }, status=status.HTTP_201_CREATED)
+        logger.error("Registration error", exc_info=True)
+        return APIResponse.server_error(message=Messages.REGISTER_FAILED)
 
 
+# ---------------------------------------------------------------------
+# EMAIL VERIFICATION
+# ---------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([EmailVerificationRateThrottle])
 def verify_email(request):
-    """Verify user email address."""
-    logger.info("📧 Verify email endpoint called")
-    
-    token = request.data.get('token')
-    email = request.data.get('email')
-    
+    token = request.data.get("token")
+    email = request.data.get("email")
+
     if not token or not email:
-        return Response(
-            {'error': 'Token and email are required.'},
-            status=status.HTTP_400_BAD_REQUEST
+        return APIResponse.validation_error(
+            message="Token and email are required",
+            errors={"token": ["Required"], "email": ["Required"]},
         )
-    
+
     try:
         user = User.objects.get(email=email)
+
         if user.email_verified:
-            return Response({'message': 'Email already verified.'})
-        
+            return APIResponse.info(message="Email already verified")
+
         if user.verify_email(token):
-            return Response({'message': 'Email verified successfully.'})
-        
-        return Response(
-            {'error': 'Invalid or expired token.'},
-            status=status.HTTP_400_BAD_REQUEST
+            return APIResponse.success(message=Messages.EMAIL_VERIFIED)
+
+        return APIResponse.error(
+            message=Messages.EMAIL_VERIFICATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
+
     except User.DoesNotExist:
-        return Response(
-            {'error': 'Invalid credentials.'},
-            status=status.HTTP_401_UNAUTHORIZED
+        return APIResponse.error(
+            message="Invalid email",
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
 
@@ -150,331 +131,217 @@ def verify_email(request):
 @permission_classes([AllowAny])
 @throttle_classes([EmailVerificationRateThrottle])
 def resend_verification(request):
-    """Resend email verification link."""
-    logger.info("🔄 Resend verification endpoint called")
-    
-    email = request.data.get('email')
-    
+    email = request.data.get("email")
+
     if not email:
-        return Response(
-            {'error': 'Email is required.'},
-            status=status.HTTP_400_BAD_REQUEST
+        return APIResponse.validation_error(
+            message="Email is required",
+            errors={"email": ["Required"]},
         )
-    
+
     try:
         user = User.objects.get(email=email)
+
         if user.email_verified:
-            return Response({'message': 'Email already verified.'})
-        
+            return APIResponse.info(message="Email already verified")
+
         send_verification_email(user)
-        return Response({'message': 'Verification email sent.'})
+        return APIResponse.success(message=Messages.EMAIL_VERIFICATION_SENT)
+
     except User.DoesNotExist:
-        return Response({'message': 'If the email exists, a verification link has been sent.'})
+        return APIResponse.success(
+            message="If the email exists, a verification link was sent."
+        )
 
 
+# ---------------------------------------------------------------------
+# LOGIN
+# ---------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([LoginRateThrottle])
 def login(request):
-    """Authenticate user and return tokens."""
-    logger.info(f"🔐 Login endpoint called - IP: {get_client_ip(request)}")
-    logger.info(f"🔐 Request data keys: {request.data.keys()}")
-
     serializer = LoginSerializer(data=request.data)
-    try:
-        serializer.is_valid(raise_exception=True)
-    except Exception as e:
-        logger.error(f"❌ Login validation failed: {str(e)}")
-        raise
-        
-    user = serializer.validated_data['user']
-    logger.info(f"✅ User authenticated: {user.email}, 2FA: {user.two_factor_enabled}")
+
+    if not serializer.is_valid():
+        return APIResponse.unauthorized(message=Messages.AUTH_FAILED)
+
+    user = serializer.validated_data["user"]
 
     if not user.is_active:
-        logger.warning(f"⚠️ Inactive user login attempt: {user.email}")
-        return Response(
-            {'error': 'Account is disabled. Please contact support.'},
-            status=status.HTTP_403_FORBIDDEN
-        )
+        return APIResponse.forbidden(message=Messages.AUTH_INACTIVE)
 
-    # Check if 2FA is enabled
+    # 2FA check
     if user.two_factor_enabled:
         temp_token = secrets.token_urlsafe(32)
-        cache_key = f'2fa_{temp_token}'
-        
+        cache_key = f"2fa_{temp_token}"
+
         if not safe_cache_set(cache_key, user.id, timeout=300):
-            logger.error(f"❌ Cache unavailable, cannot process 2FA for {user.email}")
-            return Response(
-                {'error': 'Authentication service temporarily unavailable. Please try again.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            return APIResponse.server_error(
+                message="2FA service unavailable"
             )
-        
-        logger.info(f"🔐 2FA required for user {user.email}")
-        return Response({
-            'requires_2fa': True,
-            'temp_token': temp_token,
-            'email': user.email
-        }, status=status.HTTP_202_ACCEPTED)
 
-    # Update last login
-    try:
-        user.last_login = timezone.now()
-        user.save(update_fields=['last_login'])
-    except Exception as e:
-        logger.error(f"❌ Failed to update last_login: {str(e)}")
-
-    # Generate tokens
-    try:
-        refresh = RefreshToken.for_user(user)
-        logger.info(f"✅ Login successful for user {user.email}")
-        return Response({
-            'user': UserSerializer(user).data,
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
-        })
-    except Exception as e:
-        logger.error(f"❌ Token generation failed: {str(e)}")
-        return Response(
-            {'error': 'Authentication successful but token generation failed.'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        return APIResponse.info(
+            message=Messages.TWO_FA_REQUIRED,
+            data={
+                "requires_2fa": True,
+                "temp_token": temp_token,
+                "email": user.email,
+            },
         )
 
+    user.last_login = timezone.now()
+    user.save(update_fields=["last_login"])
 
+    refresh = RefreshToken.for_user(user)
+
+    return APIResponse.success(
+        message=Messages.AUTH_SUCCESS,
+        data={
+            "user": UserSerializer(user).data,
+            "tokens": {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            },
+        },
+    )
+
+
+# ---------------------------------------------------------------------
+# VERIFY 2FA
+# ---------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([TwoFactorRateThrottle])
 def verify_2fa(request):
-    """Verify 2FA code and complete login."""
-    logger.info("🔐 Verify 2FA endpoint called")
-    
-    serializer = TwoFactorVerifySerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    
-    temp_token = request.data.get('temp_token')
-    if not temp_token:
-        return Response(
-            {'error': 'Invalid request.'},
-            status=status.HTTP_400_BAD_REQUEST
+    temp_token = request.data.get("temp_token")
+    code = request.data.get("code")
+    email = request.data.get("email")
+    is_backup_code = request.data.get("is_backup_code", False)
+
+    if not all([temp_token, code, email]):
+        return APIResponse.validation_error(
+            message="Missing fields",
+            errors={"fields": ["temp_token, code, email required"]},
         )
-    
-    cache_key = f'2fa_{temp_token}'
+
+    cache_key = f"2fa_{temp_token}"
     user_id = safe_cache_get(cache_key)
-    
+
     if not user_id:
-        return Response(
-            {'error': 'Session expired. Please login again.'},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
-    
+        return APIResponse.unauthorized(message="Session expired")
+
     try:
-        user = User.objects.get(id=user_id, email=serializer.validated_data['email'])
+        user = User.objects.get(id=user_id, email=email)
     except User.DoesNotExist:
-        return Response(
-            {'error': 'Invalid credentials.'},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
-    
-    is_valid = (
-        user.verify_backup_code(serializer.validated_data['code'])
-        if serializer.validated_data.get('is_backup_code')
-        else user.verify_2fa_code(serializer.validated_data['code'])
+        return APIResponse.unauthorized(message=Messages.AUTH_FAILED)
+
+    valid = (
+        user.verify_backup_code(code)
+        if is_backup_code
+        else user.verify_2fa_code(code)
     )
-    
-    if not is_valid:
-        return Response(
-            {'error': 'Invalid verification code.'},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
-    
+
+    if not valid:
+        return APIResponse.unauthorized(message=Messages.TWO_FA_INVALID)
+
     safe_cache_delete(cache_key)
-    
-    try:
-        user.last_login = timezone.now()
-        user.save(update_fields=['last_login'])
-    except Exception as e:
-        logger.error(f"Failed to update last_login: {str(e)}")
-    
+
+    user.last_login = timezone.now()
+    user.save(update_fields=["last_login"])
+
     refresh = RefreshToken.for_user(user)
-    return Response({
-        'user': UserSerializer(user).data,
-        'tokens': {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
-        }
-    })
+
+    return APIResponse.success(
+        message=Messages.AUTH_SUCCESS,
+        data={
+            "user": UserSerializer(user).data,
+            "tokens": {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            },
+        },
+    )
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-@throttle_classes([BiometricRateThrottle])
-def biometric_challenge(request):
-    """Generate biometric authentication challenge."""
-    logger.info("👆 Biometric challenge endpoint called")
-    
-    email = request.data.get('email')
-    device_id = request.data.get('device_id')
-    
-    try:
-        user = User.objects.get(email=email, is_active=True)
-        device = BiometricDevice.objects.get(
-            user=user,
-            device_id=device_id,
-            is_active=True
-        )
-    except (User.DoesNotExist, BiometricDevice.DoesNotExist):
-        return Response(
-            {'error': 'Invalid credentials.'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    return Response({
-        'challenge': BiometricVerifier.generate_challenge(email),
-        'credential_id': device.credential_id
-    })
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-@throttle_classes([BiometricRateThrottle])
-def biometric_login(request):
-    """Authenticate user with biometric data."""
-    logger.info("👆 Biometric login endpoint called")
-    
-    try:
-        device = BiometricDevice.objects.get(
-            credential_id=request.data['credential_id']
-        )
-        
-        is_valid = BiometricVerifier.verify_signature(
-            email=request.data['email'],
-            public_key_pem=device.public_key,
-            signature=request.data['auth_signature'],
-            challenge_response=request.data['challenge_response']
-        )
-    except BiometricDevice.DoesNotExist:
-        return Response(
-            {'error': 'Device not found.'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    if not is_valid:
-        return Response(
-            {'error': 'Authentication failed.'},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
-    
-    user = User.objects.get(email=request.data['email'])
-    
-    try:
-        user.last_login = timezone.now()
-        user.save(update_fields=['last_login'])
-    except Exception as e:
-        logger.error(f"Failed to update last_login: {str(e)}")
-    
-    refresh = RefreshToken.for_user(user)
-    
-    return Response({
-        'user': UserSerializer(user).data,
-        'tokens': {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
-        }
-    })
-
-
+# ---------------------------------------------------------------------
+# PASSWORD RESET
+# ---------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([PasswordResetRateThrottle])
 def forgot_password(request):
-    """Send password reset email."""
-    logger.info("🔑 Forgot password endpoint called")
-    
-    email = request.data.get('email', '').lower()
-    
+    email = request.data.get("email", "").lower()
+
     if not email:
-        return Response(
-            {'error': 'Email is required.'},
-            status=status.HTTP_400_BAD_REQUEST
+        return APIResponse.validation_error(
+            message="Email is required",
+            errors={"email": ["Required"]},
         )
-    
+
     try:
         user = User.objects.get(email=email, is_active=True)
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
+
         reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
-        
+
         send_mail(
-            subject='Password Reset Request',
-            message=f'Click the link to reset your password: {reset_url}',
+            subject="Password Reset",
+            message=f"Reset your password: {reset_url}",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
-            fail_silently=False,
         )
     except User.DoesNotExist:
         pass
-    except Exception as e:
-        logger.error(f"Failed to send password reset email: {e}")
-    
-    return Response({
-        'message': 'If your email exists in our system, you will receive a password reset link.'
-    })
+
+    return APIResponse.success(message=Messages.PASSWORD_RESET_SENT)
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([PasswordResetRateThrottle])
 def reset_password_confirm(request):
-    """Confirm password reset with new password."""
-    logger.info("🔑 Reset password confirm endpoint called")
-    
-    uid = request.data.get('uid')
-    token = request.data.get('token')
-    new_password = request.data.get('new_password')
-    
+    uid = request.data.get("uid")
+    token = request.data.get("token")
+    new_password = request.data.get("new_password")
+
     if not all([uid, token, new_password]):
-        return Response(
-            {'error': 'Missing required fields.'},
-            status=status.HTTP_400_BAD_REQUEST
+        return APIResponse.validation_error(
+            message="Missing fields",
+            errors={"fields": ["uid, token, new_password required"]},
         )
-    
+
     try:
         user_id = force_str(urlsafe_base64_decode(uid))
         user = User.objects.get(pk=user_id)
-    except (User.DoesNotExist, ValueError, TypeError):
-        return Response(
-            {'error': 'Invalid reset link.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    if not default_token_generator.check_token(user, token):
-        return Response(
-            {'error': 'Invalid or expired token.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    try:
+
+        if not default_token_generator.check_token(user, token):
+            return APIResponse.error(
+                message="Invalid or expired token",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
         validate_password(new_password, user)
-    except ValidationError as e:
-        return Response(
-            {'error': e.messages},
-            status=status.HTTP_400_BAD_REQUEST
+        user.set_password(new_password)
+        user.save()
+
+        return APIResponse.success(message=Messages.PASSWORD_RESET_SUCCESS)
+
+    except (User.DoesNotExist, ValidationError):
+        return APIResponse.error(
+            message=Messages.PASSWORD_RESET_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
-    
-    user.set_password(new_password)
-    user.save()
-    
-    return Response({'message': 'Password has been reset successfully.'})
 
 
-# Test endpoint
+# ---------------------------------------------------------------------
+# TEST
+# ---------------------------------------------------------------------
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def test_endpoint(request):
-    """Test endpoint to verify API is accessible."""
-    return Response({
-        'message': 'API is working!',
-        'method': request.method,
-        'headers': dict(request.headers)
-    })
+    return APIResponse.success(
+        message="API is working",
+        data={"method": request.method, "time": timezone.now()},
+    )

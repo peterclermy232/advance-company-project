@@ -41,6 +41,7 @@ export class NotificationService implements OnDestroy {
   public notifications$ = this.notificationsSubject.asObservable();
 
   private pollingSubscription: any;
+  loading: any;
 
   constructor() {
     this.initialize();
@@ -206,4 +207,13 @@ export class NotificationService implements OnDestroy {
       verticalPosition: 'top'
     });
   }
+
+  warning(message: string, action: string = 'OK', duration = 3500): void {
+  this.snackBar.open(message, action, {
+    duration,
+    panelClass: ['snackbar-warning'],
+    horizontalPosition: 'right',
+    verticalPosition: 'top'
+  });
+}
 }

@@ -30,17 +30,18 @@ export class BeneficiaryListComponent implements OnInit {
   }
 
   loadBeneficiaries() {
-    this.beneficiaryService.getBeneficiaries().subscribe({
-      next: (response) => {
-        this.beneficiaries = response.results;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading beneficiaries:', error);
-        this.isLoading = false;
-      }
-    });
-  }
+  this.beneficiaryService.getBeneficiaries().subscribe({
+    next: (response) => {
+      this.beneficiaries = response.results;
+      this.isLoading = false;
+    },
+    error: (error) => {
+      console.error('Error loading beneficiaries:', error);
+      this.notificationService.error('Failed to load beneficiaries');
+      this.isLoading = false;
+    }
+  });
+}
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
@@ -49,19 +50,25 @@ export class BeneficiaryListComponent implements OnInit {
   confirmDelete(beneficiary: Beneficiary) {
     this.selectedBeneficiary = beneficiary;
     this.showDeleteModal = true;
+    this.notificationService.warning(`⚠️ You're about to remove ${beneficiary.name}`);
   }
 
   deleteBeneficiary() {
     if (this.selectedBeneficiary) {
+      const loadingToast = this.notificationService.loading('Removing beneficiary...');
+      
       this.beneficiaryService.deleteBeneficiary(this.selectedBeneficiary.id).subscribe({
         next: () => {
-          this.notificationService.success('Beneficiary removed successfully');
+          loadingToast.dismiss();
+          this.notificationService.success(`✓ ${this.selectedBeneficiary!.name} has been removed successfully`);
           this.beneficiaries = this.beneficiaries.filter(b => b.id !== this.selectedBeneficiary!.id);
           this.showDeleteModal = false;
           this.selectedBeneficiary = null;
         },
         error: (error) => {
-          this.notificationService.error('Failed to remove beneficiary');
+          loadingToast.dismiss();
+          this.notificationService.error('❌ Failed to remove beneficiary. Please try again.');
+          console.error('Delete error:', error);
         }
       });
     }

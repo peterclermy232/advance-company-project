@@ -135,14 +135,18 @@ export class FinancialComponent implements OnInit {
     if (!this.selectedDeposit || !this.isAdmin) return;
 
     this.isProcessing = true;
+    const loadingToast = this.notificationService.loading('Processing approval...');
+    
     this.financialService.approveDeposit(this.selectedDeposit.id).subscribe({
       next: (response) => {
-        this.notificationService.success('Deposit approved successfully');
+        loadingToast.dismiss();
+        this.notificationService.success(`✓ Deposit of ${this.selectedDeposit!.amount} approved for ${this.selectedDeposit!.user_name}!`);
         this.loadDeposits();
         this.closeModals();
         this.isProcessing = false;
       },
       error: (error) => {
+        loadingToast.dismiss();
         const message = error.error?.error || 'Failed to approve deposit';
         this.notificationService.error(message);
         this.isProcessing = false;
@@ -154,14 +158,18 @@ export class FinancialComponent implements OnInit {
     if (!this.selectedDeposit || !this.isAdmin) return;
 
     this.isProcessing = true;
+    const loadingToast = this.notificationService.loading('Processing rejection...');
+    
     this.financialService.rejectDeposit(this.selectedDeposit.id, reason).subscribe({
       next: (response) => {
-        this.notificationService.success('Deposit rejected');
+        loadingToast.dismiss();
+        this.notificationService.warning(`⚠️ Deposit rejected for ${this.selectedDeposit!.user_name}`);
         this.loadDeposits();
         this.closeModals();
         this.isProcessing = false;
       },
       error: (error) => {
+        loadingToast.dismiss();
         const message = error.error?.error || 'Failed to reject deposit';
         this.notificationService.error(message);
         this.isProcessing = false;

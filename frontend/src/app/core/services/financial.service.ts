@@ -1,11 +1,18 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, catchError, throwError } from 'rxjs';
+import { Observable, tap, catchError, throwError, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CanDepositResponse, Deposit, DepositResponse } from '../models/financial.model';
 import { ToastService } from './toast.service';
 
-
+// Backend response interface
+interface BackendResponse<T = any> {
+  success: boolean;
+  message: string;
+  toast_type: 'success' | 'error' | 'warning' | 'info';
+  data?: T;
+  errors?: any;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -15,79 +22,151 @@ export class FinancialService {
   private toastService = inject(ToastService);
   private apiUrl = `${environment.apiUrl}/financial`;
 
+  /**
+   * Helper method to show backend toast message
+   */
+  private showBackendToast(response: BackendResponse) {
+    if (!response.message) return;
+    
+    switch (response.toast_type) {
+      case 'success':
+        this.toastService.success(response.message);
+        break;
+      case 'error':
+        this.toastService.error(response.message);
+        break;
+      case 'warning':
+        this.toastService.warning(response.message);
+        break;
+      case 'info':
+        this.toastService.info(response.message);
+        break;
+      default:
+        this.toastService.info(response.message);
+    }
+  }
+
+  /**
+   * Helper method to handle backend error responses
+   */
+  private handleBackendError(error: any): Observable<never> {
+    // Check if error has backend response format
+    if (error.error?.message) {
+      const backendError = error.error as BackendResponse;
+      this.showBackendToast(backendError);
+    } else if (error.error?.detail) {
+      this.toastService.error(error.error.detail);
+    } else if (error.message) {
+      this.toastService.error(error.message);
+    } else {
+      this.toastService.error('An unexpected error occurred');
+    }
+    
+    return throwError(() => error);
+  }
+
   // Account endpoints
   getMyAccount(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/accounts/my_account/`)
+    return this.http.get<BackendResponse>(`${this.apiUrl}/accounts/my_account/`)
       .pipe(
-        catchError(error => {
-          this.toastService.error('Failed to load account information');
-          return throwError(() => error);
-        })
+        tap(response => {
+          // Optionally show message for account fetch
+          if (response.message) {
+            this.showBackendToast(response);
+          }
+        }),
+        map(response => response.data || response),
+        catchError(error => this.handleBackendError(error))
       );
   }
 
   getAccounts(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/accounts/`);
+    return this.http.get<BackendResponse>(`${this.apiUrl}/accounts/`)
+      .pipe(
+        map(response => response.data || response),
+        catchError(error => this.handleBackendError(error))
+      );
   }
 
   // Deposit endpoints
   getDeposits(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/deposits/`);
+    return this.http.get<BackendResponse>(`${this.apiUrl}/deposits/`)
+      .pipe(
+        map(response => response.data || response),
+        catchError(error => this.handleBackendError(error))
+      );
   }
 
   createDeposit(data: any): Observable<DepositResponse> {
-    return this.http.post<DepositResponse>(`${this.apiUrl}/deposits/`, data)
+    return this.http.post<BackendResponse<DepositResponse>>(`${this.apiUrl}/deposits/`, data)
       .pipe(
-        catchError(error => {
-          console.error('Deposit creation error:', error);
-          return throwError(() => error);
-        })
+        tap(response => {
+          this.showBackendToast(response);
+        }),
+        map(response => response.data as DepositResponse),
+        catchError(error => this.handleBackendError(error))
       );
   }
 
   canDeposit(): Observable<CanDepositResponse> {
-    return this.http.get<CanDepositResponse>(`${this.apiUrl}/deposits/can_deposit/`);
+    return this.http.get<BackendResponse<CanDepositResponse>>(`${this.apiUrl}/deposits/can_deposit/`)
+      .pipe(
+        tap(response => {
+          // Only show toast if deposit is not allowed
+          if (response.data && !response.data.can_deposit && response.message) {
+            this.showBackendToast(response);
+          }
+        }),
+        map(response => response.data as CanDepositResponse),
+        catchError(error => this.handleBackendError(error))
+      );
   }
 
   getMonthlySummary(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/deposits/monthly_summary/`);
+    return this.http.get<BackendResponse>(`${this.apiUrl}/deposits/monthly_summary/`)
+      .pipe(
+        map(response => response.data || response),
+        catchError(error => this.handleBackendError(error))
+      );
   }
 
   // Admin endpoints
   getPendingApprovals(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/deposits/pending_approvals/`);
+    return this.http.get<BackendResponse>(`${this.apiUrl}/deposits/pending_approvals/`)
+      .pipe(
+        map(response => response.data || response),
+        catchError(error => this.handleBackendError(error))
+      );
   }
 
   approveDeposit(depositId: number): Observable<any> {
-    return this.http.post(`${this.apiUrl}/deposits/${depositId}/approve_deposit/`, {})
+    return this.http.post<BackendResponse>(`${this.apiUrl}/deposits/${depositId}/approve_deposit/`, {})
       .pipe(
-        tap(() => {
-          this.toastService.success('Deposit approved successfully! ✓');
+        tap(response => {
+          this.showBackendToast(response);
         }),
-        catchError(error => {
-          const message = error.error?.error || 'Failed to approve deposit';
-          this.toastService.error(message);
-          return throwError(() => error);
-        })
+        map(response => response.data || response),
+        catchError(error => this.handleBackendError(error))
       );
   }
 
   rejectDeposit(depositId: number, reason: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/deposits/${depositId}/reject_deposit/`, { reason })
+    return this.http.post<BackendResponse>(`${this.apiUrl}/deposits/${depositId}/reject_deposit/`, { reason })
       .pipe(
-        tap(() => {
-          this.toastService.warning('Deposit rejected');
+        tap(response => {
+          this.showBackendToast(response);
         }),
-        catchError(error => {
-          const message = error.error?.error || 'Failed to reject deposit';
-          this.toastService.error(message);
-          return throwError(() => error);
-        })
+        map(response => response.data || response),
+        catchError(error => this.handleBackendError(error))
       );
   }
 
   // Interest calculations
   getInterestCalculations(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/interest/`);
+    return this.http.get<BackendResponse>(`${this.apiUrl}/interest/`)
+      .pipe(
+        map(response => response.data || response),
+        catchError(error => this.handleBackendError(error))
+      );
   }
 }

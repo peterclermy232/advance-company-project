@@ -6,6 +6,11 @@ export interface User {
   full_name: string;
   phone_number?: string;
 
+  age?: number;
+  gender?: string;
+  marital_status?: string;
+  profession?: string;
+  
   profile_photo?: string | null;
   profile_photo_url?: string | null;
 
@@ -21,19 +26,6 @@ export interface User {
   biometric_enabled: boolean;
 
   role?: string;
-
-  age?: number;
-  gender?: 'M' | 'F' | 'O';
-  marital_status?: string;
-  number_of_kids?: number;
-  profession?: string;
-  salary_range?: string;
-
-  spouse_name?: string;
-  spouse_age?: number;
-  spouse_profession?: string;
-
-  identity_document?: string;
   activity_status: string;
 
   created_at: string;
@@ -63,56 +55,4 @@ export interface RegisterRequest {
   first_name: string;
   last_name: string;
   phone_number?: string;
-}
-
-export interface TwoFactorRequiredResponse {
-  requires_2fa: true;
-  temp_token: string;
-  email: string;
-}
-
-export interface TwoFactorSetup {
-  secret: string;
-  qr_code: string;
-}
-
-export interface TwoFactorConfirmResponse {
-  message: string;
-  backup_codes: string[];
-}
-
-/* ================= BIOMETRIC ================= */
-
-export interface BiometricDevice {
-  id: number;
-  device_type: string;
-  device_id: string;
-  device_name: string;
-  credential_id: string;
-  is_active: boolean;
-  created_at: string;
-  last_used?: string;
-}
-
-/* ================= PASSWORD ================= */
-
-export interface PasswordResetRequest {
-  email: string;
-}
-
-export interface PasswordResetConfirm {
-  uid: string;
-  token: string;
-  new_password: string;
-}
-
-export interface TokenRefreshResponse {
-  access: string;
-  refresh?: string;
-}
-
-export interface ErrorResponse {
-  error?: string;
-  detail?: string;
-  [key: string]: any;
 }
