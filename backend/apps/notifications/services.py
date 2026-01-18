@@ -99,14 +99,26 @@ class NotificationService:
         )
     
     @staticmethod
-    def notify_document_verified(document):
-        """Notify user when their document is verified"""
+    def notify_beneficiary_added(beneficiary):
+        """Notify user when they add a beneficiary"""
         NotificationService.create_notification(
-            user=document.user,
-            notification_type='document_verified',
-            title='Document Verified',
-            message=f'Your document "{document.title}" has been verified.',
+            user=beneficiary.user,
+            notification_type='beneficiary_added',
+            title='Beneficiary Added',
+            message=f'Beneficiary "{beneficiary.name}" has been added and is pending verification.',
         )
+        
+        # Notify all admins about new beneficiary for verification
+        from apps.accounts.models import User
+        admins = User.objects.filter(role='admin', is_active=True)
+        for admin in admins:
+            NotificationService.create_notification(
+                user=admin,
+                notification_type='beneficiary_added',
+                title='New Beneficiary Pending Verification',
+                message=f'{beneficiary.user.full_name} added beneficiary: {beneficiary.name} ({beneficiary.get_relation_display()})',
+                related_user_name=beneficiary.user.full_name
+            )
     
     @staticmethod
     def notify_beneficiary_verified(beneficiary):
@@ -115,5 +127,25 @@ class NotificationService:
             user=beneficiary.user,
             notification_type='beneficiary_verified',
             title='Beneficiary Verified',
-            message=f'Beneficiary "{beneficiary.name}" has been verified.',
+            message=f'Your beneficiary "{beneficiary.name}" has been verified and approved.',
+        )
+    
+    @staticmethod
+    def notify_beneficiary_rejected(beneficiary, reason):
+        """Notify user when their beneficiary is rejected"""
+        NotificationService.create_notification(
+            user=beneficiary.user,
+            notification_type='beneficiary_rejected',
+            title='Beneficiary Rejected',
+            message=f'Your beneficiary "{beneficiary.name}" was rejected. Reason: {reason}',
+        )
+    
+    @staticmethod
+    def notify_beneficiary_deceased(beneficiary):
+        """Notify user when beneficiary is marked deceased"""
+        NotificationService.create_notification(
+            user=beneficiary.user,
+            notification_type='beneficiary_deceased',
+            title='Beneficiary Status Updated',
+            message=f'Beneficiary "{beneficiary.name}" has been marked as deceased.',
         )

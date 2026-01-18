@@ -8,7 +8,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 
-import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
@@ -44,6 +44,16 @@ export const appConfig: ApplicationConfig = {
     // REQUIRED for Angular Material SnackBar
     provideAnimations(),
     importProvidersFrom(MatSnackBarModule),
+
+    // ✅ Configure default toast position and duration
+    {
+      provide: MAT_SNACK_BAR_DEFAULT_OPTIONS,
+      useValue: {
+        horizontalPosition: 'right',
+        verticalPosition: 'top',
+        duration: 4000
+      }
+    },
 
     // Initialize notification service on app startup
     {

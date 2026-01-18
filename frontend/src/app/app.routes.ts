@@ -69,6 +69,12 @@ export const routes: Routes = [
     .then(m => m.AdminAnalyticsComponent),
   canActivate: [authGuard, adminGuard]
 },
+{
+  path: 'admin/beneficiary-verification',
+  loadComponent: () => import('./features/admin/beneficiary-verification/beneficiary-verification.component')
+    .then(m => m.BeneficiaryVerificationComponent),
+  canActivate: [authGuard, adminGuard]
+},
   {
     path: '**',
     redirectTo: '/dashboard'
