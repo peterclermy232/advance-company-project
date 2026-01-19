@@ -9,7 +9,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const token = authService.getToken();
 
-  // List of public endpoints that don't need authentication
   const publicEndpoints = [
     '/auth/login/',
     '/auth/register/',
@@ -25,12 +24,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     '/token/verify/'
   ];
 
-  // Check if the request is to a public endpoint
-  const isPublicEndpoint = publicEndpoints.some(endpoint => 
+  const isPublicEndpoint = publicEndpoints.some(endpoint =>
     req.url.includes(endpoint)
   );
 
-  // Add token to request if authenticated and not a public endpoint
+  // Attach token ONLY for protected endpoints
   if (token && !isPublicEndpoint) {
     req = req.clone({
       setHeaders: {
@@ -39,45 +37,39 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     });
   }
 
-  // Handle the request and catch errors
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Handle 401 Unauthorized errors (token expired)
-      if (error.status === 401 && !req.url.includes('/token/refresh/')) {
-        // Try to refresh the token
+
+      // 🚫 DO NOT refresh token for public/auth endpoints
+      if (error.status === 401 && !isPublicEndpoint && !req.url.includes('/token/refresh/')) {
         return authService.refreshToken().pipe(
           switchMap(() => {
-            // Retry the original request with new token
             const newToken = authService.getToken();
-            const retryReq = req.clone({
-              setHeaders: {
-                Authorization: `Bearer ${newToken}`
-              }
-            });
-            return next(retryReq);
+            return next(
+              req.clone({
+                setHeaders: {
+                  Authorization: `Bearer ${newToken}`
+                }
+              })
+            );
           }),
           catchError(refreshError => {
-            // If refresh fails, logout user
             authService.logout();
-            router.navigate(['/auth/login']);
             return throwError(() => refreshError);
           })
         );
       }
 
-      // Handle 403 Forbidden errors
+      // Optional handlers
       if (error.status === 403) {
         console.error('Access forbidden:', error);
-        // Optionally redirect to a forbidden page or show a message
       }
 
-      // Handle 429 Too Many Requests (rate limiting)
       if (error.status === 429) {
         console.error('Rate limit exceeded:', error);
-        // You can show a toast message here
       }
 
-      // Pass through other errors
+      // ✅ Let AuthService handle backend toast messages
       return throwError(() => error);
     })
   );

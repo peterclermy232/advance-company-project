@@ -14,7 +14,7 @@ export class ToastService {
   };
 
   success(message: string, duration: number = 4000): void {
-    this.snackBar.open(message, '✓', {
+    this.snackBar.open(message, undefined, {
       ...this.defaultConfig,
       duration,
       panelClass: ['snackbar-success']
@@ -22,7 +22,7 @@ export class ToastService {
   }
 
   error(message: string, duration: number = 5000): void {  
-    this.snackBar.open(message, '✕', {
+    this.snackBar.open(message, undefined, {
       ...this.defaultConfig,
       duration,
       panelClass: ['snackbar-error']
@@ -30,7 +30,7 @@ export class ToastService {
   }
 
   warning(message: string, duration: number = 4000): void { 
-    this.snackBar.open(message, '⚠', {
+    this.snackBar.open(message, undefined, {
       ...this.defaultConfig,
       duration,
       panelClass: ['snackbar-warning']
@@ -38,7 +38,7 @@ export class ToastService {
   }
 
   info(message: string, duration: number = 4000): void {  
-    this.snackBar.open(message, 'ℹ', {
+    this.snackBar.open(message, undefined, {
       ...this.defaultConfig,
       duration,
       panelClass: ['snackbar-info']

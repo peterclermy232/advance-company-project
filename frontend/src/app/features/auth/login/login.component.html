@@ -12,31 +12,8 @@
         </div>
       </div>
     </div>
-
     <h2 class="text-3xl font-bold text-gray-800 text-center mb-2">Welcome Back</h2>
     <p class="text-gray-500 text-center mb-6">Sign in to continue</p>
-
-    <!-- Role Toggle -->
-    <!-- <div class="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
-      <button
-        type="button"
-        (click)="selectRole('user')"
-        [class.bg-blue-600]="selectedRole === 'user'"
-        [class.text-white]="selectedRole === 'user'"
-        [class.text-gray-600]="selectedRole !== 'user'"
-        class="flex-1 py-2 rounded-md font-medium transition-all shadow-md">
-        User
-      </button>
-      <button
-        type="button"
-        (click)="selectRole('admin')"
-        [class.bg-indigo-600]="selectedRole === 'admin'"
-        [class.text-white]="selectedRole === 'admin'"
-        [class.text-gray-600]="selectedRole !== 'admin'"
-        class="flex-1 py-2 rounded-md font-medium transition-all shadow-md">
-        Admin
-      </button>
-    </div> -->
 
     <!-- Login Form -->
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-4">

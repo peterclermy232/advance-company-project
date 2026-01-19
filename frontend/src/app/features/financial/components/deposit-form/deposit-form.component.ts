@@ -142,14 +142,14 @@ export class DepositFormComponent implements OnInit {
           
           // Show success message with M-Pesa instructions
           this.toastService.success(
-            '🎉 M-Pesa STK Push sent! Check your phone and enter your PIN to complete the payment.',
+            'M-Pesa STK Push sent! Check your phone and enter your PIN to complete the payment.',
             10000 // Show for 10 seconds
           );
           
           // Show detailed instructions
           setTimeout(() => {
             this.toastService.info(
-              '📱 Enter your M-Pesa PIN on your phone to pay KES 20,000',
+              'Enter your M-Pesa PIN on your phone to pay KES 20,000',
               8000
             );
           }, 1000);

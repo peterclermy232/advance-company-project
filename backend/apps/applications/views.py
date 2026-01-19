@@ -2,10 +2,13 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import JSONParser
 from django.utils import timezone
 from .models import Application, ApplicationActivity
 from .serializers import ApplicationSerializer, ApplicationActivitySerializer
 from apps.notifications.services import NotificationService
+
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all()
     serializer_class = ApplicationSerializer
@@ -13,6 +16,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     filterset_fields = ['application_type', 'status']
     search_fields = ['user__full_name', 'reason']
     ordering_fields = ['created_at', 'updated_at']
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_queryset(self):
         if self.request.user.role == 'admin':
@@ -29,7 +33,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         )
         NotificationService.notify_application_submitted(application)
         
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'],parser_classes=[JSONParser, MultiPartParser, FormParser])
     def approve(self, request, pk=None):
         if request.user.role != 'admin':
             return Response(
@@ -55,7 +59,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         
         return Response({'message': 'Application approved successfully'})
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'],parser_classes=[JSONParser, MultiPartParser, FormParser])
     def reject(self, request, pk=None):
         if request.user.role != 'admin':
             return Response(
@@ -81,7 +85,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
         return Response({'message': 'Application rejected'})
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'],parser_classes=[JSONParser, MultiPartParser, FormParser])
     def review(self, request, pk=None):
         if request.user.role != 'admin':
             return Response(

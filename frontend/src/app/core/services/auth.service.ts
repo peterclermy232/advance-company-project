@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, tap, catchError, throwError, map } from 'rxjs';
 import { User, AuthResponse, LoginRequest, RegisterRequest } from '../models/user.model';
@@ -32,6 +32,8 @@ export class AuthService {
 
   constructor() {
     this.loadUserFromStorage();
+    console.log('✅ AuthService initialized');
+    console.log('✅ ToastService exists:', !!this.toastService);
   }
 
   private loadUserFromStorage(): void {
@@ -51,70 +53,142 @@ export class AuthService {
    * Helper method to show backend toast message
    */
   private showBackendToast(response: BackendResponse) {
-    if (!response.message) return;
+    console.log('🔔 ========== SHOW TOAST ==========');
+    console.log('🔔 Response:', response);
+    console.log('🔔 Has message:', !!response.message);
+    console.log('🔔 Message:', response.message);
+    console.log('🔔 Toast type:', response.toast_type);
     
-    switch (response.toast_type) {
-      case 'success':
-        this.toastService.success(response.message);
-        break;
-      case 'error':
-        this.toastService.error(response.message);
-        break;
-      case 'warning':
-        this.toastService.warning(response.message);
-        break;
-      case 'info':
-        this.toastService.info(response.message);
-        break;
-      default:
-        this.toastService.info(response.message);
+    if (!response.message) {
+      console.warn('⚠️ No message in response - skipping toast');
+      return;
     }
+    
+    try {
+      switch (response.toast_type) {
+        case 'success':
+          console.log('✅ Calling SUCCESS toast');
+          this.toastService.success(response.message);
+          console.log('✅ SUCCESS toast called');
+          break;
+        case 'error':
+          console.log('❌ Calling ERROR toast');
+          this.toastService.error(response.message);
+          console.log('❌ ERROR toast called');
+          break;
+        case 'warning':
+          console.log('⚠️ Calling WARNING toast');
+          this.toastService.warning(response.message);
+          console.log('⚠️ WARNING toast called');
+          break;
+        case 'info':
+          console.log('ℹ️ Calling INFO toast');
+          this.toastService.info(response.message);
+          console.log('ℹ️ INFO toast called');
+          break;
+        default:
+          console.log('ℹ️ Calling INFO toast (default)');
+          this.toastService.info(response.message);
+          console.log('ℹ️ INFO toast called (default)');
+      }
+    } catch (error) {
+      console.error('💥 ERROR showing toast:', error);
+    }
+    console.log('🔔 ====================================');
   }
 
   /**
    * Helper method to handle backend error responses
    */
   private handleBackendError(error: any): Observable<never> {
-    // Check if error has backend response format
-    if (error.error?.message) {
-      const backendError = error.error as BackendResponse;
-      this.showBackendToast(backendError);
-    } else if (error.error?.detail) {
-      // Handle Django Rest Framework error format
-      this.toastService.error(error.error.detail);
-    } else if (error.message) {
+    console.log('🔴 ========== ERROR HANDLER ==========');
+    console.log('🔴 Error object:', error);
+    console.log('🔴 error.status:', error.status);
+    console.log('🔴 error.error:', error.error);
+    console.log('🔴 Type of error.error:', typeof error.error);
+    
+    // Check if error.error exists and is an object
+    if (error.error && typeof error.error === 'object') {
+      console.log('🔴 error.error is an object');
+      console.log('🔴 error.error.message:', error.error.message);
+      console.log('🔴 error.error.toast_type:', error.error.toast_type);
+      
+      // Check for backend response format with message and toast_type
+      if (error.error.message && error.error.toast_type) {
+        console.log('🔴 ✅ Found BackendResponse format!');
+        const backendError = error.error as BackendResponse;
+        this.showBackendToast(backendError);
+      }
+      // Check for Django Rest Framework detail format
+      else if (error.error.detail) {
+        console.log('🔴 Found DRF detail error');
+        this.toastService.error(error.error.detail);
+      }
+      // Check for generic error field
+      else if (error.error.error) {
+        console.log('🔴 Found generic error field');
+        this.toastService.error(error.error.error);
+      }
+      else {
+        console.log('🔴 Unknown error format, using generic message');
+        this.toastService.error('An error occurred. Please try again.');
+      }
+    }
+    // If error.error is a string
+    else if (typeof error.error === 'string') {
+      console.log('🔴 error.error is a string:', error.error);
+      this.toastService.error(error.error);
+    }
+    // Fallback to error.message
+    else if (error.message) {
+      console.log('🔴 Using error.message:', error.message);
       this.toastService.error(error.message);
-    } else {
+    }
+    // Final fallback
+    else {
+      console.log('🔴 No error info found, using generic message');
       this.toastService.error('An unexpected error occurred');
     }
     
+    console.log('🔴 ====================================');
     return throwError(() => error);
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-  return this.http
-    .post<BackendResponse<AuthResponse>>(
-      `${environment.apiUrl}/auth/login/`,
-      credentials
-    )
-    .pipe(
-      tap(response => {
-        this.showBackendToast(response);
+    console.log('🔵 ========== LOGIN START ==========');
+    console.log('🔵 Credentials:', credentials);
+    
+    return this.http
+      .post<BackendResponse<AuthResponse>>(
+        `${environment.apiUrl}/auth/login/`,
+        credentials
+      )
+      .pipe(
+        tap(response => {
+          console.log('🟢 ========== LOGIN SUCCESS ==========');
+          console.log('🟢 Response:', response);
+          console.log('🟢 Calling showBackendToast...');
+          this.showBackendToast(response);
 
-        if ((response.data as any)?.requires_2fa) {
-          sessionStorage.setItem('temp_token', (response.data as any).temp_token);
-          sessionStorage.setItem('temp_email', (response.data as any).email);
-        }
+          if ((response.data as any)?.requires_2fa) {
+            console.log('🔐 2FA required');
+            sessionStorage.setItem('temp_token', (response.data as any).temp_token);
+            sessionStorage.setItem('temp_email', (response.data as any).email);
+          }
 
-        if (response.data) {
-          this.handleAuthResponse(response.data);
-        }
-      }),
-      map(response => response.data as AuthResponse), // ✅ REQUIRED
-      catchError(error => this.handleBackendError(error))
-    );
-}
-
+          if (response.data) {
+            console.log('💾 Handling auth response');
+            this.handleAuthResponse(response.data);
+          }
+          console.log('🟢 ====================================');
+        }),
+        map(response => response.data as AuthResponse),
+        catchError(error => {
+          console.log('❌ ========== LOGIN ERROR ==========');
+          return this.handleBackendError(error);
+        })
+      );
+  }
 
   register(data: RegisterRequest | FormData): Observable<AuthResponse> {
   return this.http
@@ -125,12 +199,16 @@ export class AuthService {
     .pipe(
       tap(response => {
         this.showBackendToast(response);
-        if (response.data) {
+
+        if (response.success && response.data) {
           this.handleAuthResponse(response.data);
         }
       }),
-      map(response => response.data as AuthResponse), // ✅ REQUIRED
-      catchError(error => this.handleBackendError(error))
+      map(response => response.data as AuthResponse),
+      catchError((error: HttpErrorResponse) => {
+        // 🔑 PASS BACKEND ERROR CLEANLY
+        return throwError(() => error.error);
+      })
     );
 }
 
@@ -152,32 +230,31 @@ export class AuthService {
   }
 
   verify2FA(code: string, isBackupCode = false): Observable<AuthResponse> {
-  const temp_token = sessionStorage.getItem('temp_token');
-  const email = sessionStorage.getItem('temp_email');
+    const temp_token = sessionStorage.getItem('temp_token');
+    const email = sessionStorage.getItem('temp_email');
 
-  if (!temp_token || !email) {
-    return throwError(() => new Error('No temp token'));
+    if (!temp_token || !email) {
+      return throwError(() => new Error('No temp token'));
+    }
+
+    return this.http
+      .post<BackendResponse<AuthResponse>>(
+        `${environment.apiUrl}/auth/verify-2fa/`,
+        { temp_token, email, code, is_backup_code: isBackupCode }
+      )
+      .pipe(
+        tap(response => {
+          this.showBackendToast(response);
+          if (response.data) {
+            this.handleAuthResponse(response.data);
+            sessionStorage.removeItem('temp_token');
+            sessionStorage.removeItem('temp_email');
+          }
+        }),
+        map(response => response.data as AuthResponse),
+        catchError(error => this.handleBackendError(error))
+      );
   }
-
-  return this.http
-    .post<BackendResponse<AuthResponse>>(
-      `${environment.apiUrl}/auth/verify-2fa/`,
-      { temp_token, email, code, is_backup_code: isBackupCode }
-    )
-    .pipe(
-      tap(response => {
-        this.showBackendToast(response);
-        if (response.data) {
-          this.handleAuthResponse(response.data);
-          sessionStorage.removeItem('temp_token');
-          sessionStorage.removeItem('temp_email');
-        }
-      }),
-      map(response => response.data as AuthResponse), // ✅ REQUIRED
-      catchError(error => this.handleBackendError(error))
-    );
-}
-
 
   forgotPassword(email: string): Observable<any> {
     return this.http.post<BackendResponse>(`${environment.apiUrl}/auth/forgot-password/`, { email })
@@ -401,31 +478,30 @@ export class AuthService {
   }
 
   uploadProfilePhoto(file: File): Observable<User> {
-  const formData = new FormData();
-  formData.append('profile_photo', file);
+    const formData = new FormData();
+    formData.append('profile_photo', file);
 
-  return this.http
-    .post<BackendResponse<{ user: User }>>(
-      `${environment.apiUrl}/auth/users/upload_profile_photo/`,
-      formData
-    )
-    .pipe(
-      tap(response => {
-        this.showBackendToast(response);
+    return this.http
+      .post<BackendResponse<{ user: User }>>(
+        `${environment.apiUrl}/auth/users/upload_profile_photo/`,
+        formData
+      )
+      .pipe(
+        tap(response => {
+          this.showBackendToast(response);
 
-        if (response.data?.user) {
-          localStorage.setItem(
-            this.USER_KEY,
-            JSON.stringify(response.data.user)
-          );
-          this.currentUserSubject.next(response.data.user);
-        }
-      }),
-      map(response => response.data!.user), // ✅ REQUIRED
-      catchError(error => this.handleBackendError(error))
-    );
-}
-
+          if (response.data?.user) {
+            localStorage.setItem(
+              this.USER_KEY,
+              JSON.stringify(response.data.user)
+            );
+            this.currentUserSubject.next(response.data.user);
+          }
+        }),
+        map(response => response.data!.user),
+        catchError(error => this.handleBackendError(error))
+      );
+  }
 
   deleteProfilePhoto(): Observable<any> {
     return this.http.delete<BackendResponse>(`${environment.apiUrl}/auth/users/delete_profile_photo/`)
@@ -453,8 +529,8 @@ export class AuthService {
 
   logout(): void {
     this.clearStorage();
-    this.toastService.info('Logged out successfully. See you soon! 👋');
-    this.router.navigate(['/auth/login']);
+    //this.toastService.info('Logged out successfully. See you soon! 👋');
+    //this.router.navigate(['/auth/login']);
   }
 
   private clearStorage(): void {

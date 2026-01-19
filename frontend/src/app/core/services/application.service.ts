@@ -12,16 +12,13 @@ export class ApplicationService {
   private responseHandler = inject(BackendResponseHandler);
 
   getApplications(): Observable<Application[]> {
-    return this.apiService.get<BackendResponse<Application[]>>('applications/')
-      .pipe(
-        tap(response => {
-          // Don't show toast for list operations
-          this.responseHandler.showToast(response, true);
-        }),
-        map(response => response.data || []),
-        catchError(error => this.responseHandler.handleError(error, 'Failed to load applications'))
-      );
-  }
+  return this.apiService.get<Application[]>('applications/')
+    .pipe(
+      tap(() => {}),
+      catchError(error => this.responseHandler.handleError(error, 'Failed to load applications'))
+    );
+}
+
 
   getApplication(id: number): Observable<Application> {
     return this.apiService.get<BackendResponse<Application>>(`applications/${id}/`)

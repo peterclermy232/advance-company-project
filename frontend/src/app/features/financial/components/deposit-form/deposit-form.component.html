@@ -109,9 +109,9 @@
               <select 
                 formControlName="payment_method" 
                 class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="mpesa">💸 M-Pesa (Instant)</option>
-                <option value="bank">🏦 Bank Transfer</option>
-                <option value="mansa_x">💳 Mansa-X</option>
+                <option value="mpesa">M-Pesa (Instant)</option>
+                <option value="bank">Bank Transfer</option>
+                <option value="mansa_x">Mansa-X</option>
               </select>
             </div>
           </div>
@@ -179,7 +179,7 @@
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             <span *ngIf="!isSubmitting">
-              {{ depositForm.get('payment_method')?.value === 'mpesa' ? '📱 Pay KES 20,000 via M-Pesa' : '💰 Submit Deposit' }}
+              {{ depositForm.get('payment_method')?.value === 'mpesa' ? 'Pay KES 20,000 via M-Pesa' : 'Submit Deposit' }}
             </span>
             <span *ngIf="isSubmitting">Processing Payment...</span>
           </button>

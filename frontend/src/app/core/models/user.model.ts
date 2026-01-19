@@ -10,7 +10,7 @@ export interface User {
   gender?: string;
   marital_status?: string;
   profession?: string;
-  
+
   profile_photo?: string | null;
   profile_photo_url?: string | null;
 
@@ -35,6 +35,8 @@ export interface User {
 /* ================= AUTH ================= */
 
 export interface AuthResponse {
+  success: any;
+  errors: any;
   user: User;
   tokens: {
     access: string;
