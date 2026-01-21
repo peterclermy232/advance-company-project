@@ -223,6 +223,9 @@ REST_FRAMEWORK = {
     'UNAUTHENTICATED_TOKEN': None,
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
     ],
 }
 
