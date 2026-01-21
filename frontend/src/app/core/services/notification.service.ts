@@ -41,7 +41,7 @@ export class NotificationService implements OnDestroy {
   public notifications$ = this.notificationsSubject.asObservable();
 
   private pollingSubscription: any;
-  loading: any;
+  
 
   constructor() {
     this.initialize();
@@ -174,7 +174,19 @@ export class NotificationService implements OnDestroy {
     this.getRecentNotifications().subscribe();
     this.getUnreadCount().subscribe();
   }
+  
+loading(message: string, action: string = '', duration: number = 0) {
+    // duration = 0 means the snackbar stays open until manually dismissed
+    const snackBarRef = this.snackBar.open(message, action, {
+      duration,
+      panelClass: ['snackbar-loading'],
+      horizontalPosition: 'right',
+      verticalPosition: 'top'
+    });
 
+    return snackBarRef; // return ref so it can be dismissed later
+  }
+  
   ngOnDestroy(): void {
     if (this.pollingSubscription) {
       this.pollingSubscription.unsubscribe();
