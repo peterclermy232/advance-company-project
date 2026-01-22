@@ -1,22 +1,27 @@
 import os
 from django.core.exceptions import ValidationError
 from PIL import Image
+import logging
 
-# Safe import of python-magic
+logger = logging.getLogger(__name__)
+
+# Try to import python-magic, but don't fail if it's not available
 try:
     import magic
     MAGIC_AVAILABLE = True
+    logger.info("python-magic is available")
 except ImportError:
     MAGIC_AVAILABLE = False
+    logger.warning("python-magic not available - using fallback validation")
 
 
 class SecureFileValidator:
     """
-    Enterprise-grade file upload security validator
-    Works with or without python-magic library
+    Production-safe file upload validator
+    Works with or without python-magic
     """
 
-    # Allowed file extensions (fallback when magic not available)
+    # Allowed file extensions
     ALLOWED_EXTENSIONS = {
         '.pdf': 'application/pdf',
         '.jpg': 'image/jpeg',
@@ -25,159 +30,175 @@ class SecureFileValidator:
         '.gif': 'image/gif',
     }
 
-    # Allowed MIME types and their magic numbers
-    ALLOWED_TYPES = {
-        'image/jpeg': [b'\xFF\xD8\xFF'],
-        'image/png': [b'\x89\x50\x4E\x47'],
-        'image/gif': [b'GIF87a', b'GIF89a'],
+    # Magic numbers for file type detection
+    MAGIC_NUMBERS = {
         'application/pdf': [b'%PDF'],
+        'image/jpeg': [b'\xFF\xD8\xFF'],
+        'image/png': [b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'],
+        'image/gif': [b'GIF87a', b'GIF89a'],
     }
 
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-    MAX_IMAGE_PIXELS = 4096 * 4096   # Decompression bomb protection
+    MAX_IMAGE_PIXELS = 4096 * 4096
 
     @staticmethod
     def validate_file(file):
         """
         Main validation entry point
-        Falls back to extension checking if python-magic not available
         """
-        # 1. File size check
-        if file.size > SecureFileValidator.MAX_FILE_SIZE:
-            raise ValidationError(
-                'File size exceeds 5MB limit'
-            )
+        try:
+            logger.info(f"Validating file: {file.name}, size: {file.size}")
+            
+            # 1. File size check
+            if file.size > SecureFileValidator.MAX_FILE_SIZE:
+                logger.warning(f"File too large: {file.size} bytes")
+                raise ValidationError(f'File size exceeds 5MB limit. Your file is {file.size / 1024 / 1024:.2f}MB')
 
-        # 2. Read file header
-        file.seek(0)
-        header = file.read(2048)
-        file.seek(0)
+            # 2. Extension check
+            file_ext = os.path.splitext(file.name)[1].lower()
+            if file_ext not in SecureFileValidator.ALLOWED_EXTENSIONS:
+                logger.warning(f"Invalid file extension: {file_ext}")
+                raise ValidationError(f'Unsupported file type "{file_ext}". Allowed: PDF, JPEG, PNG, GIF')
 
-        # 3. Validate file extension (always)
-        file_ext = os.path.splitext(file.name)[1].lower()
-        if file_ext not in SecureFileValidator.ALLOWED_EXTENSIONS:
-            raise ValidationError(
-                f'Unsupported file type. Allowed: PDF, JPEG, PNG, GIF'
-            )
+            # 3. Read file header for magic number check
+            file.seek(0)
+            header = file.read(min(2048, file.size))
+            file.seek(0)
 
-        # 4. MIME type detection (if magic available)
-        if MAGIC_AVAILABLE:
-            try:
-                mime = magic.from_buffer(header, mime=True)
-            except Exception:
-                raise ValidationError('Unable to determine file type')
+            # 4. Determine MIME type
+            expected_mime = SecureFileValidator.ALLOWED_EXTENSIONS[file_ext]
+            
+            if MAGIC_AVAILABLE:
+                mime = SecureFileValidator._validate_with_magic(header, expected_mime)
+            else:
+                mime = SecureFileValidator._validate_with_magic_numbers(header, expected_mime)
 
-            if mime not in SecureFileValidator.ALLOWED_TYPES:
-                raise ValidationError(
-                    'Unsupported file type. Allowed: PDF, JPEG, PNG, GIF'
-                )
-
-            # Magic number verification
-            valid_magic = False
-            for magic_num in SecureFileValidator.ALLOWED_TYPES[mime]:
-                if header.startswith(magic_num):
-                    valid_magic = True
-                    break
-
-            if not valid_magic:
-                raise ValidationError(
-                    'File content does not match its declared type'
-                )
-        else:
-            # Fallback: Basic magic number check without python-magic
-            mime = SecureFileValidator._detect_mime_fallback(header, file_ext)
             if not mime:
-                raise ValidationError(
-                    'Unable to verify file type. Please ensure file is not corrupted.'
-                )
+                logger.warning(f"File type validation failed for {file.name}")
+                raise ValidationError('File content does not match its extension. File may be corrupted.')
 
-        # 5. Image validation
-        if mime and mime.startswith('image/'):
-            SecureFileValidator._validate_image(file)
+            # 5. Type-specific validation
+            if mime.startswith('image/'):
+                SecureFileValidator._validate_image(file)
+            elif mime == 'application/pdf':
+                SecureFileValidator._validate_pdf(file)
 
-        # 6. PDF validation
-        if mime == 'application/pdf':
-            SecureFileValidator._validate_pdf(file)
+            file.seek(0)
+            logger.info(f"File validation passed for {file.name}")
+            return file
 
-        file.seek(0)
-        return file
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected validation error: {str(e)}", exc_info=True)
+            raise ValidationError(f'File validation failed: {str(e)}')
 
     @staticmethod
-    def _detect_mime_fallback(header, file_ext):
-        """
-        Fallback MIME detection using magic numbers
-        Used when python-magic is not available
-        """
-        # Check magic numbers
-        if header.startswith(b'%PDF'):
-            return 'application/pdf'
-        elif header.startswith(b'\xFF\xD8\xFF'):
-            return 'image/jpeg'
-        elif header.startswith(b'\x89\x50\x4E\x47'):
-            return 'image/png'
-        elif header.startswith(b'GIF87a') or header.startswith(b'GIF89a'):
-            return 'image/gif'
+    def _validate_with_magic(header, expected_mime):
+        """Validate using python-magic library"""
+        try:
+            mime = magic.from_buffer(header, mime=True)
+            logger.info(f"Detected MIME type (magic): {mime}")
+            
+            if mime not in SecureFileValidator.ALLOWED_EXTENSIONS.values():
+                return None
+            
+            return mime
+            
+        except Exception as e:
+            logger.error(f"Magic library error: {str(e)}")
+            # Fallback to magic numbers if library fails
+            return SecureFileValidator._validate_with_magic_numbers(header, expected_mime)
+
+    @staticmethod
+    def _validate_with_magic_numbers(header, expected_mime):
+        """Fallback validation using magic numbers"""
+        logger.info(f"Using magic number validation for {expected_mime}")
         
-        # If magic number doesn't match, trust extension (less secure)
-        return SecureFileValidator.ALLOWED_EXTENSIONS.get(file_ext)
+        # Check if header matches expected MIME type
+        if expected_mime in SecureFileValidator.MAGIC_NUMBERS:
+            for magic_num in SecureFileValidator.MAGIC_NUMBERS[expected_mime]:
+                if header.startswith(magic_num):
+                    logger.info(f"Magic number matched for {expected_mime}")
+                    return expected_mime
+        
+        logger.warning(f"Magic number mismatch for {expected_mime}")
+        return None
 
     @staticmethod
     def _validate_image(file):
-        """
-        Protect against corrupted images & decompression bombs
-        """
+        """Validate image files"""
         try:
             file.seek(0)
             image = Image.open(file)
-
+            
+            # Check dimensions
             width, height = image.size
             if width * height > SecureFileValidator.MAX_IMAGE_PIXELS:
-                raise ValidationError(
-                    'Image dimensions too large'
-                )
-
+                raise ValidationError(f'Image too large: {width}x{height} pixels. Maximum: 4096x4096')
+            
+            # Verify image integrity
             image.verify()
             file.seek(0)
-
-        except Exception:
-            raise ValidationError(
-                'Invalid or corrupted image file'
-            )
+            
+            logger.info(f"Image validation passed: {width}x{height}")
+            
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"Image validation error: {str(e)}")
+            raise ValidationError('Invalid or corrupted image file')
 
     @staticmethod
     def _validate_pdf(file):
-        """
-        Detect common PDF malware patterns
-        """
-        file.seek(0)
-        content = file.read()
-        file.seek(0)
-
-        dangerous_patterns = [
-            b'/JavaScript',
-            b'/JS',
-            b'/OpenAction',
-            b'/AA',
-        ]
-
-        for pattern in dangerous_patterns:
-            if pattern in content:
-                raise ValidationError(
-                    'PDF contains potentially dangerous embedded content'
-                )
+        """Validate PDF files"""
+        try:
+            file.seek(0)
+            content = file.read()
+            file.seek(0)
+            
+            # Check for dangerous PDF features
+            dangerous_patterns = [
+                b'/JavaScript',
+                b'/JS',
+                b'/OpenAction',
+                b'/AA',
+            ]
+            
+            for pattern in dangerous_patterns:
+                if pattern in content:
+                    logger.warning(f"Dangerous PDF pattern found: {pattern}")
+                    raise ValidationError('PDF contains potentially dangerous embedded content')
+            
+            logger.info("PDF validation passed")
+            
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"PDF validation error: {str(e)}")
+            raise ValidationError('Invalid or corrupted PDF file')
 
     @staticmethod
     def sanitize_filename(filename):
-        """
-        Prevent path traversal & unsafe filenames
-        """
-        filename = os.path.basename(filename)
-
-        dangerous_chars = ['..', '/', '\\', '\x00', '\n', '\r']
-        for char in dangerous_chars:
-            filename = filename.replace(char, '')
-
-        name, ext = os.path.splitext(filename)
-        name = name[:100]
-
-        return f"{name}{ext}"
+        """Sanitize filename to prevent path traversal"""
+        try:
+            # Get just the filename, no path
+            filename = os.path.basename(filename)
+            
+            # Remove dangerous characters
+            dangerous_chars = ['..', '/', '\\', '\x00', '\n', '\r', '|', '<', '>', ':', '"', '?', '*']
+            for char in dangerous_chars:
+                filename = filename.replace(char, '')
+            
+            # Limit length
+            name, ext = os.path.splitext(filename)
+            name = name[:100]  # Max 100 chars for name
+            
+            sanitized = f"{name}{ext}".strip()
+            logger.info(f"Sanitized filename: {filename} -> {sanitized}")
+            
+            return sanitized
+            
+        except Exception as e:
+            logger.error(f"Filename sanitization error: {str(e)}")
+            return 'document' + os.path.splitext(filename)[1]
