@@ -34,7 +34,14 @@ RUN python manage.py collectstatic --noinput --clear || true
 # Expose port
 EXPOSE 8000
 
-# Run migrations and start server
+# OPTIMIZED: Increased timeout and workers for file uploads
 CMD python manage.py migrate --noinput && \
     python manage.py create_admin && \
-    gunicorn advance_company.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3
+    gunicorn advance_company.wsgi:application \
+    --bind 0.0.0.0:${PORT:-8000} \
+    --workers 3 \
+    --timeout 120 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    --access-logfile - \
+    --error-logfile -

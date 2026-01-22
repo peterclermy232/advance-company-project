@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from .models import Document
 from .serializers import DocumentSerializer
 import logging
@@ -15,7 +16,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  # Handle file uploads
+    parser_classes = [MultiPartParser, FormParser]
     filterset_fields = ['category', 'status']
     search_fields = ['title']
     
@@ -25,31 +26,53 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return Document.objects.filter(user=self.request.user)
     
     def create(self, request, *args, **kwargs):
-        """Override create to handle file validation errors properly"""
+        """
+        OPTIMIZED: Handle file validation errors gracefully
+        Use transaction to ensure atomicity
+        """
+        logger.info(f"Document upload started by user {request.user.email}")
+        
         try:
-            logger.info(f"Document upload started by user {request.user.email}")
-            logger.info(f"Request data: {request.data}")
+            # Validate file size before processing
+            if 'file' in request.FILES:
+                uploaded_file = request.FILES['file']
+                max_size = 5 * 1024 * 1024  # 5MB
+                
+                if uploaded_file.size > max_size:
+                    logger.warning(f"File too large: {uploaded_file.size} bytes")
+                    return Response(
+                        {'error': f'File size exceeds 5MB limit. Your file is {uploaded_file.size / 1024 / 1024:.2f}MB'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            
-            self.perform_create(serializer)
-            
-            headers = self.get_success_headers(serializer.data)
-            logger.info(f"Document uploaded successfully: {serializer.data.get('id')}")
-            
-            return Response(
-                serializer.data, 
-                status=status.HTTP_201_CREATED, 
-                headers=headers
-            )
+            # Use transaction for atomicity
+            with transaction.atomic():
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                
+                # Save document
+                self.perform_create(serializer)
+                
+                headers = self.get_success_headers(serializer.data)
+                logger.info(f"Document uploaded successfully: {serializer.data.get('id')}")
+                
+                return Response(
+                    {
+                        'message': 'Document uploaded successfully',
+                        'document': serializer.data
+                    },
+                    status=status.HTTP_201_CREATED,
+                    headers=headers
+                )
             
         except DjangoValidationError as e:
             logger.error(f"Validation error during document upload: {str(e)}")
+            error_message = str(e.message) if hasattr(e, 'message') else str(e)
             return Response(
-                {'error': str(e.message) if hasattr(e, 'message') else str(e)},
+                {'error': error_message},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
         except Exception as e:
             logger.error(f"Unexpected error during document upload: {str(e)}", exc_info=True)
             return Response(
@@ -61,8 +84,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
         """Save the document with the current user"""
         try:
             serializer.save(user=self.request.user)
-        except DjangoValidationError as e:
-            # Re-raise to be caught by create method
+        except DjangoValidationError:
+            # Re-raise validation errors to be caught by create method
             raise
         except Exception as e:
             logger.error(f"Error in perform_create: {str(e)}", exc_info=True)
