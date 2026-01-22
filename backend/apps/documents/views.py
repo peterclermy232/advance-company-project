@@ -1,7 +1,8 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Document
 from .serializers import DocumentSerializer
 
@@ -21,10 +22,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
         try:
             serializer.save(user=self.request.user)
         except DjangoValidationError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            # Re-raise as DRF validation error
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'file': str(e)})
     
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
