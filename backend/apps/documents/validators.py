@@ -5,22 +5,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Try to import python-magic, but don't fail if it's not available
-try:
-    import magic
-    MAGIC_AVAILABLE = True
-    logger.info("python-magic is available")
-except ImportError:
-    MAGIC_AVAILABLE = False
-    logger.warning("python-magic not available - using fallback validation")
-
 
 class SecureFileValidator:
     """
-    Production-safe file upload validator - OPTIMIZED FOR SPEED
+    PRODUCTION-OPTIMIZED file validator - minimal processing for speed
     """
 
-    # Allowed file extensions
     ALLOWED_EXTENSIONS = {
         '.pdf': 'application/pdf',
         '.jpg': 'image/jpeg',
@@ -29,7 +19,6 @@ class SecureFileValidator:
         '.gif': 'image/gif',
     }
 
-    # Magic numbers for file type detection
     MAGIC_NUMBERS = {
         'application/pdf': [b'%PDF'],
         'image/jpeg': [b'\xFF\xD8\xFF'],
@@ -43,60 +32,63 @@ class SecureFileValidator:
     @staticmethod
     def validate_file(file):
         """
-        OPTIMIZED: Fast validation with minimal processing
+        ULTRA-FAST validation - only checks:
+        1. File size
+        2. Extension
+        3. Magic number (first 2KB only)
         """
         try:
-            logger.info(f"Validating file: {file.name}, size: {file.size}")
+            logger.info(f"Fast validating: {file.name}, size: {file.size}")
             
-            # 1. Quick file size check FIRST
+            # 1. Size check FIRST (fastest)
             if file.size > SecureFileValidator.MAX_FILE_SIZE:
-                logger.warning(f"File too large: {file.size} bytes")
                 raise ValidationError(
-                    f'File size exceeds 5MB limit. Your file is {file.size / 1024 / 1024:.2f}MB'
+                    f'File too large: {file.size / 1024 / 1024:.2f}MB. Maximum: 5MB'
                 )
 
-            # 2. Quick extension check
+            # 2. Extension check
             file_ext = os.path.splitext(file.name)[1].lower()
             if file_ext not in SecureFileValidator.ALLOWED_EXTENSIONS:
-                logger.warning(f"Invalid file extension: {file_ext}")
                 raise ValidationError(
-                    f'Unsupported file type "{file_ext}". Allowed: PDF, JPEG, PNG, GIF'
+                    f'Invalid file type "{file_ext}". Allowed: PDF, JPEG, PNG, GIF'
                 )
 
-            # 3. Read ONLY first 2KB for magic number check (not entire file)
+            # 3. Magic number check (only read 2KB - DO NOT read entire file)
             file.seek(0)
-            header = file.read(2048)  # Only read 2KB
+            header = file.read(2048)
             file.seek(0)
 
-            # 4. Quick magic number validation
             expected_mime = SecureFileValidator.ALLOWED_EXTENSIONS[file_ext]
             if not SecureFileValidator._quick_magic_check(header, expected_mime):
-                logger.warning(f"Magic number validation failed for {file.name}")
                 raise ValidationError(
-                    'File content does not match its extension. File may be corrupted.'
+                    'File content does not match extension'
                 )
 
-            # 5. SKIP heavy validation for images (trust the magic number)
-            # Only do basic sanity check for images
+            # 4. For images, ONLY check if it opens (no full verification)
             if expected_mime.startswith('image/'):
-                SecureFileValidator._quick_image_check(file)
-            
-            # For PDFs, skip dangerous pattern check in production
-            # (can be done async or in background job if needed)
+                try:
+                    file.seek(0)
+                    img = Image.open(file)
+                    width, height = img.size
+                    if width * height > SecureFileValidator.MAX_IMAGE_PIXELS:
+                        raise ValidationError(f'Image too large: {width}x{height}')
+                    file.seek(0)
+                except Exception as e:
+                    raise ValidationError('Invalid image file')
 
             file.seek(0)
-            logger.info(f"File validation passed for {file.name}")
+            logger.info(f"✓ File validated: {file.name}")
             return file
 
         except ValidationError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected validation error: {str(e)}", exc_info=True)
+            logger.error(f"Validation error: {str(e)}")
             raise ValidationError(f'File validation failed: {str(e)}')
 
     @staticmethod
     def _quick_magic_check(header, expected_mime):
-        """Quick magic number check - no external libraries"""
+        """Quick magic number check"""
         if expected_mime in SecureFileValidator.MAGIC_NUMBERS:
             for magic_num in SecureFileValidator.MAGIC_NUMBERS[expected_mime]:
                 if header.startswith(magic_num):
@@ -104,51 +96,18 @@ class SecureFileValidator:
         return False
 
     @staticmethod
-    def _quick_image_check(file):
-        """
-        ULTRA FAST image check - just verify it opens, don't fully verify
-        """
-        try:
-            file.seek(0)
-            img = Image.open(file)
-            
-            # Quick dimension check
-            width, height = img.size
-            if width * height > SecureFileValidator.MAX_IMAGE_PIXELS:
-                raise ValidationError(
-                    f'Image too large: {width}x{height} pixels. Maximum: 4096x4096'
-                )
-            
-            # SKIP img.verify() - it's slow and we trust the magic number
-            file.seek(0)
-            
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.error(f"Image validation error: {str(e)}")
-            raise ValidationError('Invalid or corrupted image file')
-
-    @staticmethod
     def sanitize_filename(filename):
-        """Sanitize filename to prevent path traversal"""
-        try:
-            # Get just the filename, no path
-            filename = os.path.basename(filename)
-            
-            # Remove dangerous characters
-            dangerous_chars = ['..', '/', '\\', '\x00', '\n', '\r', '|', '<', '>', ':', '"', '?', '*']
-            for char in dangerous_chars:
-                filename = filename.replace(char, '')
-            
-            # Limit length
-            name, ext = os.path.splitext(filename)
-            name = name[:100]  # Max 100 chars for name
-            
-            sanitized = f"{name}{ext}".strip()
-            logger.info(f"Sanitized filename: {filename} -> {sanitized}")
-            
-            return sanitized
-            
-        except Exception as e:
-            logger.error(f"Filename sanitization error: {str(e)}")
-            return 'document' + os.path.splitext(filename)[1]
+        """Sanitize filename"""
+        filename = os.path.basename(filename)
+        dangerous_chars = ['..', '/', '\\', '\x00', '\n', '\r', '|', '<', '>', ':', '"', '?', '*']
+        for char in dangerous_chars:
+            filename = filename.replace(char, '')
+        
+        name, ext = os.path.splitext(filename)
+        name = name[:100]
+        return f"{name}{ext}".strip()
+
+
+def validate_document_file(file):
+    """Wrapper for validation"""
+    return SecureFileValidator.validate_file(file)

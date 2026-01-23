@@ -27,25 +27,25 @@ class DocumentViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         """
-        OPTIMIZED: Handle file validation errors gracefully
-        Use transaction to ensure atomicity
+        OPTIMIZED: Fast upload with minimal validation
         """
-        logger.info(f"Document upload started by user {request.user.email}")
+        logger.info(f"📤 Document upload started by {request.user.email}")
         
         try:
-            # Validate file size before processing
+            # Quick file size check BEFORE processing
             if 'file' in request.FILES:
                 uploaded_file = request.FILES['file']
                 max_size = 5 * 1024 * 1024  # 5MB
                 
                 if uploaded_file.size > max_size:
-                    logger.warning(f"File too large: {uploaded_file.size} bytes")
                     return Response(
-                        {'error': f'File size exceeds 5MB limit. Your file is {uploaded_file.size / 1024 / 1024:.2f}MB'},
+                        {'error': f'File too large: {uploaded_file.size / 1024 / 1024:.2f}MB. Maximum: 5MB'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
+                
+                logger.info(f"✓ File size OK: {uploaded_file.size / 1024:.0f}KB")
             
-            # Use transaction for atomicity
+            # Use atomic transaction for safety
             with transaction.atomic():
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
@@ -54,7 +54,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 self.perform_create(serializer)
                 
                 headers = self.get_success_headers(serializer.data)
-                logger.info(f"Document uploaded successfully: {serializer.data.get('id')}")
+                logger.info(f"✓ Document uploaded: {serializer.data.get('id')}")
                 
                 return Response(
                     {
@@ -66,7 +66,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 )
             
         except DjangoValidationError as e:
-            logger.error(f"Validation error during document upload: {str(e)}")
+            logger.error(f"❌ Validation error: {str(e)}")
             error_message = str(e.message) if hasattr(e, 'message') else str(e)
             return Response(
                 {'error': error_message},
@@ -74,29 +74,28 @@ class DocumentViewSet(viewsets.ModelViewSet):
             )
         
         except Exception as e:
-            logger.error(f"Unexpected error during document upload: {str(e)}", exc_info=True)
+            logger.error(f"❌ Upload error: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'Failed to upload document. Please try again.'},
+                {'error': 'Upload failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     def perform_create(self, serializer):
-        """Save the document with the current user"""
+        """Save document with user"""
         try:
             serializer.save(user=self.request.user)
         except DjangoValidationError:
-            # Re-raise validation errors to be caught by create method
             raise
         except Exception as e:
-            logger.error(f"Error in perform_create: {str(e)}", exc_info=True)
+            logger.error(f"❌ Save error: {str(e)}", exc_info=True)
             raise
     
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
-        """Admin endpoint to verify a document"""
+        """Admin: verify document"""
         if request.user.role != 'admin':
             return Response(
-                {'error': 'Only admins can verify documents'},
+                {'error': 'Admin access required'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -105,27 +104,27 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.status = 'verified'
             document.save()
             
-            logger.info(f"Document {document.id} verified by admin {request.user.email}")
+            logger.info(f"✓ Document {document.id} verified by {request.user.email}")
             
             serializer = self.get_serializer(document)
             return Response({
-                'message': 'Document verified successfully',
+                'message': 'Document verified',
                 'document': serializer.data
             })
             
         except Exception as e:
-            logger.error(f"Error verifying document: {str(e)}", exc_info=True)
+            logger.error(f"❌ Verify error: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'Failed to verify document'},
+                {'error': 'Verification failed'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
-        """Admin endpoint to reject a document"""
+        """Admin: reject document"""
         if request.user.role != 'admin':
             return Response(
-                {'error': 'Only admins can reject documents'},
+                {'error': 'Admin access required'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -135,7 +134,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.rejection_reason = request.data.get('reason', 'No reason provided')
             document.save()
             
-            logger.info(f"Document {document.id} rejected by admin {request.user.email}")
+            logger.info(f"✓ Document {document.id} rejected by {request.user.email}")
             
             serializer = self.get_serializer(document)
             return Response({
@@ -144,8 +143,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
             })
             
         except Exception as e:
-            logger.error(f"Error rejecting document: {str(e)}", exc_info=True)
+            logger.error(f"❌ Reject error: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'Failed to reject document'},
+                {'error': 'Rejection failed'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

@@ -26,6 +26,7 @@ export class DocumentListComponent implements OnInit {
   isLoading = true;
   isUploading = false;
   showUploadModal = false;
+  uploadProgress = 0;
   
   documents: Document[] = [];
   documentsByCategory: { [key: string]: Document[] } = {};
@@ -52,29 +53,25 @@ export class DocumentListComponent implements OnInit {
   }
 
   loadDocuments() {
-  this.documentService.getDocuments().subscribe({
-    next: (documents) => {
-      this.documents = documents;
-      this.groupDocumentsByCategory();
-      this.isLoading = false;
-    },
-    error: () => {
-      this.isLoading = false;
-    }
-  });
-}
-
+    this.documentService.getDocuments().subscribe({
+      next: (documents) => {
+        this.documents = documents;
+        this.groupDocumentsByCategory();
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
 
   groupDocumentsByCategory() {
-  this.documentsByCategory = {};
-
-  this.categories.forEach(cat => {
-    this.documentsByCategory[cat.value] =
-      this.documents?.filter(doc => doc.category === cat.value) ?? [];
-  });
-}
-
-
+    this.documentsByCategory = {};
+    this.categories.forEach(cat => {
+      this.documentsByCategory[cat.value] =
+        this.documents?.filter(doc => doc.category === cat.value) ?? [];
+    });
+  }
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
@@ -84,72 +81,112 @@ export class DocumentListComponent implements OnInit {
     this.showUploadModal = true;
     this.uploadForm.reset();
     this.selectedFile = null;
+    this.uploadProgress = 0;
   }
 
   closeUploadModal() {
     this.showUploadModal = false;
+    this.uploadProgress = 0;
   }
 
   onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
+      // Check file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        this.notificationService.error(
+          `File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB. Maximum: 5MB`
+        );
+        event.target.value = ''; // Clear input
+        return;
+      }
+      
       this.selectedFile = file;
+      console.log('✓ File selected:', file.name, `${(file.size / 1024).toFixed(0)}KB`);
     }
   }
 
   onUpload() {
     if (this.uploadForm.valid && this.selectedFile) {
       this.isUploading = true;
+      this.uploadProgress = 0;
+
       const formData = new FormData();
       formData.append('title', this.uploadForm.value.title);
       formData.append('category', this.uploadForm.value.category);
       formData.append('file', this.selectedFile);
 
+      // Show upload toast
+      const uploadToast = this.notificationService.loading(
+        `Uploading "${this.selectedFile.name}"...`
+      );
+
+      // Simulate progress for user feedback
+      const progressInterval = setInterval(() => {
+        if (this.uploadProgress < 90) {
+          this.uploadProgress += 10;
+        }
+      }, 500);
+
       this.documentService.uploadDocument(formData).subscribe({
         next: (document) => {
-          this.notificationService.success('Document uploaded successfully');
+          clearInterval(progressInterval);
+          this.uploadProgress = 100;
+          
+          uploadToast.dismiss();
+          this.notificationService.success(
+            `✓ "${document.title}" uploaded successfully!`
+          );
+          
           this.documents.unshift(document);
           this.groupDocumentsByCategory();
           this.closeUploadModal();
           this.isUploading = false;
         },
         error: (error) => {
-          this.notificationService.error('Failed to upload document');
+          clearInterval(progressInterval);
+          uploadToast.dismiss();
+          
+          const errorMsg = error?.error?.error || 'Upload failed. Please try again.';
+          this.notificationService.error(errorMsg);
+          
           this.isUploading = false;
+          this.uploadProgress = 0;
         }
       });
     }
   }
 
   deleteDocument(doc: Document) {
-    if (confirm(` Delete "${doc.title}"? This action cannot be undone.`)) {
-      const loadingToast = this.notificationService.loading('Deleting document...');
+    if (confirm(`Delete "${doc.title}"? This cannot be undone.`)) {
+      const loadingToast = this.notificationService.loading('Deleting...');
       
       this.documentService.deleteDocument(doc.id).subscribe({
         next: () => {
           loadingToast.dismiss();
-          this.notificationService.success(`✓ "${doc.title}" deleted successfully`);
+          this.notificationService.success(`✓ "${doc.title}" deleted`);
           this.documents = this.documents.filter(d => d.id !== doc.id);
           this.groupDocumentsByCategory();
         },
-        error: (error) => {
+        error: () => {
           loadingToast.dismiss();
-          this.notificationService.error('Failed to delete document');
+          this.notificationService.error('Delete failed');
         }
       });
     }
   }
 
   verifyDocument(doc: Document) {
-    const loadingToast = this.notificationService.loading('Verifying document...');
+    const loadingToast = this.notificationService.loading('Verifying...');
     
     this.documentService.verifyDocument(doc.id).subscribe({
       next: () => {
         loadingToast.dismiss();
-        this.notificationService.success(`✓ "${doc.title}" verified successfully`);
+        this.notificationService.success(`✓ "${doc.title}" verified`);
         doc.status = 'verified';
       },
-      error: (error) => {
+      error: () => {
         loadingToast.dismiss();
         this.notificationService.error('Verification failed');
       }
@@ -174,7 +211,6 @@ export class DocumentListComponent implements OnInit {
     return this.authService.isAdmin();
   }
 
-  // Method to open URL in new window
   openDocument(url: string) {
     window.open(url, '_blank');
   }
