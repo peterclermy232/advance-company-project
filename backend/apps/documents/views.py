@@ -3,11 +3,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from .models import Document
 from .serializers import DocumentSerializer
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -27,68 +27,65 @@ class DocumentViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         """
-        OPTIMIZED: Fast upload with minimal validation
+        ULTRA-FAST UPLOAD
+        Only validates: size, extension
+        NO content validation
         """
-        logger.info(f"📤 Document upload started by {request.user.email}")
+        logger.info(f"📤 Upload start: {request.user.email}")
         
         try:
-            # Quick file size check BEFORE processing
-            if 'file' in request.FILES:
-                uploaded_file = request.FILES['file']
-                max_size = 5 * 1024 * 1024  # 5MB
-                
-                if uploaded_file.size > max_size:
-                    return Response(
-                        {'error': f'File too large: {uploaded_file.size / 1024 / 1024:.2f}MB. Maximum: 5MB'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                
-                logger.info(f"✓ File size OK: {uploaded_file.size / 1024:.0f}KB")
+            # FAST VALIDATION
+            if 'file' not in request.FILES:
+                return Response(
+                    {'error': 'No file provided'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
-            # Use atomic transaction for safety
+            file = request.FILES['file']
+            
+            # 1. SIZE CHECK (instant)
+            MAX_SIZE = 5 * 1024 * 1024
+            if file.size > MAX_SIZE:
+                logger.warning(f"❌ File too large: {file.size / 1024 / 1024:.2f}MB")
+                return Response(
+                    {'error': f'File too large: {file.size / 1024 / 1024:.2f}MB. Max: 5MB'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 2. EXTENSION CHECK (instant)
+            ext = os.path.splitext(file.name)[1].lower()
+            allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.gif']
+            if ext not in allowed:
+                logger.warning(f"❌ Invalid extension: {ext}")
+                return Response(
+                    {'error': f'Invalid file type "{ext}". Allowed: PDF, JPEG, PNG, GIF'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            logger.info(f"✓ Validation passed: {file.name} ({file.size / 1024:.0f}KB)")
+            
+            # SAVE (no validation)
             with transaction.atomic():
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
+                serializer.save(user=request.user)
                 
-                # Save document
-                self.perform_create(serializer)
-                
-                headers = self.get_success_headers(serializer.data)
-                logger.info(f"✓ Document uploaded: {serializer.data.get('id')}")
+                logger.info(f"✓ Saved: {serializer.data.get('id')}")
                 
                 return Response(
                     {
                         'message': 'Document uploaded successfully',
                         'document': serializer.data
                     },
-                    status=status.HTTP_201_CREATED,
-                    headers=headers
+                    status=status.HTTP_201_CREATED
                 )
             
-        except DjangoValidationError as e:
-            logger.error(f"❌ Validation error: {str(e)}")
-            error_message = str(e.message) if hasattr(e, 'message') else str(e)
-            return Response(
-                {'error': error_message},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         except Exception as e:
-            logger.error(f"❌ Upload error: {str(e)}", exc_info=True)
+            logger.error(f"❌ Upload failed: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Upload failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
-    def perform_create(self, serializer):
-        """Save document with user"""
-        try:
-            serializer.save(user=self.request.user)
-        except DjangoValidationError:
-            raise
-        except Exception as e:
-            logger.error(f"❌ Save error: {str(e)}", exc_info=True)
-            raise
     
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
@@ -104,16 +101,15 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.status = 'verified'
             document.save()
             
-            logger.info(f"✓ Document {document.id} verified by {request.user.email}")
+            logger.info(f"✓ Verified: {document.id}")
             
-            serializer = self.get_serializer(document)
             return Response({
                 'message': 'Document verified',
-                'document': serializer.data
+                'document': self.get_serializer(document).data
             })
             
         except Exception as e:
-            logger.error(f"❌ Verify error: {str(e)}", exc_info=True)
+            logger.error(f"❌ Verify failed: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Verification failed'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -134,16 +130,15 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.rejection_reason = request.data.get('reason', 'No reason provided')
             document.save()
             
-            logger.info(f"✓ Document {document.id} rejected by {request.user.email}")
+            logger.info(f"✓ Rejected: {document.id}")
             
-            serializer = self.get_serializer(document)
             return Response({
                 'message': 'Document rejected',
-                'document': serializer.data
+                'document': self.get_serializer(document).data
             })
             
         except Exception as e:
-            logger.error(f"❌ Reject error: {str(e)}", exc_info=True)
+            logger.error(f"❌ Reject failed: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Rejection failed'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

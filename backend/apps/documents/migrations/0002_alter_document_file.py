@@ -14,6 +14,8 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='document',
             name='file',
-            field=models.FileField(upload_to='documents/%Y/%m/', validators=[apps.documents.models.validate_document_file]),
+            field=models.FileField(upload_to='documents/%Y/%m/'
+                                #  validators=[apps.documents.models.validate_document_file]
+                                 ),
         ),
     ]

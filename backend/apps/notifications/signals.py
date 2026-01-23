@@ -1,21 +1,11 @@
-"""
-backend/apps/notifications/signals.py
-Fixed version with email/SMS integration
-"""
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from apps.financial.models import Deposit
 from apps.applications.models import Application
 from apps.documents.models import Document
 from apps.beneficiary.models import Beneficiary
 from .models import Notification
-from .utils import (
-    send_multi_channel_notification,
-    send_deposit_created_email,
-    send_deposit_approved_email,
-    send_deposit_created_sms,
-    send_deposit_approved_sms
-)
+from .utils import send_multi_channel_notification
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,30 +17,24 @@ logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Deposit)
 def notify_deposit_created(sender, instance, created, **kwargs):
-    """
-    Notify user when they create a deposit
-    Notify admin when a deposit needs approval
-    Sends in-app, email, and SMS notifications
-    """
+    """Notify user when they create a deposit"""
     if created:
         try:
-            # Use multi-channel notification for the user
             send_multi_channel_notification(
                 user=instance.user,
                 notification_type='deposit_created',
                 title='Deposit Created',
                 message=f'Your deposit of KES {instance.amount:,.2f} has been submitted and is pending approval.',
                 related_deposit_id=instance.id,
-                deposit=instance  # Pass deposit for email/SMS templates
+                deposit=instance
             )
             
-            # Notify all admins about new deposit
+            # Notify admins
             from apps.accounts.models import User
             admins = User.objects.filter(role='admin', is_active=True)
             
             for admin in admins:
                 try:
-                    # Create in-app notification for admins
                     Notification.objects.create(
                         user=admin,
                         notification_type='deposit_created',
@@ -65,41 +49,35 @@ def notify_deposit_created(sender, instance, created, **kwargs):
             logger.info(f"Notifications sent for new deposit {instance.id}")
             
         except Exception as e:
-            logger.error(f"Error sending deposit created notifications for deposit {instance.id}: {str(e)}", exc_info=True)
+            logger.error(f"Error sending deposit created notifications: {str(e)}", exc_info=True)
 
 
 @receiver(pre_save, sender=Deposit)
 def notify_deposit_status_change(sender, instance, **kwargs):
-    """
-    Notify user when deposit is approved or rejected
-    Sends in-app, email, and SMS notifications
-    """
-    if instance.pk:  # Only for updates, not new deposits
+    """Notify user when deposit is approved or rejected"""
+    if instance.pk:
         try:
             old_instance = Deposit.objects.get(pk=instance.pk)
             
             # Deposit approved
             if old_instance.status != 'completed' and instance.status == 'completed':
                 try:
-                    # Use multi-channel notification
                     send_multi_channel_notification(
                         user=instance.user,
                         notification_type='deposit_approved',
                         title='Deposit Approved',
                         message=f'Your deposit of KES {instance.amount:,.2f} has been approved and credited to your account.',
                         related_deposit_id=instance.id,
-                        deposit=instance  # Pass deposit for email/SMS templates
+                        deposit=instance
                     )
                     logger.info(f"Approval notification sent for deposit {instance.id}")
                 except Exception as e:
-                    logger.error(f"Error sending approval notification for deposit {instance.id}: {str(e)}", exc_info=True)
+                    logger.error(f"Error sending approval notification: {str(e)}", exc_info=True)
             
             # Deposit rejected
             elif old_instance.status != 'failed' and instance.status == 'failed':
                 try:
                     reason = instance.rejection_reason or 'No reason provided'
-                    
-                    # Use multi-channel notification
                     send_multi_channel_notification(
                         user=instance.user,
                         notification_type='deposit_rejected',
@@ -109,7 +87,7 @@ def notify_deposit_status_change(sender, instance, **kwargs):
                     )
                     logger.info(f"Rejection notification sent for deposit {instance.id}")
                 except Exception as e:
-                    logger.error(f"Error sending rejection notification for deposit {instance.id}: {str(e)}", exc_info=True)
+                    logger.error(f"Error sending rejection notification: {str(e)}", exc_info=True)
                     
         except Deposit.DoesNotExist:
             pass
@@ -123,13 +101,9 @@ def notify_deposit_status_change(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Application)
 def notify_application_submitted(sender, instance, created, **kwargs):
-    """
-    Notify user when they submit an application
-    Notify admins about new application
-    """
+    """Notify user and admins when application is submitted"""
     if created:
         try:
-            # Notify the user
             send_multi_channel_notification(
                 user=instance.user,
                 notification_type='application_submitted',
@@ -139,7 +113,7 @@ def notify_application_submitted(sender, instance, created, **kwargs):
                 application=instance
             )
             
-            # Notify all admins
+            # Notify admins
             from apps.accounts.models import User
             admins = User.objects.filter(role='admin', is_active=True)
             
@@ -164,9 +138,7 @@ def notify_application_submitted(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender=Application)
 def notify_application_status_change(sender, instance, **kwargs):
-    """
-    Notify user when application is approved or rejected
-    """
+    """Notify user when application status changes"""
     if instance.pk:
         try:
             old_instance = Application.objects.get(pk=instance.pk)
@@ -213,10 +185,7 @@ def notify_application_status_change(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Document)
 def notify_document_uploaded(sender, instance, created, **kwargs):
-    """
-    Notify user when they upload a document
-    Notify admins about new document for verification
-    """
+    """Notify user and admins when document is uploaded"""
     if created:
         try:
             # Notify the user
@@ -251,9 +220,7 @@ def notify_document_uploaded(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender=Document)
 def notify_document_status_change(sender, instance, **kwargs):
-    """
-    Notify user when document is verified or rejected
-    """
+    """Notify user when document is verified or rejected"""
     if instance.pk:
         try:
             old_instance = Document.objects.get(pk=instance.pk)
@@ -291,16 +258,34 @@ def notify_document_status_change(sender, instance, **kwargs):
             logger.error(f"Error in document status change handler: {str(e)}", exc_info=True)
 
 
+@receiver(post_delete, sender=Document)
+def notify_document_deleted(sender, instance, **kwargs):
+    """
+    Notify user when their document is deleted
+    This captures both user deletions and admin deletions
+    """
+    try:
+        # Check if user still exists (they might have been deleted)
+        if instance.user and instance.user.is_active:
+            send_multi_channel_notification(
+                user=instance.user,
+                notification_type='document_deleted',
+                title='Document Deleted',
+                message=f'Your {instance.get_category_display()} - {instance.title} has been deleted from the system.'
+            )
+            logger.info(f"Delete notification sent for document {instance.id}")
+            
+    except Exception as e:
+        logger.error(f"Error sending document deletion notification: {str(e)}", exc_info=True)
+
+
 # ============================================================
 # BENEFICIARY NOTIFICATIONS  
 # ============================================================
 
 @receiver(post_save, sender=Beneficiary)
 def notify_beneficiary_added(sender, instance, created, **kwargs):
-    """
-    Notify user when they add a beneficiary
-    Notify admins about new beneficiary for verification
-    """
+    """Notify user and admins when beneficiary is added"""
     if created:
         try:
             # Notify the user
@@ -335,9 +320,7 @@ def notify_beneficiary_added(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender=Beneficiary)
 def notify_beneficiary_status_change(sender, instance, **kwargs):
-    """
-    Notify user when beneficiary is verified or status changes
-    """
+    """Notify user when beneficiary status changes"""
     if instance.pk:
         try:
             old_instance = Beneficiary.objects.get(pk=instance.pk)
@@ -372,3 +355,23 @@ def notify_beneficiary_status_change(sender, instance, **kwargs):
             pass
         except Exception as e:
             logger.error(f"Error in beneficiary status change handler: {str(e)}", exc_info=True)
+
+
+@receiver(post_delete, sender=Beneficiary)
+def notify_beneficiary_deleted(sender, instance, **kwargs):
+    """
+    Notify user when their beneficiary is deleted/removed
+    """
+    try:
+        # Check if user still exists
+        if instance.user and instance.user.is_active:
+            send_multi_channel_notification(
+                user=instance.user,
+                notification_type='beneficiary_deleted',
+                title='Beneficiary Removed',
+                message=f'Beneficiary {instance.name} ({instance.get_relation_display()}) has been removed from your account.'
+            )
+            logger.info(f"Delete notification sent for beneficiary {instance.id}")
+            
+    except Exception as e:
+        logger.error(f"Error sending beneficiary deletion notification: {str(e)}", exc_info=True)

@@ -1,6 +1,3 @@
-"""
-apps/notifications/models.py - Add NotificationPreferences Model
-"""
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -11,7 +8,7 @@ User = get_user_model()
 
 
 class Notification(models.Model):
-    """Existing Notification model - keep as is"""
+    """Notification model with document deletion support"""
     NOTIFICATION_TYPES = (
         ('deposit_created', 'Deposit Created'),
         ('deposit_approved', 'Deposit Approved'),
@@ -22,9 +19,11 @@ class Notification(models.Model):
         ('document_uploaded', 'Document Uploaded'),
         ('document_verified', 'Document Verified'),
         ('document_rejected', 'Document Rejected'),
+        ('document_deleted', 'Document Deleted'),  # NEW
         ('beneficiary_added', 'Beneficiary Added'),
         ('beneficiary_verified', 'Beneficiary Verified'),
         ('beneficiary_deceased', 'Beneficiary Deceased'),
+        ('beneficiary_deleted', 'Beneficiary Deleted'),  # NEW
         ('system', 'System Notification'),
     )
 
@@ -70,10 +69,7 @@ class Notification(models.Model):
 
 
 class NotificationPreferences(models.Model):
-    """
-    User notification preferences for different channels
-    Auto-created for each user with default settings
-    """
+    """User notification preferences for different channels"""
     user = models.OneToOneField(
         User, 
         on_delete=models.CASCADE, 
@@ -130,16 +126,7 @@ class NotificationPreferences(models.Model):
         return f"{self.user.full_name}'s Preferences"
 
     def should_notify(self, notification_type, channel='push'):
-        """
-        Check if user should receive a notification
-        
-        Args:
-            notification_type: Type of notification (e.g., 'deposit_created')
-            channel: Notification channel ('email', 'sms', 'push')
-        
-        Returns:
-            bool: True if notification should be sent
-        """
+        """Check if user should receive a notification"""
         # Check channel preference
         if channel == 'email' and not self.email_enabled:
             return False
@@ -163,17 +150,13 @@ class NotificationPreferences(models.Model):
 
 @receiver(post_save, sender=User)
 def create_notification_preferences(sender, instance, created, **kwargs):
-    """
-    Automatically create notification preferences when a new user is created
-    """
+    """Automatically create notification preferences for new users"""
     if created:
         NotificationPreferences.objects.create(user=instance)
 
 
 @receiver(post_save, sender=User)
 def save_notification_preferences(sender, instance, **kwargs):
-    """
-    Ensure preferences are saved when user is saved
-    """
+    """Ensure preferences are saved when user is saved"""
     if hasattr(instance, 'notification_preferences'):
         instance.notification_preferences.save()

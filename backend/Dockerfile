@@ -39,9 +39,15 @@ CMD python manage.py migrate --noinput && \
     python manage.py create_admin && \
     gunicorn advance_company.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \
-    --workers 3 \
-    --timeout 120 \
+    --workers 4 \
+    --threads 2 \
+    --timeout 300 \
+    --graceful-timeout 300 \
+    --keep-alive 10 \
     --max-requests 1000 \
     --max-requests-jitter 50 \
+    --worker-class sync \
+    --worker-tmp-dir /dev/shm \
     --access-logfile - \
-    --error-logfile -
+    --error-logfile - \
+    --log-level info
