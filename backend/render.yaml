@@ -1,0 +1,144 @@
+# render.yaml
+# Render Blueprint for Advance Company Backend
+# Using: Neon (Database) + Render (Redis + Web Service)
+
+services:
+  # Django Web Service
+  - type: web
+    name: advance-company-api
+    runtime: python
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: backend
+    
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput --clear
+      python manage.py migrate --noinput
+    
+    startCommand: |
+      python manage.py create_admin
+      gunicorn advance_company.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 60 --graceful-timeout 30 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50 --worker-class sync --access-logfile - --error-logfile - --log-level info
+    
+    envVars:
+      # Python Runtime
+      - key: PYTHON_VERSION
+        value: "3.11.7"
+      
+      # Django Core
+      - key: SECRET_KEY
+        generateValue: true
+      
+      - key: DEBUG
+        value: "False"
+      
+      # Database - Neon (external)
+      - key: DATABASE_URL
+        sync: false
+      
+      # Redis - Render Redis
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: advance-company-redis
+          property: connectionString
+      
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: advance-company-redis
+          property: connectionString
+      
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: advance-company-redis
+          property: connectionString
+      
+      # Hosts & CORS
+      - key: ALLOWED_HOSTS
+        sync: false
+      
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      
+      - key: FRONTEND_URL
+        sync: false
+      
+      # Email Configuration
+      - key: EMAIL_BACKEND
+        value: "django.core.mail.backends.smtp.EmailBackend"
+      
+      - key: EMAIL_HOST
+        value: "smtp.gmail.com"
+      
+      - key: EMAIL_PORT
+        value: "587"
+      
+      - key: EMAIL_USE_TLS
+        value: "True"
+      
+      - key: EMAIL_HOST_USER
+        value: "peterclermy232@gmail.com"
+      
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      
+      - key: DEFAULT_FROM_EMAIL
+        value: "Advance Company <peterclermy232@gmail.com>"
+      
+      # M-Pesa Configuration
+      - key: MPESA_ENVIRONMENT
+        value: "sandbox"
+      
+      - key: MPESA_CONSUMER_KEY
+        value: "tXPIhqg7Y8pxf5i1vrFVlGClZsGZfyn9AlVcLW2aifSYYa4w"
+      
+      - key: MPESA_CONSUMER_SECRET
+        sync: false
+      
+      - key: MPESA_SHORTCODE
+        value: "174379"
+      
+      - key: MPESA_PASSKEY
+        sync: false
+      
+      - key: MPESA_CALLBACK_URL
+        sync: false
+      
+      # Monitoring
+      - key: SENTRY_DSN
+        sync: false
+      
+      # Rate Limiting
+      - key: RATELIMIT_ENABLE
+        value: "True"
+      
+      # Security Settings
+      - key: MAX_LOGIN_ATTEMPTS
+        value: "5"
+      
+      - key: LOCKOUT_DURATION
+        value: "1800"
+      
+      - key: SESSION_COOKIE_AGE
+        value: "3600"
+      
+      - key: JWT_ACCESS_TOKEN_LIFETIME
+        value: "30"
+      
+      - key: JWT_REFRESH_TOKEN_LIFETIME
+        value: "7"
+  
+  # Redis Service
+  - type: redis
+    name: advance-company-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
