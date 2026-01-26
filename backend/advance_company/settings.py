@@ -1,7 +1,3 @@
-"""
-Django settings for advance_company project.
-"""
-
 import os
 from pathlib import Path
 from datetime import timedelta
@@ -146,10 +142,6 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -242,6 +234,28 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# Cloudinary Configuration
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': strip_quotes(config('CLOUDINARY_CLOUD_NAME')),
+    'API_KEY': strip_quotes(config('CLOUDINARY_API_KEY')),
+    'API_SECRET': strip_quotes(config('CLOUDINARY_API_SECRET')),
+    'RESOURCE_TYPE': 'auto',
+}
+
+# Configure cloudinary library directly
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+    api_key=CLOUDINARY_STORAGE['API_KEY'],
+    api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+    secure=True
+)
+
+# Use standard MediaCloudinaryStorage
+DEFAULT_FILE_STORAGE = 'apps.documents.storage.CleanMediaCloudinaryStorage'
 
 # Cache Configuration
 REDIS_URL = config('REDIS_URL', default=None)
@@ -321,25 +335,13 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'apps.accounts': {  # Add this
-        'handlers': ['console'],
-        'level': 'INFO',
-        'propagate': False,
-    },
+        'apps.accounts': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
-
-import cloudinary
-import cloudinary.uploader
-
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': strip_quotes(config('CLOUDINARY_CLOUD_NAME')),
-    'API_KEY': strip_quotes(config('CLOUDINARY_API_KEY')),
-    'API_SECRET': strip_quotes(config('CLOUDINARY_API_SECRET')),
-}
-
-# Use Cloudinary for media files
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Debug output for production troubleshooting
 print("="*50)
@@ -350,4 +352,6 @@ print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
 print(f"CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
 print(f"CSRF Middleware: DISABLED (JWT API)")
+print(f"File Storage: {DEFAULT_FILE_STORAGE}")
+print(f"Cloudinary Cloud: {CLOUDINARY_STORAGE.get('CLOUD_NAME', 'NOT SET')}")
 print("="*50)

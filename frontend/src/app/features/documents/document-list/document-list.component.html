@@ -66,62 +66,9 @@
   </div>
 </div>
 
-<!-- Upload Modal -->
-<div *ngIf="showUploadModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-    <h3 class="text-lg font-bold text-gray-800 mb-4">Upload Document</h3>
-    <form [formGroup]="uploadForm" (ngSubmit)="onUpload()" class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-        <input
-          type="text"
-          formControlName="title"
-          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-          placeholder="Enter document title">
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-        <select formControlName="category" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-          <option value="">Select category</option>
-          <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">File (Max 5MB)</label>
-        <input
-          type="file"
-          (change)="onFileSelected($event)"
-          accept=".pdf,.jpg,.jpeg,.png"
-          class="w-full px-4 py-2 border rounded-lg">
-        <p *ngIf="selectedFile" class="text-sm text-gray-500 mt-1">
-          {{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(0) }}KB)
-        </p>
-      </div>
-
-      <!-- Progress Bar -->
-      <div *ngIf="isUploading" class="space-y-2">
-        <div class="w-full bg-gray-200 rounded-full h-2">
-          <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-               [style.width.%]="uploadProgress"></div>
-        </div>
-        <p class="text-sm text-center text-gray-600">Uploading... {{ uploadProgress }}%</p>
-      </div>
-
-      <div class="flex gap-3">
-        <button type="button" (click)="closeUploadModal()" 
-                [disabled]="isUploading"
-                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-          Cancel
-        </button>
-        <button
-          type="submit"
-          [disabled]="isUploading || uploadForm.invalid || !selectedFile"
-          class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-          {{ isUploading ? 'Uploading...' : 'Upload' }}
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
+<!-- Upload Modal Component -->
+<app-document-upload 
+  [showModal]="showUploadModal"
+  (closeModal)="closeUploadModal()"
+  (uploadSuccess)="onUploadSuccess()">
+</app-document-upload>
