@@ -11,8 +11,8 @@ class DocumentSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'uploaded_at', 'updated_at']
     
     def get_file_url(self, obj):
+        """Get the correct Cloudinary URL"""
         if obj.file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.file.url)
+            # Cloudinary returns the full URL automatically
+            return obj.file.url
         return None

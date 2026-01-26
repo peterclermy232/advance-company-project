@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'cloudinary_storage',
+    'cloudinary',
     'django.contrib.staticfiles',
     
     # Third party
@@ -240,6 +242,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+
 # Cache Configuration
 REDIS_URL = config('REDIS_URL', default=None)
 if REDIS_URL:
@@ -325,6 +328,18 @@ LOGGING = {
     },
     },
 }
+
+import cloudinary
+import cloudinary.uploader
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': strip_quotes(config('CLOUDINARY_CLOUD_NAME')),
+    'API_KEY': strip_quotes(config('CLOUDINARY_API_KEY')),
+    'API_SECRET': strip_quotes(config('CLOUDINARY_API_SECRET')),
+}
+
+# Use Cloudinary for media files
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Debug output for production troubleshooting
 print("="*50)

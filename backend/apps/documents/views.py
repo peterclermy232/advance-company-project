@@ -4,10 +4,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import transaction
+from django.core.exceptions import ValidationError
 from .models import Document
 from .serializers import DocumentSerializer
 import logging
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -21,20 +21,17 @@ class DocumentViewSet(viewsets.ModelViewSet):
     search_fields = ['title']
     
     def get_queryset(self):
+        """Filter documents based on user role"""
         if self.request.user.role == 'admin':
             return Document.objects.all()
         return Document.objects.filter(user=self.request.user)
     
     def create(self, request, *args, **kwargs):
-        """
-        ULTRA-FAST UPLOAD
-        Only validates: size, extension
-        NO content validation
-        """
-        logger.info(f"📤 Upload start: {request.user.email}")
+        """Upload document with validation"""
+        logger.info(f"📤 Upload request from: {request.user.email}")
         
         try:
-            # FAST VALIDATION
+            # Check if file is provided
             if 'file' not in request.FILES:
                 return Response(
                     {'error': 'No file provided'},
@@ -42,35 +39,26 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 )
             
             file = request.FILES['file']
+            logger.info(f"Processing file: {file.name} ({file.size / 1024:.1f}KB)")
             
-            # 1. SIZE CHECK (instant)
-            MAX_SIZE = 5 * 1024 * 1024
-            if file.size > MAX_SIZE:
-                logger.warning(f"❌ File too large: {file.size / 1024 / 1024:.2f}MB")
+            # Validate file (size, extension, content)
+            from .validators import SecureFileValidator
+            try:
+                SecureFileValidator.validate_file(file)
+            except ValidationError as e:
+                logger.warning(f"❌ Validation failed: {str(e)}")
                 return Response(
-                    {'error': f'File too large: {file.size / 1024 / 1024:.2f}MB. Max: 5MB'},
+                    {'error': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # 2. EXTENSION CHECK (instant)
-            ext = os.path.splitext(file.name)[1].lower()
-            allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.gif']
-            if ext not in allowed:
-                logger.warning(f"❌ Invalid extension: {ext}")
-                return Response(
-                    {'error': f'Invalid file type "{ext}". Allowed: PDF, JPEG, PNG, GIF'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            logger.info(f"✓ Validation passed: {file.name} ({file.size / 1024:.0f}KB)")
-            
-            # SAVE (no validation)
+            # Save document
             with transaction.atomic():
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
-                serializer.save(user=request.user)
+                document = serializer.save(user=request.user)
                 
-                logger.info(f"✓ Saved: {serializer.data.get('id')}")
+                logger.info(f"✅ Document uploaded: ID={document.id}, File={document.file.name}")
                 
                 return Response(
                     {
@@ -80,6 +68,12 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_201_CREATED
                 )
             
+        except ValidationError as e:
+            logger.warning(f"❌ Validation error: {str(e)}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         except Exception as e:
             logger.error(f"❌ Upload failed: {str(e)}", exc_info=True)
             return Response(
@@ -101,15 +95,15 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.status = 'verified'
             document.save()
             
-            logger.info(f"✓ Verified: {document.id}")
+            logger.info(f"✅ Document verified: {document.id} by {request.user.email}")
             
             return Response({
-                'message': 'Document verified',
+                'message': 'Document verified successfully',
                 'document': self.get_serializer(document).data
             })
             
         except Exception as e:
-            logger.error(f"❌ Verify failed: {str(e)}", exc_info=True)
+            logger.error(f"❌ Verification failed: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Verification failed'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -130,7 +124,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.rejection_reason = request.data.get('reason', 'No reason provided')
             document.save()
             
-            logger.info(f"✓ Rejected: {document.id}")
+            logger.info(f"✅ Document rejected: {document.id} by {request.user.email}")
             
             return Response({
                 'message': 'Document rejected',
@@ -138,7 +132,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             })
             
         except Exception as e:
-            logger.error(f"❌ Reject failed: {str(e)}", exc_info=True)
+            logger.error(f"❌ Rejection failed: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Rejection failed'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
