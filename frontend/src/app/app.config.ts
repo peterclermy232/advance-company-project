@@ -45,7 +45,7 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     importProvidersFrom(MatSnackBarModule),
 
-    // ✅ Configure default toast position and duration
+    // Configure default toast position and duration
     {
       provide: MAT_SNACK_BAR_DEFAULT_OPTIONS,
       useValue: {

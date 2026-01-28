@@ -196,7 +196,7 @@ export class BeneficiaryVerificationComponent implements OnInit {
     }).subscribe({
       next: (response) => {
         loadingToast.dismiss();
-        this.toastService.warning(`⚠️ ${this.selectedBeneficiary!.name} rejected`);
+        this.toastService.warning(` ${this.selectedBeneficiary!.name} rejected`);
         this.closeRejectModal();
         this.loadStatistics();
         this.loadBeneficiaries();

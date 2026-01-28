@@ -50,7 +50,7 @@ export class BeneficiaryListComponent implements OnInit {
   confirmDelete(beneficiary: Beneficiary) {
     this.selectedBeneficiary = beneficiary;
     this.showDeleteModal = true;
-    this.notificationService.warning(`⚠️ You're about to remove ${beneficiary.name}`);
+    this.notificationService.warning(` You're about to remove ${beneficiary.name}`);
   }
 
   deleteBeneficiary() {
@@ -67,7 +67,7 @@ export class BeneficiaryListComponent implements OnInit {
         },
         error: (error) => {
           loadingToast.dismiss();
-          this.notificationService.error('❌ Failed to remove beneficiary. Please try again.');
+          this.notificationService.error('Failed to remove beneficiary. Please try again.');
           console.error('Delete error:', error);
         }
       });

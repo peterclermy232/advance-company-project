@@ -65,7 +65,7 @@ export class NotificationService implements OnDestroy {
         switchMap(() => this.getUnreadCount()),
         catchError(error => {
           console.error('NotificationService: Polling error', error);
-          return of({ count: 0 }); // ✅ must return observable
+          return of({ count: 0 }); 
         })
       )
       .subscribe();

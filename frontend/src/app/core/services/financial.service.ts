@@ -22,9 +22,6 @@ export class FinancialService {
   private toastService = inject(ToastService);
   private apiUrl = `${environment.apiUrl}/financial`;
 
-  /**
-   * Helper method to show backend toast message
-   */
   private showBackendToast(response: BackendResponse) {
     if (!response.message) return;
     
@@ -46,9 +43,6 @@ export class FinancialService {
     }
   }
 
-  /**
-   * Helper method to handle backend error responses
-   */
   private handleBackendError(error: any): Observable<never> {
     // Check if error has backend response format
     if (error.error?.message) {

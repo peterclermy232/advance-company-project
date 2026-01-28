@@ -91,13 +91,6 @@ export class ApiService {
     });
   }
 
-  /**
-   * Helper method for paginated endpoints
-   * @param endpoint - API endpoint
-   * @param page - Page number
-   * @param pageSize - Items per page
-   * @param filters - Additional filters
-   */
   getPaginated<T>(
     endpoint: string, 
     page: number = 1, 

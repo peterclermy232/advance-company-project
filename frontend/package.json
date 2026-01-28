@@ -5,6 +5,9 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:prod": "ng build --configuration production",
+    "build:prod:clean": "ng build --configuration production && npm run remove-console",
+    "remove-console": "node remove-console.js",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

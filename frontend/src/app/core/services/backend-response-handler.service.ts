@@ -11,21 +11,11 @@ export interface BackendResponse<T = any> {
   errors?: any;
 }
 
-/**
- * Service to handle standardized backend responses
- * Works with Django response_utils.py APIResponse class
- */
 @Injectable({
   providedIn: 'root'
 })
 export class BackendResponseHandler {
   private toastService = inject(ToastService);
-
-  /**
-   * Show toast message based on backend response
-   * @param response Backend response with message and toast_type
-   * @param silent If true, don't show toast (useful for background operations)
-   */
   showToast(response: BackendResponse, silent: boolean = false): void {
     if (silent || !response.message) return;
     
@@ -46,12 +36,6 @@ export class BackendResponseHandler {
         this.toastService.info(response.message);
     }
   }
-
-  /**
-   * Handle backend error responses
-   * @param error Error object from HTTP request
-   * @param fallbackMessage Optional fallback message if no error message found
-   */
   handleError(error: any, fallbackMessage?: string): Observable<never> {
     console.error('Backend error:', error);
 
@@ -88,29 +72,14 @@ export class BackendResponseHandler {
     return throwError(() => error);
   }
 
-  /**
-   * Extract data from backend response
-   * @param response Backend response
-   * @returns Data field from response
-   */
   extractData<T>(response: BackendResponse<T>): T | undefined {
     return response.data;
   }
 
-  /**
-   * Check if backend response was successful
-   * @param response Backend response
-   * @returns true if success flag is true
-   */
   isSuccess(response: BackendResponse): boolean {
     return response.success === true;
   }
 
-  /**
-   * Get error details from backend response
-   * @param response Backend response
-   * @returns Errors object if available
-   */
   getErrors(response: BackendResponse): any {
     return response.errors;
   }

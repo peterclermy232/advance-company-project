@@ -22,7 +22,7 @@ export class DocumentService {
         this.toastService.error('Failed to load documents');
         return throwError(() => error);
       }),
-      // ✅ normalize response
+      //  normalize response
       map(response =>
         Array.isArray(response) ? response : response?.results ?? []
       )

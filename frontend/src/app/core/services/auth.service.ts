@@ -32,8 +32,6 @@ export class AuthService {
 
   constructor() {
     this.loadUserFromStorage();
-    console.log('✅ AuthService initialized');
-    console.log('✅ ToastService exists:', !!this.toastService);
   }
 
   private loadUserFromStorage(): void {
@@ -53,100 +51,68 @@ export class AuthService {
    * Helper method to show backend toast message
    */
   private showBackendToast(response: BackendResponse) {
-    console.log('🔔 ========== SHOW TOAST ==========');
-    console.log('🔔 Response:', response);
-    console.log('🔔 Has message:', !!response.message);
-    console.log('🔔 Message:', response.message);
-    console.log('🔔 Toast type:', response.toast_type);
     
     if (!response.message) {
-      console.warn('⚠️ No message in response - skipping toast');
+      console.warn(' No message in response - skipping toast');
       return;
     }
     
     try {
       switch (response.toast_type) {
         case 'success':
-          console.log('✅ Calling SUCCESS toast');
           this.toastService.success(response.message);
-          console.log('✅ SUCCESS toast called');
           break;
         case 'error':
-          console.log('❌ Calling ERROR toast');
           this.toastService.error(response.message);
-          console.log('❌ ERROR toast called');
           break;
         case 'warning':
-          console.log('⚠️ Calling WARNING toast');
           this.toastService.warning(response.message);
-          console.log('⚠️ WARNING toast called');
           break;
         case 'info':
-          console.log('ℹ️ Calling INFO toast');
           this.toastService.info(response.message);
-          console.log('ℹ️ INFO toast called');
           break;
         default:
-          console.log('ℹ️ Calling INFO toast (default)');
           this.toastService.info(response.message);
-          console.log('ℹ️ INFO toast called (default)');
       }
     } catch (error) {
-      console.error('💥 ERROR showing toast:', error);
+      console.error('ERROR showing toast:', error);
     }
-    console.log('🔔 ====================================');
   }
 
   /**
    * Helper method to handle backend error responses
    */
   private handleBackendError(error: any): Observable<never> {
-    console.log('🔴 ========== ERROR HANDLER ==========');
-    console.log('🔴 Error object:', error);
-    console.log('🔴 error.status:', error.status);
-    console.log('🔴 error.error:', error.error);
-    console.log('🔴 Type of error.error:', typeof error.error);
     
     // Check if error.error exists and is an object
     if (error.error && typeof error.error === 'object') {
-      console.log('🔴 error.error is an object');
-      console.log('🔴 error.error.message:', error.error.message);
-      console.log('🔴 error.error.toast_type:', error.error.toast_type);
-      
       // Check for backend response format with message and toast_type
       if (error.error.message && error.error.toast_type) {
-        console.log('🔴 ✅ Found BackendResponse format!');
         const backendError = error.error as BackendResponse;
         this.showBackendToast(backendError);
       }
       // Check for Django Rest Framework detail format
       else if (error.error.detail) {
-        console.log('🔴 Found DRF detail error');
         this.toastService.error(error.error.detail);
       }
       // Check for generic error field
       else if (error.error.error) {
-        console.log('🔴 Found generic error field');
         this.toastService.error(error.error.error);
       }
       else {
-        console.log('🔴 Unknown error format, using generic message');
         this.toastService.error('An error occurred. Please try again.');
       }
     }
     // If error.error is a string
     else if (typeof error.error === 'string') {
-      console.log('🔴 error.error is a string:', error.error);
       this.toastService.error(error.error);
     }
     // Fallback to error.message
     else if (error.message) {
-      console.log('🔴 Using error.message:', error.message);
       this.toastService.error(error.message);
     }
     // Final fallback
     else {
-      console.log('🔴 No error info found, using generic message');
       this.toastService.error('An unexpected error occurred');
     }
     
@@ -155,9 +121,6 @@ export class AuthService {
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    console.log('🔵 ========== LOGIN START ==========');
-    console.log('🔵 Credentials:', credentials);
-    
     return this.http
       .post<BackendResponse<AuthResponse>>(
         `${environment.apiUrl}/auth/login/`,
@@ -165,26 +128,20 @@ export class AuthService {
       )
       .pipe(
         tap(response => {
-          console.log('🟢 ========== LOGIN SUCCESS ==========');
-          console.log('🟢 Response:', response);
-          console.log('🟢 Calling showBackendToast...');
           this.showBackendToast(response);
 
           if ((response.data as any)?.requires_2fa) {
-            console.log('🔐 2FA required');
             sessionStorage.setItem('temp_token', (response.data as any).temp_token);
             sessionStorage.setItem('temp_email', (response.data as any).email);
           }
 
           if (response.data) {
-            console.log('💾 Handling auth response');
             this.handleAuthResponse(response.data);
           }
           console.log('🟢 ====================================');
         }),
         map(response => response.data as AuthResponse),
         catchError(error => {
-          console.log('❌ ========== LOGIN ERROR ==========');
           return this.handleBackendError(error);
         })
       );
@@ -206,7 +163,7 @@ export class AuthService {
       }),
       map(response => response.data as AuthResponse),
       catchError((error: HttpErrorResponse) => {
-        // 🔑 PASS BACKEND ERROR CLEANLY
+        // PASS BACKEND ERROR CLEANLY
         return throwError(() => error.error);
       })
     );
@@ -529,8 +486,7 @@ export class AuthService {
 
   logout(): void {
     this.clearStorage();
-    //this.toastService.info('Logged out successfully. See you soon! 👋');
-    //this.router.navigate(['/auth/login']);
+    this.router.navigate(['/auth/login']);
   }
 
   private clearStorage(): void {

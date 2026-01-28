@@ -21,7 +21,7 @@ export class ReportService {
       date_to: dateTo
     }).pipe(
       tap(() => {
-        this.toastService.success('Report generated successfully! 📊');
+        this.toastService.success('Report generated successfully!');
       }),
       catchError(error => {
         this.toastService.error('Failed to generate report. Please try again.');
