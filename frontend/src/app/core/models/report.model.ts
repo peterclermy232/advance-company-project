@@ -6,7 +6,7 @@ export interface Report {
   title: string;
   file?: string;
   file_url?: string;
-  status: 'generating' | 'ready' | 'failed';
+  status: 'generating' | 'ready' | 'failed' | 'RESOLVED';
   date_from?: string;
   date_to?: string;
   generated_by?: number;

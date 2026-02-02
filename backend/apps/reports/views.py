@@ -8,6 +8,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from datetime import datetime
 import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
+import traceback
+import logging
+import time
 
 from .models import Report, ActivityLog
 from .serializers import ReportSerializer, ActivityLogSerializer
@@ -18,6 +22,54 @@ from .utils import (
     generate_compensatory_pdf_report,
     generate_activity_pdf_report
 )
+
+logger = logging.getLogger(__name__)
+
+
+def upload_report_to_cloudinary(pdf_buffer, folder, filename):
+    """
+    Upload PDF to Cloudinary as private and generate signed URL
+    
+    Args:
+        pdf_buffer: BytesIO buffer containing PDF data
+        folder: Cloudinary folder path (e.g., 'reports/financial')
+        filename: File name without extension
+    
+    Returns:
+        str: Signed URL valid for 30 days
+    """
+    # Upload as private type
+    pdf_buffer.seek(0)
+    result = cloudinary.uploader.upload(
+        pdf_buffer,
+        resource_type='raw',
+        folder=folder,
+        public_id=filename,
+        format='pdf',
+        type='private',
+        overwrite=True,
+        invalidate=True
+    )
+    
+    logger.info(f"Upload successful: {result.get('secure_url')}")
+    logger.info(f"Public ID from result: {result.get('public_id')}")
+    
+    # Use the public_id from the upload result to ensure correct path
+    public_id = result.get('public_id')
+    
+    # Generate signed URL (valid for 30 days)
+    signed_url, options = cloudinary_url(
+        public_id,
+        resource_type='raw',
+        type='private',
+        sign_url=True,
+        secure=True,
+        expires_at=int(time.time()) + (30 * 24 * 60 * 60)  # 30 days
+    )
+    
+    logger.info(f"Signed URL generated: {signed_url}")
+    
+    return signed_url
 
 
 class ReportViewSet(viewsets.ModelViewSet):
@@ -50,10 +102,13 @@ class ReportViewSet(viewsets.ModelViewSet):
             date_from=date_from,
             date_to=date_to,
             generated_by=request.user,
-            status='generating'
+            status='PENDING',
+            description='Generating financial report...'
         )
 
         try:
+            logger.info(f"Generating financial report for user {request.user.id}")
+            
             account = FinancialAccount.objects.filter(user=request.user).first()
             deposits = Deposit.objects.filter(user=request.user, status='completed')
             if date_from:
@@ -114,6 +169,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             }
 
             # Generate PDF
+            logger.info("Generating PDF...")
             pdf_buffer = generate_financial_pdf_report(
                 user=request.user,
                 report=report,
@@ -122,27 +178,42 @@ class ReportViewSet(viewsets.ModelViewSet):
                 account=account
             )
 
-            # Upload to Cloudinary
-            pdf_buffer.seek(0)
-            result = cloudinary.uploader.upload(
+            # Upload to Cloudinary with signed URL
+            logger.info("Uploading to Cloudinary...")
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"financial_report_user{request.user.id}_{timestamp}"
+            
+            signed_url = upload_report_to_cloudinary(
                 pdf_buffer,
-                resource_type='raw',
-                folder='documents',
-                public_id=f"financial_report_{request.user.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                'reports/financial',
+                filename
             )
-            report.file_url = result['secure_url']
-            report.status = 'ready'
+            
+            report.file_url = signed_url
+            report.status = 'RESOLVED'
+            report.description = 'Financial report generated successfully'
             report.save()
 
             return Response({
+                'success': True,
+                'message': 'Report generated successfully',
                 'report': ReportSerializer(report, context={'request': request}).data,
                 'financial_data': financial_data
             })
 
         except Exception as e:
-            report.status = 'failed'
+            error_details = traceback.format_exc()
+            logger.error(f"Report generation error: {error_details}")
+            
+            report.status = 'REJECTED'
+            report.description = f"Error: {str(e)}"
             report.save()
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            return Response({
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to generate report'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ---------------------- COMPENSATORY REPORT ----------------------
     @action(detail=False, methods=['post'])
@@ -157,7 +228,8 @@ class ReportViewSet(viewsets.ModelViewSet):
             date_from=date_from,
             date_to=date_to,
             generated_by=request.user,
-            status='generating'
+            status='PENDING',
+            description='Generating compensatory report...'
         )
 
         try:
@@ -195,7 +267,7 @@ class ReportViewSet(viewsets.ModelViewSet):
                 'summary': {
                     'total_beneficiaries': beneficiaries.count(),
                     'active_beneficiaries': active_beneficiaries.count(),
-                    'inactive_beneficiaries': beneficiaries.filter(status='inactive').count(),
+                    'inactive_beneficiaries': beneficiaries.exclude(status='active').count(),
                     'total_contributions': float(total_contributions),
                     'total_allocated_percentage': float(total_percentage),
                     'unallocated_percentage': round(unallocated_percentage, 2),
@@ -215,27 +287,41 @@ class ReportViewSet(viewsets.ModelViewSet):
                 compensatory_data=compensatory_data
             )
 
-            # Upload to Cloudinary
-            pdf_buffer.seek(0)
-            result = cloudinary.uploader.upload(
+            # Upload to Cloudinary with signed URL
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"compensatory_report_user{request.user.id}_{timestamp}"
+            
+            signed_url = upload_report_to_cloudinary(
                 pdf_buffer,
-                resource_type='raw',
-                folder='documents',
-                public_id=f"compensatory_report_{request.user.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                'reports/compensatory',
+                filename
             )
-            report.file_url = result['secure_url']
-            report.status = 'ready'
+            
+            report.file_url = signed_url
+            report.status = 'RESOLVED'
+            report.description = 'Compensatory report generated successfully'
             report.save()
 
             return Response({
+                'success': True,
+                'message': 'Report generated successfully',
                 'report': ReportSerializer(report, context={'request': request}).data,
                 'compensatory_data': compensatory_data
             })
 
         except Exception as e:
-            report.status = 'failed'
+            error_details = traceback.format_exc()
+            logger.error(f"Report generation error: {error_details}")
+            
+            report.status = 'REJECTED'
+            report.description = f"Error: {str(e)}"
             report.save()
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            return Response({
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to generate report'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ---------------------- ACTIVITY REPORT ----------------------
     @action(detail=False, methods=['post'])
@@ -250,7 +336,8 @@ class ReportViewSet(viewsets.ModelViewSet):
             date_from=date_from,
             date_to=date_to,
             generated_by=request.user,
-            status='generating'
+            status='PENDING',
+            description='Generating activity report...'
         )
 
         try:
@@ -262,7 +349,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
             action_summary = activities.values('action').annotate(count=Count('id')).order_by('-count')
             recent_activities = activities.order_by('-created_at')[:20].values(
-                'id', 'action', 'description', 'created_at', 'ip_address'
+                'id', 'action', 'description', 'created_at'
             )
 
             from django.db.models.functions import TruncDate
@@ -288,27 +375,41 @@ class ReportViewSet(viewsets.ModelViewSet):
                 activity_data=activity_data
             )
 
-            # Upload to Cloudinary
-            pdf_buffer.seek(0)
-            result = cloudinary.uploader.upload(
+            # Upload to Cloudinary with signed URL
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"activity_report_user{request.user.id}_{timestamp}"
+            
+            signed_url = upload_report_to_cloudinary(
                 pdf_buffer,
-                resource_type='raw',
-                folder='documents',
-                public_id=f"activity_report_{request.user.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                'reports/activity',
+                filename
             )
-            report.file_url = result['secure_url']
-            report.status = 'ready'
+            
+            report.file_url = signed_url
+            report.status = 'RESOLVED'
+            report.description = 'Activity report generated successfully'
             report.save()
 
             return Response({
+                'success': True,
+                'message': 'Report generated successfully',
                 'report': ReportSerializer(report, context={'request': request}).data,
                 'activity_data': activity_data
             })
 
         except Exception as e:
-            report.status = 'failed'
+            error_details = traceback.format_exc()
+            logger.error(f"Report generation error: {error_details}")
+            
+            report.status = 'REJECTED'
+            report.description = f"Error: {str(e)}"
             report.save()
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            return Response({
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to generate report'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ---------------------- DASHBOARD SUMMARY ----------------------
     @action(detail=False, methods=['get'])

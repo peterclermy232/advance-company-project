@@ -94,7 +94,7 @@ export class ReportsComponent implements OnInit {
 
     let reportObservable;
     
-    switch (this.activeTab.toUpperCase()) {
+    switch (this.activeTab) {
       case 'FINANCIAL':
         reportObservable = this.reportService.generateFinancialReport(dateFrom, dateTo);
         break;
@@ -139,7 +139,7 @@ export class ReportsComponent implements OnInit {
 
   // Check if download is available
   canDownload(report: Report): boolean {
-    return report.status === 'ready' && !!report.file_url;
+    return (report.status === 'ready' || report.status === 'RESOLVED') && !!report.file_url;
   }
 
   getStatusClass(status: string): string {
@@ -152,7 +152,7 @@ export class ReportsComponent implements OnInit {
   }
 
   getTabDisplayName(): string {
-    switch (this.activeTab.toUpperCase()) {
+    switch (this.activeTab) {
       case 'FINANCIAL':
         return 'FINANCIAL';
       case 'COMPENSATORY':
