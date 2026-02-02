@@ -35,13 +35,12 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
         """Create beneficiary for current user"""
         beneficiary = serializer.save(user=self.request.user)
         
-        # Log activity
+        # Log activity (removed ip_address parameter)
         from apps.reports.models import ActivityLog
         ActivityLog.objects.create(
             user=self.request.user,
             action='beneficiary_added',
-            description=f'Added beneficiary: {beneficiary.name} ({beneficiary.get_relation_display()})',
-            ip_address=self.get_client_ip()
+            description=f'Added beneficiary: {beneficiary.name} ({beneficiary.get_relation_display()})'
         )
         
         logger.info(f"Beneficiary {beneficiary.id} created by user {self.request.user.id}")
@@ -50,13 +49,12 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
         """Update beneficiary"""
         beneficiary = serializer.save()
         
-        # Log activity
+        # Log activity (removed ip_address parameter)
         from apps.reports.models import ActivityLog
         ActivityLog.objects.create(
             user=self.request.user,
             action='beneficiary_updated',
-            description=f'Updated beneficiary: {beneficiary.name}',
-            ip_address=self.get_client_ip()
+            description=f'Updated beneficiary: {beneficiary.name}'
         )
         
         logger.info(f"Beneficiary {beneficiary.id} updated by user {self.request.user.id}")
@@ -66,13 +64,12 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
         instance.status = 'removed'
         instance.save()
         
-        # Log activity
+        # Log activity (removed ip_address parameter)
         from apps.reports.models import ActivityLog
         ActivityLog.objects.create(
             user=self.request.user,
             action='beneficiary_removed',
-            description=f'Removed beneficiary: {instance.name}',
-            ip_address=self.get_client_ip()
+            description=f'Removed beneficiary: {instance.name}'
         )
         
         logger.info(f"Beneficiary {instance.id} removed by user {self.request.user.id}")
@@ -136,13 +133,12 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
                     message=f'Your beneficiary "{beneficiary.name}" has been verified and approved.',
                 )
                 
-                # Log activity
+                # Log activity (removed ip_address parameter)
                 from apps.reports.models import ActivityLog
                 ActivityLog.objects.create(
                     user=request.user,
                     action='beneficiary_verified',
-                    description=f'Verified beneficiary: {beneficiary.name} for user {beneficiary.user.full_name}',
-                    ip_address=self.get_client_ip()
+                    description=f'Verified beneficiary: {beneficiary.name} for user {beneficiary.user.full_name}'
                 )
                 
                 logger.info(f"Beneficiary {beneficiary.id} verified by admin {request.user.id}")
@@ -198,13 +194,12 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
                     message=f'Your beneficiary "{beneficiary.name}" was rejected. Reason: {reason}',
                 )
                 
-                # Log activity
+                # Log activity (removed ip_address parameter)
                 from apps.reports.models import ActivityLog
                 ActivityLog.objects.create(
                     user=request.user,
                     action='beneficiary_rejected',
-                    description=f'Rejected beneficiary: {beneficiary.name} for user {beneficiary.user.full_name}. Reason: {reason}',
-                    ip_address=self.get_client_ip()
+                    description=f'Rejected beneficiary: {beneficiary.name} for user {beneficiary.user.full_name}. Reason: {reason}'
                 )
                 
                 logger.info(f"Beneficiary {beneficiary.id} rejected by admin {request.user.id}")
@@ -262,13 +257,12 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
                     message=f'Beneficiary "{beneficiary.name}" has been marked as deceased.',
                 )
                 
-                # Log activity
+                # Log activity (removed ip_address parameter)
                 from apps.reports.models import ActivityLog
                 ActivityLog.objects.create(
                     user=request.user,
                     action='beneficiary_deceased',
-                    description=f'Marked beneficiary as deceased: {beneficiary.name}',
-                    ip_address=self.get_client_ip()
+                    description=f'Marked beneficiary as deceased: {beneficiary.name}'
                 )
                 
                 logger.info(f"Beneficiary {beneficiary.id} marked deceased by user {request.user.id}")

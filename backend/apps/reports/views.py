@@ -8,10 +8,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from datetime import datetime
 import cloudinary.uploader
-from cloudinary.utils import cloudinary_url
 import traceback
 import logging
-import time
 
 from .models import Report, ActivityLog
 from .serializers import ReportSerializer, ActivityLogSerializer
@@ -28,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def upload_report_to_cloudinary(pdf_buffer, folder, filename):
     """
-    Upload PDF to Cloudinary as private and generate signed URL
+    Upload PDF to Cloudinary - type='upload' is NOT restricted in your settings
     
     Args:
         pdf_buffer: BytesIO buffer containing PDF data
@@ -36,40 +34,27 @@ def upload_report_to_cloudinary(pdf_buffer, folder, filename):
         filename: File name without extension
     
     Returns:
-        str: Signed URL valid for 30 days
+        str: Direct secure URL to the PDF
     """
-    # Upload as private type
     pdf_buffer.seek(0)
+    
+    # Upload with type='upload' (this is NOT in your restricted list)
     result = cloudinary.uploader.upload(
         pdf_buffer,
         resource_type='raw',
         folder=folder,
         public_id=filename,
         format='pdf',
-        type='private',
+        # Don't specify type - it defaults to 'upload' which is allowed
         overwrite=True,
         invalidate=True
     )
     
     logger.info(f"Upload successful: {result.get('secure_url')}")
-    logger.info(f"Public ID from result: {result.get('public_id')}")
+    logger.info(f"Public ID: {result.get('public_id')}")
     
-    # Use the public_id from the upload result to ensure correct path
-    public_id = result.get('public_id')
-    
-    # Generate signed URL (valid for 30 days)
-    signed_url, options = cloudinary_url(
-        public_id,
-        resource_type='raw',
-        type='private',
-        sign_url=True,
-        secure=True,
-        expires_at=int(time.time()) + (30 * 24 * 60 * 60)  # 30 days
-    )
-    
-    logger.info(f"Signed URL generated: {signed_url}")
-    
-    return signed_url
+    # Return the direct secure_url (no signing needed since 'upload' is not restricted)
+    return result.get('secure_url')
 
 
 class ReportViewSet(viewsets.ModelViewSet):
@@ -178,18 +163,18 @@ class ReportViewSet(viewsets.ModelViewSet):
                 account=account
             )
 
-            # Upload to Cloudinary with signed URL
+            # Upload to Cloudinary
             logger.info("Uploading to Cloudinary...")
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"financial_report_user{request.user.id}_{timestamp}"
             
-            signed_url = upload_report_to_cloudinary(
+            file_url = upload_report_to_cloudinary(
                 pdf_buffer,
                 'reports/financial',
                 filename
             )
             
-            report.file_url = signed_url
+            report.file_url = file_url
             report.status = 'RESOLVED'
             report.description = 'Financial report generated successfully'
             report.save()
@@ -287,17 +272,17 @@ class ReportViewSet(viewsets.ModelViewSet):
                 compensatory_data=compensatory_data
             )
 
-            # Upload to Cloudinary with signed URL
+            # Upload to Cloudinary
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"compensatory_report_user{request.user.id}_{timestamp}"
             
-            signed_url = upload_report_to_cloudinary(
+            file_url = upload_report_to_cloudinary(
                 pdf_buffer,
                 'reports/compensatory',
                 filename
             )
             
-            report.file_url = signed_url
+            report.file_url = file_url
             report.status = 'RESOLVED'
             report.description = 'Compensatory report generated successfully'
             report.save()
@@ -375,17 +360,17 @@ class ReportViewSet(viewsets.ModelViewSet):
                 activity_data=activity_data
             )
 
-            # Upload to Cloudinary with signed URL
+            # Upload to Cloudinary
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"activity_report_user{request.user.id}_{timestamp}"
             
-            signed_url = upload_report_to_cloudinary(
+            file_url = upload_report_to_cloudinary(
                 pdf_buffer,
                 'reports/activity',
                 filename
             )
             
-            report.file_url = signed_url
+            report.file_url = file_url
             report.status = 'RESOLVED'
             report.description = 'Activity report generated successfully'
             report.save()
