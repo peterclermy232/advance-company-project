@@ -18,4 +18,5 @@ export interface Beneficiary {
   verification_status: 'verified' | 'pending' | 'rejected';
   created_at: string;
   updated_at: string;
+  percentage_allocation: number;
 }

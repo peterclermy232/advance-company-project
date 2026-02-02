@@ -30,18 +30,26 @@ export class BeneficiaryListComponent implements OnInit {
   }
 
   loadBeneficiaries() {
-  this.beneficiaryService.getBeneficiaries().subscribe({
-    next: (response) => {
-      this.beneficiaries = response.results;
-      this.isLoading = false;
-    },
-    error: (error) => {
-      console.error('Error loading beneficiaries:', error);
-      this.notificationService.error('Failed to load beneficiaries');
-      this.isLoading = false;
-    }
-  });
-}
+    this.beneficiaryService.getBeneficiaries().subscribe({
+      next: (response) => {
+        this.beneficiaries = response.results;
+        this.isLoading = false;
+        
+        // Show warning if not fully allocated
+        const totalAllocation = this.getTotalAllocation();
+        if (totalAllocation < 100 && this.beneficiaries.length > 0) {
+          this.notificationService.info(
+            `You have ${100 - totalAllocation}% unallocated. Consider updating beneficiary allocations.`
+          );
+        }
+      },
+      error: (error) => {
+        console.error('Error loading beneficiaries:', error);
+        this.notificationService.error('Failed to load beneficiaries');
+        this.isLoading = false;
+      }
+    });
+  }
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
@@ -50,7 +58,7 @@ export class BeneficiaryListComponent implements OnInit {
   confirmDelete(beneficiary: Beneficiary) {
     this.selectedBeneficiary = beneficiary;
     this.showDeleteModal = true;
-    this.notificationService.warning(` You're about to remove ${beneficiary.name}`);
+    this.notificationService.warning(`You're about to remove ${beneficiary.name}`);
   }
 
   deleteBeneficiary() {
@@ -72,6 +80,12 @@ export class BeneficiaryListComponent implements OnInit {
         }
       });
     }
+  }
+
+  getTotalAllocation(): number {
+    return this.beneficiaries
+      .filter(b => b.status === 'active')
+      .reduce((sum, b) => sum + (b.percentage_allocation || 0), 0);
   }
 
   getStatusClass(status: string): string {

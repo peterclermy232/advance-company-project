@@ -81,6 +81,11 @@ export class ApiService {
     return this.http.post<T>(`${this.baseUrl}/${endpoint}`, formData);
   }
 
+  update<T>(endpoint: string, formData: FormData): Observable<T> {
+    // Don't set Content-Type - Angular will set it automatically with boundary
+    return this.http.patch<T>(`${this.baseUrl}/${endpoint}`, formData);
+  }
+
   /**
    * Download file
    * @param endpoint - API endpoint

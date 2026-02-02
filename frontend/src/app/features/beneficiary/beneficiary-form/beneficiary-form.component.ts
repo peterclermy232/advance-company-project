@@ -26,6 +26,8 @@ export class BeneficiaryFormComponent implements OnInit {
   isEditMode = false;
   beneficiaryId: number | null = null;
   beneficiaryForm: FormGroup;
+  totalAllocated = 0;
+  remainingAllocation = 100;
 
   selectedFiles: { [key: string]: File | null } = {
     identity_document: null,
@@ -42,11 +44,19 @@ export class BeneficiaryFormComponent implements OnInit {
       phone_number: [''],
       profession: [''],
       salary_range: [''],
+      percentage_allocation: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
       death_certificate_number: ['']
+    });
+
+    // Watch for percentage changes to validate
+    this.beneficiaryForm.get('percentage_allocation')?.valueChanges.subscribe(value => {
+      this.validateAllocation(value);
     });
   }
 
   ngOnInit() {
+    this.loadCurrentAllocation();
+    
     this.route.params.subscribe(params => {
       if (params['id']) {
         this.isEditMode = true;
@@ -55,6 +65,31 @@ export class BeneficiaryFormComponent implements OnInit {
       }
     });
   }
+
+  loadCurrentAllocation() {
+    // Get current total allocation
+    this.beneficiaryService.getBeneficiaries().subscribe({
+      next: (response) => {
+        const beneficiaries = response.results || [];
+        this.totalAllocated = beneficiaries
+          .filter(b => this.beneficiaryId !== b.id) // Exclude current if editing
+          .reduce((sum, b) => sum + (b.percentage_allocation || 0), 0);
+        this.remainingAllocation = 100 - this.totalAllocated;
+      }
+    });
+  }
+
+  validateAllocation(value: number) {
+  const currentValue = value ?? 0;
+
+  if (currentValue > this.remainingAllocation) {
+    this.beneficiaryForm.get('percentage_allocation')?.setErrors({ 
+      maxExceeded: true,
+      message: `Only ${this.remainingAllocation}% remaining`
+    });
+  }
+}
+
 
   loadBeneficiary() {
     if (this.beneficiaryId) {
@@ -109,7 +144,12 @@ export class BeneficiaryFormComponent implements OnInit {
           this.router.navigate(['/beneficiary']);
         },
         error: (error) => {
-          this.notificationService.error(`Failed to ${this.isEditMode ? 'update' : 'add'} beneficiary`);
+          console.error('Error:', error);
+          if (error.error?.percentage_allocation) {
+            this.notificationService.error(error.error.percentage_allocation[0]);
+          } else {
+            this.notificationService.error(`Failed to ${this.isEditMode ? 'update' : 'add'} beneficiary`);
+          }
           this.isSubmitting = false;
         }
       });
@@ -117,6 +157,14 @@ export class BeneficiaryFormComponent implements OnInit {
       Object.keys(this.beneficiaryForm.controls).forEach(key => {
         this.beneficiaryForm.get(key)?.markAsTouched();
       });
+      this.notificationService.error('Please fill all required fields correctly');
     }
+  }
+
+  getAllocationPercentageClass(): string {
+    const value = this.beneficiaryForm.get('percentage_allocation')?.value || 0;
+    if (value > this.remainingAllocation) return 'text-red-600';
+    if (value > this.remainingAllocation * 0.8) return 'text-yellow-600';
+    return 'text-green-600';
   }
 }

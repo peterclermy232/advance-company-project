@@ -46,7 +46,7 @@ export class BeneficiaryService {
   }
 
   updateBeneficiary(id: number, data: FormData): Observable<Beneficiary> {
-    return this.apiService.upload<Beneficiary>(`beneficiary/${id}/`, data)
+    return this.apiService.update<Beneficiary>(`beneficiary/${id}/`, data)
       .pipe(
         tap(() => {
           this.toastService.success('Beneficiary updated successfully! ✓');

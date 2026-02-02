@@ -29,11 +29,12 @@ export class ReportsComponent implements OnInit {
   private notificationService = inject(NotificationService);
 
   sidebarOpen = true;
-  isLoading = true;
+  isLoading = false;
   isGenerating = false;
-  activeTab = 'financial';
+  activeTab = 'FINANCIAL';
   
   reports: Report[] = [];
+  reportData: any = null;
   filterForm: FormGroup;
 
   constructor() {
@@ -48,14 +49,28 @@ export class ReportsComponent implements OnInit {
   }
 
   loadReports() {
-    this.reportService.getReports({ report_type: this.activeTab }).subscribe({
+    this.isLoading = true;
+    
+    this.reportService.getReports({ report_type: this.activeTab.toUpperCase() }).subscribe({
       next: (response) => {
-        this.reports = response.results;
+        // Handle both paginated and non-paginated responses
+        let allReports: Report[] = [];
+        if (response && response.results) {
+          allReports = response.results;
+        } else if (Array.isArray(response)) {
+          allReports = response;
+        }
+        
+        // Filter reports by active tab (client-side filtering as backup)
+        this.reports = allReports.filter(report => report.report_type === this.activeTab);
+        
         this.isLoading = false;
       },
       error: (error) => {
         console.error('Error loading reports:', error);
+        this.reports = [];
         this.isLoading = false;
+        this.notificationService.error('Failed to load reports');
       }
     });
   }
@@ -65,8 +80,8 @@ export class ReportsComponent implements OnInit {
   }
 
   setActiveTab(tab: string) {
-    this.activeTab = tab;
-    this.isLoading = true;
+    this.activeTab = tab.toLowerCase();
+    this.reportData = null;
     this.loadReports();
   }
 
@@ -74,13 +89,39 @@ export class ReportsComponent implements OnInit {
     this.isGenerating = true;
     const { date_from, date_to } = this.filterForm.value;
 
-    this.reportService.generateFinancialReport(date_from, date_to).subscribe({
+    const dateFrom = date_from || undefined;
+    const dateTo = date_to || undefined;
+
+    let reportObservable;
+    
+    switch (this.activeTab.toUpperCase()) {
+      case 'FINANCIAL':
+        reportObservable = this.reportService.generateFinancialReport(dateFrom, dateTo);
+        break;
+      case 'COMPENSATORY':
+        reportObservable = this.reportService.generateCompensatoryReport(dateFrom, dateTo);
+        break;
+      case 'ACTIVITY':
+        reportObservable = this.reportService.generateActivityReport(dateFrom, dateTo);
+        break;
+      default:
+        reportObservable = this.reportService.generateFinancialReport(dateFrom, dateTo);
+    }
+
+    reportObservable.subscribe({
       next: (response) => {
+        this.reportData = response;
         this.notificationService.success('Report generated successfully');
-        this.loadReports();
+        
+        // Reload reports after generation
+        setTimeout(() => {
+          this.loadReports();
+        }, 1000);
+        
         this.isGenerating = false;
       },
       error: (error) => {
+        console.error('Error generating report:', error);
         this.notificationService.error('Failed to generate report');
         this.isGenerating = false;
       }
@@ -89,8 +130,16 @@ export class ReportsComponent implements OnInit {
 
   downloadReport(report: Report) {
     if (report.file_url) {
+      // Open the Cloudinary URL in a new tab
       window.open(report.file_url, '_blank');
+    } else {
+      this.notificationService.error('Download URL not available for this report');
     }
+  }
+
+  // Check if download is available
+  canDownload(report: Report): boolean {
+    return report.status === 'ready' && !!report.file_url;
   }
 
   getStatusClass(status: string): string {
@@ -100,5 +149,18 @@ export class ReportsComponent implements OnInit {
       'failed': 'bg-red-100 text-red-800'
     };
     return classes[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  getTabDisplayName(): string {
+    switch (this.activeTab.toUpperCase()) {
+      case 'FINANCIAL':
+        return 'FINANCIAL';
+      case 'COMPENSATORY':
+        return 'COMPENSATORY';
+      case 'ACTIVITY':
+        return 'ACTIVITY';
+      default:
+        return '';
+    }
   }
 }

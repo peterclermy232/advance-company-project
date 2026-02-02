@@ -8,6 +8,7 @@ import { AppNotification, NotificationService } from '../../core/services/notifi
 import { NotificationIconPipe } from '../../shared/pipes/notification-icon.pipe';
 import { NotificationTypeLabelPipe } from '../../shared/pipes/notification-type-label.pipe';
 import { NotificationTypeClassPipe } from '../../shared/pipes/notification-type-class.pipe';
+import { AuthService } from '../../core/services/auth.service';
 
 
 @Component({
@@ -27,6 +28,7 @@ import { NotificationTypeClassPipe } from '../../shared/pipes/notification-type-
 })
 export class NotificationsComponent implements OnInit {
   private notificationService = inject(NotificationService);
+  private authService = inject(AuthService);
   private router = inject(Router);
 
   sidebarOpen = true;
@@ -34,20 +36,36 @@ export class NotificationsComponent implements OnInit {
   notifications: AppNotification[] = [];
   unreadCount = 0;
 
-  ngOnInit() {
-    this.loadNotifications();
-  }
+  private loaded = false;
 
-  loadNotifications() {
-    this.notificationService.notifications$.subscribe(n => {
+  ngOnInit(): void {
+  this.authService.currentUser$.subscribe(user => {
+    if (user) {
+      this.loadNotifications();
+    } else {
+      this.notifications = [];
+      this.unreadCount = 0;
+      this.isLoading = false;
+    }
+  });
+}
+
+
+  loadNotifications(): void {
+  if (this.loaded) return;
+  this.loaded = true;
+
+  this.notificationService.notifications$
+    .subscribe(n => {
       this.notifications = n ?? [];
       this.isLoading = false;
     });
 
-    this.notificationService.unreadCount$.subscribe(c => this.unreadCount = c ?? 0);
+  this.notificationService.unreadCount$
+    .subscribe(c => this.unreadCount = c ?? 0);
 
-    this.notificationService.getRecentNotifications().subscribe();
-  }
+  this.notificationService.initialize(); // start polling safely
+}
 
   toggleSidebar() { this.sidebarOpen = !this.sidebarOpen; }
 

@@ -1,55 +1,99 @@
 from django.db import models
-from apps.accounts.models import User
+from django.conf import settings
+
 
 class Report(models.Model):
-    REPORT_TYPE_CHOICES = [
-        ('financial', 'Financial Report'),
-        ('compensatory', 'Compensatory Report'),
-        ('activity', 'Activity Log'),
-    ]
-    
-    STATUS_CHOICES = [
-        ('generating', 'Generating'),
-        ('ready', 'Ready'),
-        ('failed', 'Failed'),
-    ]
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports')
-    report_type = models.CharField(max_length=20, choices=REPORT_TYPE_CHOICES)
+    REPORT_TYPES = (
+        ('BUG', 'Bug'),
+        ('FEEDBACK', 'Feedback'),
+        ('COMPLAINT', 'Complaint'),
+        ('REQUEST', 'Request'),
+        ('FINANCIAL', 'Financial Report'),
+        ('COMPENSATORY', 'Compensatory Report'),  
+        ('ACTIVITY', 'Activity Log'),  
+    )
+
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('RESOLVED', 'Resolved'),
+        ('REJECTED', 'Rejected'),
+    )
+
     title = models.CharField(max_length=255)
-    file = models.FileField(upload_to='reports/', null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='generating')
-    
-    # Filters
+    # Add permanent default here
+    description = models.TextField(default='')  
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reports'
+    )
+
+    report_type = models.CharField(
+        max_length=20,
+        choices=REPORT_TYPES
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='PENDING'
+    )
+    # Added fields
     date_from = models.DateField(null=True, blank=True)
     date_to = models.DateField(null=True, blank=True)
-    
     generated_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name='generated_reports'
     )
-    
+
+# Add this for storing generated report files
+    file = models.FileField(upload_to='reports/', null=True, blank=True)
+
+    # New field to store Cloudinary URL
+    file_url = models.URLField(max_length=500, null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-    
+
     def __str__(self):
-        return f"{self.title} - {self.user.full_name}"
+        return self.title
+
 
 class ActivityLog(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_logs')
-    action = models.CharField(max_length=100)
-    description = models.TextField()
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    user_agent = models.TextField(null=True, blank=True)
+    ACTION_CHOICES = (
+        ('CREATED', 'Created'),
+        ('UPDATED', 'Updated'),
+        ('STATUS_CHANGED', 'Status Changed'),
+        ('DELETED', 'Deleted'),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='activity_logs'
+    )
+
+    report = models.ForeignKey(
+        Report,
+        on_delete=models.CASCADE,
+        related_name='activities',
+        null=True,
+        blank=True
+    )
+
+    action = models.CharField(
+        max_length=50,
+        choices=ACTION_CHOICES
+    )
+
+    description = models.TextField(blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-    
+
     def __str__(self):
-        return f"{self.user.full_name} - {self.action}"
+        return f"{self.user} - {self.action}"

@@ -44,11 +44,15 @@ export class NotificationService implements OnDestroy {
   
 
   constructor() {
-    this.initialize();
+    //this.initialize();
   }
 
   // Initialize service and start polling
   initialize(): void {
+    const token = localStorage.getItem('access_token');
+  if (!token) {
+    return; //  Not logged in → do nothing
+  }
     console.log('NotificationService: Initializing...');
     this.refresh();
     this.startPolling();
@@ -70,6 +74,16 @@ export class NotificationService implements OnDestroy {
       )
       .subscribe();
   }
+
+  stop(): void {
+  if (this.pollingSubscription) {
+    this.pollingSubscription.unsubscribe();
+    this.pollingSubscription = null;
+  }
+
+  this.unreadCountSubject.next(0);
+  this.notificationsSubject.next([]);
+}
 
   getNotifications(): Observable<NotificationResponse> {
     return this.apiService.get<NotificationResponse>('notifications/').pipe(

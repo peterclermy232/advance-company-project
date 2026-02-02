@@ -8,16 +8,36 @@
       <app-loading *ngIf="isLoading"></app-loading>
       
       <div *ngIf="!isLoading" class="space-y-6">
+        <!-- Header -->
         <div class="flex items-center justify-between">
           <h2 class="text-2xl font-bold text-gray-800">Reports</h2>
-          <button (click)="generateReport()" [disabled]="isGenerating" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          <button (click)="generateReport()" [disabled]="isGenerating" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-all">
+            <svg *ngIf="!isGenerating" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            {{ isGenerating ? 'Generating...' : 'Generate Report' }}
+            <svg *ngIf="isGenerating" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isGenerating ? 'Generating...' : 'Generate ' + getTabDisplayName() + ' Report' }}
           </button>
         </div>
 
+        <!-- Date Filter -->
+        <div class="bg-white rounded-xl p-4 shadow-sm">
+          <form [formGroup]="filterForm" class="flex gap-4 items-end">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+              <input type="date" formControlName="date_from" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+              <input type="date" formControlName="date_to" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+          </form>
+        </div>
+
+        <!-- Tabs -->
         <div class="flex gap-2 border-b border-gray-200">
           <button
             *ngFor="let tab of ['financial', 'compensatory', 'activity']"
@@ -31,32 +51,209 @@
           </button>
         </div>
 
-        <div class="bg-white rounded-xl p-6 shadow-sm">
-          <div class="space-y-4">
-            <div *ngFor="let report of reports" class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <h3 class="font-bold text-gray-800">{{ report.title }}</h3>
-                <p class="text-sm text-gray-500">Generated on {{ report.created_at | date:'medium' }}</p>
+        <!-- Financial Report Data -->
+        <div *ngIf="reportData && activeTab === 'financial' && reportData.financial_data" class="space-y-6">
+          <!-- Account Summary -->
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Account Summary</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-blue-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Total Contributions</p>
+                <p class="text-2xl font-bold text-blue-600">KES {{ reportData.financial_data.account_summary.total_contributions | number:'1.2-2' }}</p>
               </div>
+              <div class="bg-green-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Interest Earned</p>
+                <p class="text-2xl font-bold text-green-600">KES {{ reportData.financial_data.account_summary.interest_earned | number:'1.2-2' }}</p>
+              </div>
+              <div class="bg-purple-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Account Balance</p>
+                <p class="text-2xl font-bold text-purple-600">KES {{ reportData.financial_data.account_summary.account_balance | number:'1.2-2' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Period Summary -->
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Period Summary</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p class="text-sm text-gray-600">Total Deposits</p>
+                <p class="text-xl font-bold text-gray-800">KES {{ reportData.financial_data.period_summary.total_deposits | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Number of Transactions</p>
+                <p class="text-xl font-bold text-gray-800">{{ reportData.financial_data.period_summary.deposit_count }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Average Deposit</p>
+                <p class="text-xl font-bold text-gray-800">KES {{ reportData.financial_data.period_summary.average_deposit | number:'1.2-2' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monthly Breakdown -->
+          <div class="bg-white rounded-xl p-6 shadow-sm" *ngIf="reportData.financial_data.monthly_breakdown?.length > 0">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Monthly Breakdown</h3>
+            <div class="space-y-3">
+              <div *ngFor="let month of reportData.financial_data.monthly_breakdown" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span class="font-medium text-gray-700">{{ month.month }}</span>
+                <div class="text-right">
+                  <p class="font-bold text-gray-800">KES {{ month.total_amount | number:'1.2-2' }}</p>
+                  <p class="text-sm text-gray-500">{{ month.transaction_count }} transactions</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compensatory Report Data -->
+        <div *ngIf="reportData && activeTab === 'compensatory' && reportData.compensatory_data" class="space-y-6">
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Beneficiary Summary</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div class="bg-blue-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Total Beneficiaries</p>
+                <p class="text-2xl font-bold text-blue-600">{{ reportData.compensatory_data.summary.total_beneficiaries }}</p>
+              </div>
+              <div class="bg-green-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Active</p>
+                <p class="text-2xl font-bold text-green-600">{{ reportData.compensatory_data.summary.active_beneficiaries }}</p>
+              </div>
+              <div class="bg-orange-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Total Allocated</p>
+                <p class="text-2xl font-bold text-orange-600">{{ reportData.compensatory_data.summary.total_allocated_percentage }}%</p>
+              </div>
+              <div class="bg-purple-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Total Funds</p>
+                <p class="text-2xl font-bold text-purple-600">KES {{ reportData.compensatory_data.summary.total_contributions | number:'1.2-2' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Beneficiary Allocations</h3>
+            <div class="space-y-3">
+              <div *ngFor="let beneficiary of reportData.compensatory_data.beneficiaries" class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p class="font-bold text-gray-800">{{ beneficiary.name }}</p>
+                  <p class="text-sm text-gray-500">{{ beneficiary.relationship }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="font-bold text-blue-600">{{ beneficiary.percentage }}%</p>
+                  <p class="text-sm text-gray-600">KES {{ beneficiary.allocated_amount | number:'1.2-2' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Report Data -->
+        <div *ngIf="reportData && activeTab === 'activity' && reportData.activity_data" class="space-y-6">
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Activity Summary</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-blue-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Total Activities</p>
+                <p class="text-2xl font-bold text-blue-600">{{ reportData.activity_data.summary.total_activities }}</p>
+              </div>
+              <div class="bg-green-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Unique Actions</p>
+                <p class="text-2xl font-bold text-green-600">{{ reportData.activity_data.summary.unique_actions }}</p>
+              </div>
+              <div class="bg-purple-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">Most Common</p>
+                <p class="text-lg font-bold text-purple-600">{{ reportData.activity_data.summary.most_common_action || 'N/A' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Action Breakdown</h3>
+            <div class="space-y-2">
+              <div *ngFor="let action of reportData.activity_data.action_breakdown" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span class="font-medium text-gray-700">{{ action.action }}</span>
+                <span class="font-bold text-blue-600">{{ action.count }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Recent Activities</h3>
+            <div class="space-y-2">
+              <div *ngFor="let activity of reportData.activity_data.recent_activities" class="p-3 bg-gray-50 rounded-lg">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <p class="font-medium text-gray-800">{{ activity.action }}</p>
+                    <p class="text-sm text-gray-500">{{ activity.description }}</p>
+                  </div>
+                  <span class="text-xs text-gray-500">{{ activity.created_at | date:'short' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Report History -->
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <h3 class="text-lg font-bold text-gray-800 mb-4">Report History</h3>
+          
+          <div *ngIf="reports && reports.length > 0" class="space-y-4">
+            <div *ngFor="let report of reports" class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div class="flex-1">
+                <h4 class="font-bold text-gray-800">{{ report.title }}</h4>
+                <p class="text-sm text-gray-500">Generated on {{ report.created_at | date:'medium' }}</p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-xs text-gray-400">Type: {{ report.report_type }}</span>
+                  <span *ngIf="!report.file_url && report.status === 'ready'" class="text-xs text-orange-500">⚠️ No file available</span>
+                </div>
+              </div>
+              
               <div class="flex items-center gap-3">
                 <span [class]="'px-3 py-1 rounded-full text-xs font-medium ' + getStatusClass(report.status)">
                   {{ report.status }}
                 </span>
-                <button *ngIf="report.status === 'ready'" (click)="downloadReport(report)" class="p-2 hover:bg-gray-200 rounded-lg">
-                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                
+                <!-- Download button - only shows when file is available -->
+                <button 
+                  *ngIf="canDownload(report)"
+                  (click)="downloadReport(report)" 
+                  class="p-2 hover:bg-blue-100 rounded-lg transition-all cursor-pointer group"
+                  title="Download PDF Report">
+                  <svg class="w-5 h-5 text-blue-600 group-hover:text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                   </svg>
                 </button>
+                
+                <!-- Generating spinner -->
+                <div 
+                  *ngIf="report.status === 'generating'"
+                  class="p-2"
+                  title="Generating report...">
+                  <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                
+                <!-- Failed status icon -->
+                <div 
+                  *ngIf="report.status === 'failed'"
+                  class="p-2 text-red-500"
+                  title="Report generation failed">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </div>
               </div>
             </div>
+          </div>
 
-            <div *ngIf="reports.length === 0" class="text-center py-12">
-              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              <h3 class="mt-2 text-sm font-medium text-gray-900">No reports</h3>
-              <p class="mt-1 text-sm text-gray-500">Generate your first report to get started.</p>
-            </div>
+          <div *ngIf="!reports || reports.length === 0" class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No reports</h3>
+            <p class="mt-1 text-sm text-gray-500">Generate your first report to get started.</p>
           </div>
         </div>
       </div>

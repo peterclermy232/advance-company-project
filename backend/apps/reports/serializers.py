@@ -12,11 +12,19 @@ class ReportSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'file', 'status', 'generated_by', 'created_at', 'updated_at']
     
     def get_file_url(self, obj):
+        # Return the Cloudinary/external URL if present
+        if obj.file_url:
+            return obj.file_url
+
+        # Fallback to local file URL
         if obj.file:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        
         return None
+
 
 class ActivityLogSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.full_name', read_only=True)
@@ -24,4 +32,3 @@ class ActivityLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActivityLog
         fields = '__all__'
-

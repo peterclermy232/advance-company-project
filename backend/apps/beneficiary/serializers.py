@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Sum
 from .models import Beneficiary
 
 
@@ -27,6 +28,7 @@ class BeneficiarySerializer(serializers.ModelSerializer):
             'id', 'user', 'user_name', 'user_email', 'user_phone',
             'name', 'relation', 'relation_display', 'age', 'gender', 'gender_display',
             'phone_number', 'profession', 'salary_range',
+            'percentage_allocation',  # NEW FIELD
             'identity_document', 'identity_document_url',
             'birth_certificate', 'birth_certificate_url',
             'death_certificate', 'death_certificate_url',
@@ -86,6 +88,37 @@ class BeneficiarySerializer(serializers.ModelSerializer):
             if len(cleaned) < 10 or len(cleaned) > 15:
                 raise serializers.ValidationError("Phone number must be between 10 and 15 digits")
         return value
+    
+    def validate_percentage_allocation(self, value):
+        """Validate percentage is between 0 and 100"""
+        if value < 0 or value > 100:
+            raise serializers.ValidationError("Percentage must be between 0 and 100")
+        return value
+    
+    def validate(self, data):
+        """Validate total allocation doesn't exceed 100%"""
+        user = self.context['request'].user
+        percentage = data.get('percentage_allocation', 0)
+        
+        # Get existing beneficiaries for this user (excluding current if updating)
+        queryset = Beneficiary.objects.filter(user=user, status='active')
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        
+        # Calculate current total
+        current_total = queryset.aggregate(
+            total=Sum('percentage_allocation')
+        )['total'] or 0
+        
+        new_total = float(current_total) + float(percentage)
+        
+        if new_total > 100:
+            raise serializers.ValidationError({
+                'percentage_allocation': f'Total allocation would be {new_total}%. '
+                f'You can only allocate {100 - float(current_total)}% more.'
+            })
+        
+        return data
 
 
 class BeneficiaryVerificationSerializer(serializers.Serializer):
@@ -115,6 +148,7 @@ class BeneficiarySummarySerializer(serializers.ModelSerializer):
         model = Beneficiary
         fields = [
             'id', 'name', 'relation', 'relation_display', 'age', 'gender',
+            'percentage_allocation',  # NEW FIELD
             'status', 'status_display',
             'verification_status', 'verification_status_display',
             'created_at'
