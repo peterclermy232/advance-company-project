@@ -1,7 +1,15 @@
+import uuid
 from django.db import models
 from apps.accounts.models import User
 
 class Application(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
     APPLICATION_TYPE_CHOICES = [
         ('entry', 'Entry Application'),
         ('exit', 'Exit Application'),
@@ -44,6 +52,13 @@ class Application(models.Model):
         return f"{self.user.full_name} - {self.application_type} - {self.status}"
 
 class ApplicationActivity(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+    )
     application = models.ForeignKey(
         Application,
         on_delete=models.CASCADE,

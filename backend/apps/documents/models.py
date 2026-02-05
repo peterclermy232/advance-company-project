@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from apps.accounts.models import User
 from .validators import validate_document_file
@@ -8,6 +9,13 @@ logger = logging.getLogger(__name__)
 
 
 class Document(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
     CATEGORY_CHOICES = [
         ('identity', 'Identity'),
         ('beneficiary', 'Beneficiary'),

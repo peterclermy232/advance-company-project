@@ -1,8 +1,16 @@
+import uuid
 from django.db import models
 from apps.accounts.models import User
 
 
 class FinancialAccount(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='financial_account')
     total_contributions = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     interest_earned = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -20,6 +28,13 @@ class FinancialAccount(models.Model):
 
 
 class Deposit(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
     PAYMENT_METHOD_CHOICES = [
         ('mpesa', 'M-Pesa'),
         ('bank', 'Bank Transfer'),
@@ -85,6 +100,13 @@ class Deposit(models.Model):
 
 
 class InterestCalculation(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='interest_calculations')
     principal_amount = models.DecimalField(max_digits=12, decimal_places=2)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2)

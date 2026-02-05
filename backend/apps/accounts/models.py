@@ -1,6 +1,7 @@
 import os
 import secrets
 from datetime import timedelta
+import uuid
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
@@ -45,7 +46,15 @@ class UserManager(BaseUserManager):
 # ==========================
 class User(AbstractUser):
     username = None  # remove username field
-
+    id = models.BigAutoField(primary_key=True)
+   # UUID primary key
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
+    
     ROLE_CHOICES = [
         ("user", "User"),
         ("admin", "Administrator"),
@@ -191,6 +200,13 @@ class User(AbstractUser):
 # Biometric Device
 # ==========================
 class BiometricDevice(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
     DEVICE_TYPE_CHOICES = [
         ("fingerprint", "Fingerprint"),
         ("face_id", "Face ID"),
@@ -223,6 +239,13 @@ class BiometricDevice(models.Model):
 # Biometric Auth Logs
 # ==========================
 class BiometricAuthLog(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
     STATUS_CHOICES = [
         ("success", "Success"),
         ("failed", "Failed"),

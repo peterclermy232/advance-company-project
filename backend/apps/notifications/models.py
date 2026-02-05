@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -8,6 +9,13 @@ User = get_user_model()
 
 
 class Notification(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(
+    default=uuid.uuid4,
+    editable=False,
+    unique=True,
+    db_index=True
+)
     """Notification model with document deletion support"""
     NOTIFICATION_TYPES = (
         ('deposit_created', 'Deposit Created'),
@@ -32,8 +40,9 @@ class Notification(models.Model):
     title = models.CharField(max_length=255)
     message = models.TextField()
     
-    related_deposit_id = models.IntegerField(null=True, blank=True)
-    related_application_id = models.IntegerField(null=True, blank=True)
+    # Store UUIDs as strings for flexibility
+    related_deposit_id = models.BigIntegerField(null=True, blank=True)
+    related_application_id = models.BigIntegerField(null=True, blank=True)
     related_user_name = models.CharField(max_length=255, null=True, blank=True)
     
     is_read = models.BooleanField(default=False)
