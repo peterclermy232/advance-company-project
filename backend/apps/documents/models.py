@@ -9,13 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 class Document(models.Model):
-    id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(
-    default=uuid.uuid4,
-    editable=False,
-    unique=True,
-    db_index=True
-)
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     CATEGORY_CHOICES = [
         ('identity', 'Identity'),
         ('beneficiary', 'Beneficiary'),

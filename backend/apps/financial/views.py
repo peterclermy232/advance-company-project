@@ -135,7 +135,7 @@ class DepositViewSet(viewsets.ModelViewSet):
                         deposit.mpesa_response_description = mpesa_data.get('ResponseDescription')
                         deposit.save()
                         
-                        logger.info(f"STK Push initiated for deposit {deposit.id}")
+                        logger.info(f"STK Push initiated for deposit {deposit.uuid}")
                     else:
                         # STK Push failed
                         deposit.status = 'failed'
@@ -258,7 +258,7 @@ class DepositViewSet(viewsets.ModelViewSet):
                     period_end=timezone.now().date()
                 )
                 
-                logger.info(f"Deposit {deposit.id} approved by admin {request.user.id}")
+                logger.info(f"Deposit {deposit.uuid} approved by admin {request.user.uuid}")
                 
                 serializer = self.get_serializer(deposit)
                 return Response({
@@ -267,7 +267,7 @@ class DepositViewSet(viewsets.ModelViewSet):
                 })
                 
         except Exception as e:
-            logger.error(f"Error approving deposit {deposit.id}: {str(e)}", exc_info=True)
+            logger.error(f"Error approving deposit {deposit.uuid}: {str(e)}", exc_info=True)
             return Response(
                 {'error': f'Failed to approve deposit: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -294,7 +294,7 @@ class DepositViewSet(viewsets.ModelViewSet):
             deposit.notes = f"Rejected: {reason}"
             deposit.save()
             
-            logger.info(f"Deposit {deposit.id} rejected by admin {request.user.id}")
+            logger.info(f"Deposit {deposit.uuid} rejected by admin {request.user.uuid}")
             
             serializer = self.get_serializer(deposit)
             return Response({
@@ -303,7 +303,7 @@ class DepositViewSet(viewsets.ModelViewSet):
             })
             
         except Exception as e:
-            logger.error(f"Error rejecting deposit {deposit.id}: {str(e)}", exc_info=True)
+            logger.error(f"Error rejecting deposit {deposit.uuid}: {str(e)}", exc_info=True)
             return Response(
                 {'error': f'Failed to reject deposit: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -371,7 +371,7 @@ def mpesa_callback(request):
             deposit.mpesa_response_description = callback_body.get('ResultDesc', 'Success')
             deposit.save()
             
-            logger.info(f"M-Pesa payment successful for deposit {deposit.id}")
+            logger.info(f"M-Pesa payment successful for deposit {deposit.uuid}")
             
         else:
             # Payment failed
@@ -380,7 +380,7 @@ def mpesa_callback(request):
             deposit.mpesa_response_description = callback_body.get('ResultDesc', 'Failed')
             deposit.save()
             
-            logger.warning(f"M-Pesa payment failed for deposit {deposit.id}: {result_code}")
+            logger.warning(f"M-Pesa payment failed for deposit {deposit.uuid}: {result_code}")
         
         return Response({'ResultCode': 0, 'ResultDesc': 'Accepted'})
         

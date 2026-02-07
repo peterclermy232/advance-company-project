@@ -4,13 +4,11 @@ from django.conf import settings
 
 
 class Report(models.Model):
-    id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(
-    default=uuid.uuid4,
-    editable=False,
-    unique=True,
-    db_index=True
-)
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     REPORT_TYPES = (
         ('BUG', 'Bug'),
         ('FEEDBACK', 'Feedback'),
@@ -73,13 +71,11 @@ class Report(models.Model):
 
 
 class ActivityLog(models.Model):
-    id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(
-    default=uuid.uuid4,
-    editable=False,
-    unique=True,
-    db_index=True
-)
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     ACTION_CHOICES = (
         ('CREATED', 'Created'),
         ('UPDATED', 'Updated'),

@@ -57,7 +57,7 @@ class DepositSerializer(serializers.ModelSerializer):
         
         # If editing, exclude current deposit
         if self.instance:
-            existing_deposits = existing_deposits.exclude(id=self.instance.id)
+            existing_deposits = existing_deposits.exclude(id=self.instance.uuid)
         
         if existing_deposits.exists():
             raise serializers.ValidationError(

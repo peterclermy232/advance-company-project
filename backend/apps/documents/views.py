@@ -58,7 +58,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 serializer.is_valid(raise_exception=True)
                 document = serializer.save(user=request.user)
                 
-                logger.info(f"✅ Document uploaded: ID={document.id}, File={document.file.name}")
+                logger.info(f"✅ Document uploaded: ID={document.uuid}, File={document.file.name}")
                 
                 return Response(
                     {
@@ -95,7 +95,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.status = 'verified'
             document.save()
             
-            logger.info(f"✅ Document verified: {document.id} by {request.user.email}")
+            logger.info(f"✅ Document verified: {document.uuid} by {request.user.email}")
             
             return Response({
                 'message': 'Document verified successfully',
@@ -124,7 +124,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.rejection_reason = request.data.get('reason', 'No reason provided')
             document.save()
             
-            logger.info(f"✅ Document rejected: {document.id} by {request.user.email}")
+            logger.info(f"✅ Document rejected: {document.uuid} by {request.user.email}")
             
             return Response({
                 'message': 'Document rejected',

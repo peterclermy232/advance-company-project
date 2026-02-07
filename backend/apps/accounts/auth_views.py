@@ -176,7 +176,7 @@ def login(request):
         temp_token = secrets.token_urlsafe(32)
         cache_key = f"2fa_{temp_token}"
 
-        if not safe_cache_set(cache_key, user.id, timeout=300):
+        if not safe_cache_set(cache_key, user.uuid, timeout=300):
             return APIResponse.server_error(
                 message="2FA service unavailable"
             )

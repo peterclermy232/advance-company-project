@@ -13,10 +13,10 @@ from django.utils import timezone
 # ==========================
 def user_profile_photo_path(instance, filename):
     """
-    profiles/user_<id>_<timestamp>.<ext>
+    profiles/user_<uuid>_<timestamp>.<ext>
     """
     ext = filename.split('.')[-1]
-    filename = f"user_{instance.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.{ext}"
+    filename = f"user_{instance.uuid}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.{ext}"
     return os.path.join('profiles', filename)
 
 
@@ -45,15 +45,13 @@ class UserManager(BaseUserManager):
 # Custom User Model
 # ==========================
 class User(AbstractUser):
-    username = None  # remove username field
-    id = models.BigAutoField(primary_key=True)
+    username = None 
    # UUID primary key
     uuid = models.UUIDField(
-    default=uuid.uuid4,
-    editable=False,
-    unique=True,
-    db_index=True
-)
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     
     ROLE_CHOICES = [
         ("user", "User"),
@@ -200,13 +198,11 @@ class User(AbstractUser):
 # Biometric Device
 # ==========================
 class BiometricDevice(models.Model):
-    id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(
-    default=uuid.uuid4,
-    editable=False,
-    unique=True,
-    db_index=True
-)
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     DEVICE_TYPE_CHOICES = [
         ("fingerprint", "Fingerprint"),
         ("face_id", "Face ID"),
@@ -239,13 +235,11 @@ class BiometricDevice(models.Model):
 # Biometric Auth Logs
 # ==========================
 class BiometricAuthLog(models.Model):
-    id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(
-    default=uuid.uuid4,
-    editable=False,
-    unique=True,
-    db_index=True
-)
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     STATUS_CHOICES = [
         ("success", "Success"),
         ("failed", "Failed"),

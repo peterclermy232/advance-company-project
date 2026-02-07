@@ -92,7 +92,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         )
 
         try:
-            logger.info(f"Generating financial report for user {request.user.id}")
+            logger.info(f"Generating financial report for user {request.user.uuid}")
             
             account = FinancialAccount.objects.filter(user=request.user).first()
             deposits = Deposit.objects.filter(user=request.user, status='completed')
@@ -166,7 +166,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             # Upload to Cloudinary
             logger.info("Uploading to Cloudinary...")
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"financial_report_user{request.user.id}_{timestamp}"
+            filename = f"financial_report_user{request.user.uuid}_{timestamp}"
             
             file_url = upload_report_to_cloudinary(
                 pdf_buffer,
@@ -234,7 +234,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             for ben in active_beneficiaries:
                 allocated_amount = (float(ben.percentage_allocation) / 100) * float(total_contributions)
                 beneficiary_data.append({
-                    'id': ben.id,
+                    'id': ben.uuid,
                     'name': ben.name,
                     'relationship': ben.relation,
                     'percentage': float(ben.percentage_allocation),
@@ -274,7 +274,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
             # Upload to Cloudinary
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"compensatory_report_user{request.user.id}_{timestamp}"
+            filename = f"compensatory_report_user{request.user.uuid}_{timestamp}"
             
             file_url = upload_report_to_cloudinary(
                 pdf_buffer,
@@ -362,7 +362,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
             # Upload to Cloudinary
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"activity_report_user{request.user.id}_{timestamp}"
+            filename = f"activity_report_user{request.user.uuid}_{timestamp}"
             
             file_url = upload_report_to_cloudinary(
                 pdf_buffer,

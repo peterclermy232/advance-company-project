@@ -43,7 +43,7 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
             description=f'Added beneficiary: {beneficiary.name} ({beneficiary.get_relation_display()})'
         )
         
-        logger.info(f"Beneficiary {beneficiary.id} created by user {self.request.user.id}")
+        logger.info(f"Beneficiary {beneficiary.uuid} created by user {self.request.user.uuid}")
     
     def perform_update(self, serializer):
         """Update beneficiary"""
@@ -57,7 +57,7 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
             description=f'Updated beneficiary: {beneficiary.name}'
         )
         
-        logger.info(f"Beneficiary {beneficiary.id} updated by user {self.request.user.id}")
+        logger.info(f"Beneficiary {beneficiary.uuid} updated by user {self.request.user.uuid}")
     
     def perform_destroy(self, instance):
         """Soft delete - mark as removed instead of deleting"""
@@ -72,7 +72,7 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
             description=f'Removed beneficiary: {instance.name}'
         )
         
-        logger.info(f"Beneficiary {instance.id} removed by user {self.request.user.id}")
+        logger.info(f"Beneficiary {instance.uuid} removed by user {self.request.user.uuid}")
     
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def pending_verification(self, request):
@@ -141,7 +141,7 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
                     description=f'Verified beneficiary: {beneficiary.name} for user {beneficiary.user.full_name}'
                 )
                 
-                logger.info(f"Beneficiary {beneficiary.id} verified by admin {request.user.id}")
+                logger.info(f"Beneficiary {beneficiary.uuid} verified by admin {request.user.uuid}")
                 
                 serializer = self.get_serializer(beneficiary)
                 return Response({
@@ -150,7 +150,7 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
                 })
                 
         except Exception as e:
-            logger.error(f"Error verifying beneficiary {beneficiary.id}: {str(e)}", exc_info=True)
+            logger.error(f"Error verifying beneficiary {beneficiary.uuid}: {str(e)}", exc_info=True)
             return Response(
                 {'error': f'Failed to verify beneficiary: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -202,7 +202,7 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
                     description=f'Rejected beneficiary: {beneficiary.name} for user {beneficiary.user.full_name}. Reason: {reason}'
                 )
                 
-                logger.info(f"Beneficiary {beneficiary.id} rejected by admin {request.user.id}")
+                logger.info(f"Beneficiary {beneficiary.uuid} rejected by admin {request.user.uuid}")
                 
                 serializer = self.get_serializer(beneficiary)
                 return Response({
@@ -211,7 +211,7 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
                 })
                 
         except Exception as e:
-            logger.error(f"Error rejecting beneficiary {beneficiary.id}: {str(e)}", exc_info=True)
+            logger.error(f"Error rejecting beneficiary {beneficiary.uuid}: {str(e)}", exc_info=True)
             return Response(
                 {'error': f'Failed to reject beneficiary: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -265,7 +265,7 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
                     description=f'Marked beneficiary as deceased: {beneficiary.name}'
                 )
                 
-                logger.info(f"Beneficiary {beneficiary.id} marked deceased by user {request.user.id}")
+                logger.info(f"Beneficiary {beneficiary.uuid} marked deceased by user {request.user.uuid}")
                 
                 serializer = self.get_serializer(beneficiary)
                 return Response({

@@ -28,7 +28,7 @@ def generate_monthly_reports():
             )
             
             report.file.save(
-                f'monthly_report_{user.id}_{datetime.now().strftime("%Y%m")}.pdf',
+                f'monthly_report_{user.uuid}_{datetime.now().strftime("%Y%m")}.pdf',
                 pdf_buffer
             )
             
@@ -42,6 +42,6 @@ def generate_monthly_reports():
             )
             
         except Exception as e:
-            print(f"Error generating report for user {user.id}: {str(e)}")
+            print(f"Error generating report for user {user.uuid}: {str(e)}")
     
     return f"Generated reports for {users.count()} users"

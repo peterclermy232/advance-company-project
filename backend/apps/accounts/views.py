@@ -32,7 +32,7 @@ class UserViewSet(viewsets.ModelViewSet):
         """Users can only access their own data unless admin."""
         if self.request.user.is_staff or self.request.user.role == 'admin':
             return User.objects.all()
-        return User.objects.filter(id=self.request.user.id)
+        return User.objects.filter(id=self.request.user.uuid)
 
     def update(self, request, *args, **kwargs):
         """Override update to handle profile photo upload."""
@@ -40,7 +40,7 @@ class UserViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         
         # Ensure user can only update their own profile unless admin
-        if instance.id != request.user.id and not (request.user.is_staff or request.user.role == 'admin'):
+        if instance.uuid != request.user.uuid and not (request.user.is_staff or request.user.role == 'admin'):
             return Response(
                 {'error': 'You do not have permission to update this profile.'},
                 status=status.HTTP_403_FORBIDDEN

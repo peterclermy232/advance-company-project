@@ -9,13 +9,11 @@ User = get_user_model()
 
 
 class Notification(models.Model):
-    id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(
-    default=uuid.uuid4,
-    editable=False,
-    unique=True,
-    db_index=True
-)
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     """Notification model with document deletion support"""
     NOTIFICATION_TYPES = (
         ('deposit_created', 'Deposit Created'),

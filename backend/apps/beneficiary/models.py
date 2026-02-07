@@ -5,13 +5,11 @@ from django.core.exceptions import ValidationError
 from apps.accounts.models import User
 
 class Beneficiary(models.Model):
-    id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(
-    default=uuid.uuid4,
-    editable=False,
-    unique=True,
-    db_index=True
-)
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     RELATION_CHOICES = [
         ('spouse', 'Spouse'),
         ('child', 'Child'),
