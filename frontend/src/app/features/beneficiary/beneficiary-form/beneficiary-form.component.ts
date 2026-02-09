@@ -24,7 +24,7 @@ export class BeneficiaryFormComponent implements OnInit {
   sidebarOpen = true;
   isSubmitting = false;
   isEditMode = false;
-  beneficiaryId: number | null = null;
+  beneficiaryId: string | null = null;
   beneficiaryForm: FormGroup;
   totalAllocated = 0;
   remainingAllocation = 100;
@@ -60,7 +60,7 @@ export class BeneficiaryFormComponent implements OnInit {
     this.route.params.subscribe(params => {
       if (params['id']) {
         this.isEditMode = true;
-        this.beneficiaryId = +params['id'];
+        this.beneficiaryId = params['id'];
         this.loadBeneficiary();
       }
     });
@@ -72,7 +72,7 @@ export class BeneficiaryFormComponent implements OnInit {
       next: (response) => {
         const beneficiaries = response.results || [];
         this.totalAllocated = beneficiaries
-          .filter(b => this.beneficiaryId !== b.id) // Exclude current if editing
+          .filter(b => this.beneficiaryId !== b.uuid) // Exclude current if editing
           .reduce((sum, b) => sum + (b.percentage_allocation || 0), 0);
         this.remainingAllocation = 100 - this.totalAllocated;
       }

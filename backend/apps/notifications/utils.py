@@ -1,7 +1,3 @@
-"""
-apps/notifications/utils.py
-Email and SMS notification utilities with robust error handling
-"""
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings

@@ -28,8 +28,8 @@ export class BeneficiaryService {
   );
 }
 
-  getBeneficiary(id: number): Observable<Beneficiary> {
-    return this.apiService.get<Beneficiary>(`beneficiary/${id}/`);
+  getBeneficiary( uuid: string): Observable<Beneficiary> {
+    return this.apiService.get<Beneficiary>(`beneficiary/${uuid}/`);
   }
 
   createBeneficiary(data: FormData): Observable<Beneficiary> {
@@ -45,8 +45,8 @@ export class BeneficiaryService {
       );
   }
 
-  updateBeneficiary(id: number, data: FormData): Observable<Beneficiary> {
-    return this.apiService.update<Beneficiary>(`beneficiary/${id}/`, data)
+  updateBeneficiary( uuid: string, data: FormData): Observable<Beneficiary> {
+    return this.apiService.update<Beneficiary>(`beneficiary/${uuid}/`, data)
       .pipe(
         tap(() => {
           this.toastService.success('Beneficiary updated successfully! ✓');
@@ -58,8 +58,8 @@ export class BeneficiaryService {
       );
   }
 
-  deleteBeneficiary(id: number): Observable<any> {
-    return this.apiService.delete<any>(`beneficiary/${id}/`)
+  deleteBeneficiary(uuid: string): Observable<any> {
+    return this.apiService.delete<any>(`beneficiary/${uuid}/`)
       .pipe(
         tap(() => {
           this.toastService.success('Beneficiary removed successfully');
@@ -71,8 +71,8 @@ export class BeneficiaryService {
       );
   }
 
-  verifyBeneficiary(id: number): Observable<any> {
-    return this.apiService.post<any>(`beneficiary/${id}/verify/`, {})
+  verifyBeneficiary(uuid: string): Observable<any> {
+    return this.apiService.post<any>(`beneficiary/${uuid}/verify/`, {})
       .pipe(
         tap(() => {
           this.toastService.success('Beneficiary verified! ✓');
@@ -80,8 +80,8 @@ export class BeneficiaryService {
       );
   }
 
-  markDeceased(id: number): Observable<any> {
-    return this.apiService.post<any>(`beneficiary/${id}/mark_deceased/`, {})
+  markDeceased(uuid: string): Observable<any> {
+    return this.apiService.post<any>(`beneficiary/${uuid}/mark_deceased/`, {})
       .pipe(
         tap(() => {
           this.toastService.info('Beneficiary marked as deceased');

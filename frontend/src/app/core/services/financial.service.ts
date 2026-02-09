@@ -133,7 +133,7 @@ export class FinancialService {
       );
   }
 
-  approveDeposit(depositId: number): Observable<any> {
+  approveDeposit(depositId: string): Observable<any> {
     return this.http.post<BackendResponse>(`${this.apiUrl}/deposits/${depositId}/approve_deposit/`, {})
       .pipe(
         tap(response => {
@@ -144,7 +144,7 @@ export class FinancialService {
       );
   }
 
-  rejectDeposit(depositId: number, reason: string): Observable<any> {
+  rejectDeposit(depositId: string, reason: string): Observable<any> {
     return this.http.post<BackendResponse>(`${this.apiUrl}/deposits/${depositId}/reject_deposit/`, { reason })
       .pipe(
         tap(response => {

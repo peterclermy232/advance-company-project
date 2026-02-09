@@ -5,7 +5,7 @@ import { switchMap, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface BiometricDevice {
-  id: number;
+   uuid: string;
   device_type: 'fingerprint' | 'face_id';
   device_id: string;
   device_name: string;

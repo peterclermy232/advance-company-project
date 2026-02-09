@@ -1,5 +1,5 @@
 export interface FinancialAccount {
-  id: number;
+  uuid: string;
   user: number;
   user_name?: string;
   total_contributions: number;
@@ -10,7 +10,7 @@ export interface FinancialAccount {
 }
 
 export interface Deposit {
-  id: number;
+  uuid: string;
   user_name: string;
   amount: string;
   payment_method: 'mpesa' | 'bank' | 'mansa_x';
@@ -49,7 +49,7 @@ export interface MonthlySummary {
 }
 
 export interface DepositResponse {
-  id: number;
+  uuid: string;
   user: number;
   amount: string;
   payment_method: string;

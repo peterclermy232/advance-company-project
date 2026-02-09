@@ -8,6 +8,7 @@ from django.dispatch import receiver
 User = get_user_model()
 
 
+
 class Notification(models.Model):
     uuid = models.UUIDField(
         primary_key=True,
@@ -39,8 +40,8 @@ class Notification(models.Model):
     message = models.TextField()
     
     # Store UUIDs as strings for flexibility
-    related_deposit_id = models.BigIntegerField(null=True, blank=True)
-    related_application_id = models.BigIntegerField(null=True, blank=True)
+    related_deposit_id = models.UUIDField(null=True, blank=True)
+    related_application_id = models.UUIDField(null=True, blank=True)
     related_user_name = models.CharField(max_length=255, null=True, blank=True)
     
     is_read = models.BooleanField(default=False)
@@ -82,6 +83,7 @@ class NotificationPreferences(models.Model):
         on_delete=models.CASCADE, 
         related_name='notification_preferences'
     )
+    
     
     # Channel preferences
     email_enabled = models.BooleanField(
@@ -165,5 +167,12 @@ def create_notification_preferences(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_notification_preferences(sender, instance, **kwargs):
     """Ensure preferences are saved when user is saved"""
-    if hasattr(instance, 'notification_preferences'):
-        instance.notification_preferences.save()
+    # Use try-except to avoid triggering hasattr database query
+    try:
+        # Only access if we're NOT in the creation phase
+        if not kwargs.get('created', False):
+            prefs = NotificationPreferences.objects.filter(user=instance).first()
+            if prefs:
+                prefs.save()
+    except NotificationPreferences.DoesNotExist:
+        pass

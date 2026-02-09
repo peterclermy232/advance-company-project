@@ -1,5 +1,5 @@
 export interface Application {
-  id: number;
+  uuid: string;
   user: number;
   user_name?: string;
   application_type: 'entry' | 'exit';
@@ -17,7 +17,7 @@ export interface Application {
 }
 
 export interface ApplicationActivity {
-  id: number;
+  uuid: string;
   application: number;
   user: number;
   user_name?: string;

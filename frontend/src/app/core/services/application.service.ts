@@ -20,8 +20,8 @@ export class ApplicationService {
 }
 
 
-  getApplication(id: number): Observable<Application> {
-    return this.apiService.get<BackendResponse<Application>>(`applications/${id}/`)
+  getApplication(uuid: string): Observable<Application> {
+    return this.apiService.get<BackendResponse<Application>>(`applications/${uuid}/`)
       .pipe(
         tap(response => this.responseHandler.showToast(response, true)),
         map(response => response.data as Application),
@@ -41,8 +41,8 @@ export class ApplicationService {
       );
   }
 
-  approveApplication(id: number, comments: string): Observable<any> {
-    return this.apiService.post<BackendResponse>(`applications/${id}/approve/`, { comments })
+  approveApplication(uuid: string, comments: string): Observable<any> {
+    return this.apiService.post<BackendResponse>(`applications/${uuid}/approve/`, { comments })
       .pipe(
         tap(response => {
           // Show backend success message (e.g., "Application approved successfully")
@@ -52,8 +52,8 @@ export class ApplicationService {
       );
   }
 
-  rejectApplication(id: number, comments: string): Observable<any> {
-    return this.apiService.post<BackendResponse>(`applications/${id}/reject/`, { comments })
+  rejectApplication(uuid: string, comments: string): Observable<any> {
+    return this.apiService.post<BackendResponse>(`applications/${uuid}/reject/`, { comments })
       .pipe(
         tap(response => {
           // Show backend warning/error message (e.g., "Application rejected")
@@ -63,8 +63,8 @@ export class ApplicationService {
       );
   }
 
-  reviewApplication(id: number): Observable<any> {
-    return this.apiService.post<BackendResponse>(`applications/${id}/review/`, {})
+  reviewApplication(uuid: string): Observable<any> {
+    return this.apiService.post<BackendResponse>(`applications/${uuid}/review/`, {})
       .pipe(
         tap(response => {
           // Show backend info message

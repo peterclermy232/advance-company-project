@@ -9,14 +9,14 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'email', 'phone_number', 'full_name', 'role', 'age', 'gender',
+            'uuid', 'email', 'phone_number', 'full_name', 'role', 'age', 'gender',
             'marital_status', 'number_of_kids', 'profession', 'salary_range',
             'spouse_name', 'spouse_age', 'spouse_profession', 'profile_photo',
             'identity_document', 'activity_status', 'created_at', 'updated_at',
             'biometric_enabled', 'fingerprint_enabled', 'face_id_enabled',
             'has_biometric', 'biometric_devices_count'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'created_at', 'updated_at']
 
 
     def get_profile_photo_url(self, obj):
@@ -101,7 +101,7 @@ class BiometricDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = BiometricDevice
         fields = [
-            'id', 'device_type', 'device_id', 'device_name', 
+            'uuid', 'device_type', 'device_id', 'device_name', 
             'credential_id', 'is_active', 'registered_at', 'last_used'
         ]
         read_only_fields = ['credential_id', 'registered_at', 'last_used']
@@ -179,7 +179,7 @@ class BiometricAuthSerializer(serializers.Serializer):
 class BiometricAuthLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = BiometricAuthLog
-        fields = ['id', 'status', 'ip_address', 'timestamp', 'error_message']
+        fields = ['uuid', 'status', 'ip_address', 'timestamp', 'error_message']
         read_only_fields = fields
 
 class TwoFactorSetupSerializer(serializers.Serializer):

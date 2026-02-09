@@ -137,7 +137,7 @@ export class FinancialComponent implements OnInit {
     this.isProcessing = true;
     const loadingToast = this.notificationService.loading('Processing approval...');
     
-    this.financialService.approveDeposit(this.selectedDeposit.id).subscribe({
+    this.financialService.approveDeposit(this.selectedDeposit.uuid).subscribe({
       next: (response) => {
         loadingToast.dismiss();
         this.notificationService.success(`✓ Deposit of ${this.selectedDeposit!.amount} approved for ${this.selectedDeposit!.user_name}!`);
@@ -160,7 +160,7 @@ export class FinancialComponent implements OnInit {
     this.isProcessing = true;
     const loadingToast = this.notificationService.loading('Processing rejection...');
     
-    this.financialService.rejectDeposit(this.selectedDeposit.id, reason).subscribe({
+    this.financialService.rejectDeposit(this.selectedDeposit.uuid, reason).subscribe({
       next: (response) => {
         loadingToast.dismiss();
         this.notificationService.warning(`⚠️ Deposit rejected for ${this.selectedDeposit!.user_name}`);

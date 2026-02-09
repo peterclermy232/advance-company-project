@@ -237,6 +237,8 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': True,
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'uuid',
+    'USER_ID_CLAIM': 'user_id'
 }
 
 # Cloudinary Configuration

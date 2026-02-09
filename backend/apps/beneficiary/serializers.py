@@ -25,7 +25,7 @@ class BeneficiarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Beneficiary
         fields = [
-            'id', 'user', 'user_name', 'user_email', 'user_phone',
+            'uuid', 'user', 'user_name', 'user_email', 'user_phone',
             'name', 'relation', 'relation_display', 'age', 'gender', 'gender_display',
             'phone_number', 'profession', 'salary_range',
             'percentage_allocation',  # NEW FIELD
@@ -147,7 +147,7 @@ class BeneficiarySummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Beneficiary
         fields = [
-            'id', 'name', 'relation', 'relation_display', 'age', 'gender',
+            'uuid', 'name', 'relation', 'relation_display', 'age', 'gender',
             'percentage_allocation',  # NEW FIELD
             'status', 'status_display',
             'verification_status', 'verification_status_display',

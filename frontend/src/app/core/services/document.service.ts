@@ -43,8 +43,8 @@ export class DocumentService {
       );
   }
 
-  deleteDocument(id: number): Observable<any> {
-    return this.apiService.delete<any>(`documents/${id}/`)
+  deleteDocument( uuid: string): Observable<any> {
+    return this.apiService.delete<any>(`documents/${uuid}/`)
       .pipe(
         tap(() => {
           this.toastService.success('Document deleted successfully');
@@ -56,8 +56,8 @@ export class DocumentService {
       );
   }
 
-  verifyDocument(id: number): Observable<any> {
-    return this.apiService.post<any>(`documents/${id}/verify/`, {})
+  verifyDocument(uuid: string): Observable<any> {
+    return this.apiService.post<any>(`documents/${uuid}/verify/`, {})
       .pipe(
         tap(() => {
           this.toastService.success('Document verified! ✓');
@@ -65,8 +65,8 @@ export class DocumentService {
       );
   }
 
-  rejectDocument(id: number, reason: string): Observable<any> {
-    return this.apiService.post<any>(`documents/${id}/reject/`, { reason })
+  rejectDocument(uuid: string, reason: string): Observable<any> {
+    return this.apiService.post<any>(`documents/${uuid}/reject/`, { reason })
       .pipe(
         tap(() => {
           this.toastService.warning('Document rejected');

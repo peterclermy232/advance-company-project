@@ -5,7 +5,7 @@ import { ApiService } from './api.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 export interface AppNotification {
-  id: number;
+   uuid: string;
   user: number;
   user_name: string;
   notification_type: string;
@@ -137,14 +137,14 @@ export class NotificationService implements OnDestroy {
   );
 }
 
-  markAsRead(id: number): Observable<AppNotification> {
-    return this.apiService.post<AppNotification>(`notifications/${id}/mark_as_read/`, {}).pipe(
+  markAsRead( uuid: string): Observable<AppNotification> {
+    return this.apiService.post<AppNotification>(`notifications/${uuid}/mark_as_read/`, {}).pipe(
       tap(() => {
         const count = this.unreadCountSubject.value;
         this.unreadCountSubject.next(Math.max(0, count - 1));
 
         const notifications = this.notificationsSubject.value ?? [];
-        const updatedNotifications = notifications.map(n => n.id === id ? { ...n, is_read: true } : n);
+        const updatedNotifications = notifications.map(n => n.uuid === uuid ? { ...n, is_read: true } : n);
         this.notificationsSubject.next(updatedNotifications);
       }),
       catchError(error => {

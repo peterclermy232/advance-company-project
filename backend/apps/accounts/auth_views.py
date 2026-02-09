@@ -232,7 +232,7 @@ def verify_2fa(request):
         return APIResponse.unauthorized(message="Session expired")
 
     try:
-        user = User.objects.get(id=user_id, email=email)
+        user = User.objects.get(uuid=user_id, email=email)
     except User.DoesNotExist:
         return APIResponse.unauthorized(message=Messages.AUTH_FAILED)
 

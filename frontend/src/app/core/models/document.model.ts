@@ -1,5 +1,5 @@
 export interface Document {
-  id: number;
+ uuid: string;
   user: number;
   user_name?: string;
   category: 'identity' | 'beneficiary' | 'birth_certificate' | 'death_certificate' | 'additional';

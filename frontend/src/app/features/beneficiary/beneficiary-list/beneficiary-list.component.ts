@@ -65,11 +65,11 @@ export class BeneficiaryListComponent implements OnInit {
     if (this.selectedBeneficiary) {
       const loadingToast = this.notificationService.loading('Removing beneficiary...');
       
-      this.beneficiaryService.deleteBeneficiary(this.selectedBeneficiary.id).subscribe({
+      this.beneficiaryService.deleteBeneficiary(this.selectedBeneficiary.uuid).subscribe({
         next: () => {
           loadingToast.dismiss();
           this.notificationService.success(`✓ ${this.selectedBeneficiary!.name} has been removed successfully`);
-          this.beneficiaries = this.beneficiaries.filter(b => b.id !== this.selectedBeneficiary!.id);
+          this.beneficiaries = this.beneficiaries.filter(b => b.uuid !== this.selectedBeneficiary!.uuid);
           this.showDeleteModal = false;
           this.selectedBeneficiary = null;
         },

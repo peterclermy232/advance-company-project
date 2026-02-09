@@ -88,12 +88,12 @@ export class DocumentListComponent implements OnInit {
     if (confirm(`Delete "${doc.title}"? This cannot be undone.`)) {
       const loadingToast = this.notificationService.loading('Deleting...');
       
-      this.documentService.deleteDocument(doc.id).subscribe({
+      this.documentService.deleteDocument(doc.uuid).subscribe({
         next: () => {
           loadingToast.dismiss();
           this.notificationService.success(`✓ "${doc.title}" deleted`);
           
-          this.documents = this.documents.filter(d => d.id !== doc.id);
+          this.documents = this.documents.filter(d => d.uuid !== doc.uuid);
           this.groupDocumentsByCategory();
         },
         error: () => {
@@ -107,12 +107,12 @@ export class DocumentListComponent implements OnInit {
   verifyDocument(doc: Document) {
     const loadingToast = this.notificationService.loading('Verifying...');
     
-    this.documentService.verifyDocument(doc.id).subscribe({
+    this.documentService.verifyDocument(doc.uuid).subscribe({
       next: () => {
         loadingToast.dismiss();
         this.notificationService.success(`✓ "${doc.title}" verified`);
         
-        const index = this.documents.findIndex(d => d.id === doc.id);
+        const index = this.documents.findIndex(d => d.uuid === doc.uuid);
         if (index !== -1) {
           this.documents = [
             ...this.documents.slice(0, index),

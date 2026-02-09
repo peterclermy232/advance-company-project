@@ -1,5 +1,5 @@
 export interface Report {
-  id: number;
+  uuid: string;
   user: number;
   user_name?: string;
   report_type: 'financial' | 'compensatory' | 'activity';

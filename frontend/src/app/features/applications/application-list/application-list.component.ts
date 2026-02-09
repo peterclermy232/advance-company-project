@@ -70,8 +70,8 @@ export class ApplicationListComponent implements OnInit {
     if (!this.selectedApplication || !this.actionType) return;
 
     const action = this.actionType === 'approve'
-      ? this.applicationService.approveApplication(this.selectedApplication.id, this.actionComments)
-      : this.applicationService.rejectApplication(this.selectedApplication.id, this.actionComments);
+      ? this.applicationService.approveApplication(this.selectedApplication.uuid, this.actionComments)
+      : this.applicationService.rejectApplication(this.selectedApplication.uuid, this.actionComments);
 
     action.subscribe({
       next: () => {

@@ -1,5 +1,5 @@
 interface MemberAnalytics {
-  id: number;
+  uuid: string;
   full_name: string;
   email: string;
   phone_number: string;

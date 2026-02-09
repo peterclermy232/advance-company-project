@@ -58,7 +58,7 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() { this.subscriptions.forEach(sub => sub.unsubscribe()); }
 
-  trackByNotificationId(index: number, notification: AppNotification) { return notification.id; }
+  trackByNotificationId(index: number, notification: AppNotification) { return notification.uuid; }
 
   toggleDropdown() { 
     this.isOpen = !this.isOpen; 
@@ -74,7 +74,7 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
   closeDropdown() { this.isOpen = false; }
 
   handleNotificationClick(notification: AppNotification) {
-    if (!notification.is_read) this.notificationService.markAsRead(notification.id).subscribe(() => notification.is_read = true);
+    if (!notification.is_read) this.notificationService.markAsRead(notification.uuid).subscribe(() => notification.is_read = true);
     const routes: { [key: string]: string } = {
       'deposit_created': '/financial',
       'deposit_approved': '/dashboard',

@@ -71,7 +71,7 @@ export class NotificationsComponent implements OnInit {
 
   handleNotificationClick(notification: AppNotification) {
     if (!notification.is_read) {
-      this.notificationService.markAsRead(notification.id).subscribe(() => notification.is_read = true);
+      this.notificationService.markAsRead(notification.uuid).subscribe(() => notification.is_read = true);
     }
     this.navigateToNotification(notification);
   }
