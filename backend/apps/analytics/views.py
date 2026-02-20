@@ -31,14 +31,6 @@ from apps.financial.models import FinancialAccount, Deposit
 
 
 class AdminAnalyticsViewSet(GenericViewSet):
-    """
-    Admin Analytics ViewSet
-    URLs:
-    /api/admin/analytics/members/
-    /api/admin/analytics/summary/
-    /api/admin/analytics/export/?format=excel|pdf
-    """
-
     permission_classes = [IsAuthenticated]
 
     def _check_admin(self, request):
@@ -73,9 +65,10 @@ class AdminAnalyticsViewSet(GenericViewSet):
             account, _ = FinancialAccount.objects.get_or_create(user=user)
 
             deposit_stats = Deposit.objects.filter(
-                user=user, status="completed"
+                user=user,
+                status="APPROVED",  # ✅ fixed: was "completed"
             ).aggregate(
-                total_deposits=Count("id"),
+                total_deposits=Count("uuid"),  # ✅ fixed: was Count("id")
                 last_deposit=Max("created_at"),
             )
 
@@ -87,7 +80,7 @@ class AdminAnalyticsViewSet(GenericViewSet):
 
             member_analytics.append(
                 {
-                    "id": user.id,
+                    "id": str(user.uuid),  # ✅ fixed: user uses uuid not id
                     "full_name": user.full_name,
                     "email": user.email,
                     "phone_number": user.phone_number,
@@ -113,7 +106,7 @@ class AdminAnalyticsViewSet(GenericViewSet):
             if users.exists()
             else 0,
             "total_deposits_count": Deposit.objects.filter(
-                status="completed"
+                status="APPROVED"  # ✅ fixed: was "completed"
             ).count(),
             "total_interest_earned": float(
                 FinancialAccount.objects.aggregate(
@@ -129,12 +122,12 @@ class AdminAnalyticsViewSet(GenericViewSet):
             month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
             month_data = Deposit.objects.filter(
-                status="completed",
+                status="APPROVED",  # ✅ fixed: was "completed"
                 created_at__gte=month_start,
                 created_at__lte=month_end,
             ).aggregate(
                 total_amount=Sum("amount"),
-                deposit_count=Count("id"),
+                deposit_count=Count("uuid"),  # ✅ fixed: was Count("id")
             )
 
             monthly_trends.append(
@@ -183,7 +176,7 @@ class AdminAnalyticsViewSet(GenericViewSet):
                 if users.exists()
                 else 0,
                 "total_deposits_count": Deposit.objects.filter(
-                    status="completed"
+                    status="APPROVED"  # ✅ fixed: was "completed"
                 ).count(),
                 "total_interest_earned": float(
                     FinancialAccount.objects.aggregate(
@@ -197,7 +190,7 @@ class AdminAnalyticsViewSet(GenericViewSet):
     # ------------------------------------------------------------------
     # EXPORT
     # ------------------------------------------------------------------
-    @action(detail=False, methods=["get"],url_path="export",url_name="export")
+    @action(detail=False, methods=["get"], url_path="export", url_name="export")
     def export_analytics(self, request):
         admin_check = self._check_admin(request)
         if admin_check:
@@ -222,7 +215,8 @@ class AdminAnalyticsViewSet(GenericViewSet):
                     "email": user.email,
                     "contributions": float(account.total_contributions),
                     "deposits": Deposit.objects.filter(
-                        user=user, status="completed"
+                        user=user,
+                        status="APPROVED",  # ✅ fixed: was "completed"
                     ).count(),
                     "interest": float(account.interest_earned),
                     "status": user.activity_status,
@@ -246,14 +240,7 @@ class AdminAnalyticsViewSet(GenericViewSet):
         header_fill = PatternFill("solid", fgColor="3B82F6")
         header_font = Font(color="FFFFFF", bold=True)
 
-        headers = [
-            "Name",
-            "Email",
-            "Total Contributions",
-            "Deposits",
-            "Interest Earned",
-            "Status",
-        ]
+        headers = ["Name", "Email", "Total Contributions", "Deposits", "Interest Earned", "Status"]
 
         for col, header in enumerate(headers, start=1):
             cell = ws.cell(row=1, column=col, value=header)
@@ -262,16 +249,14 @@ class AdminAnalyticsViewSet(GenericViewSet):
             cell.alignment = Alignment(horizontal="center")
 
         for row, member in enumerate(member_data, start=2):
-            ws.append(
-                [
-                    member["name"],
-                    member["email"],
-                    f"KES {member['contributions']:,.2f}",
-                    member["deposits"],
-                    f"KES {member['interest']:,.2f}",
-                    member["status"],
-                ]
-            )
+            ws.append([
+                member["name"],
+                member["email"],
+                f"KES {member['contributions']:,.2f}",
+                member["deposits"],
+                f"KES {member['interest']:,.2f}",
+                member["status"],
+            ])
 
         buffer = BytesIO()
         wb.save(buffer)
@@ -281,9 +266,9 @@ class AdminAnalyticsViewSet(GenericViewSet):
             buffer.read(),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response[
-            "Content-Disposition"
-        ] = f'attachment; filename="member-analytics-{datetime.now():%Y%m%d}.xlsx"'
+        response["Content-Disposition"] = (
+            f'attachment; filename="member-analytics-{datetime.now():%Y%m%d}.xlsx"'
+        )
         return response
 
     # ------------------------------------------------------------------
@@ -298,39 +283,31 @@ class AdminAnalyticsViewSet(GenericViewSet):
         elements.append(Paragraph("Member Analytics Report", styles["Title"]))
         elements.append(Spacer(1, 0.3 * inch))
 
-        table_data = [
-            ["Name", "Email", "Contributions", "Deposits", "Interest", "Status"]
-        ]
+        table_data = [["Name", "Email", "Contributions", "Deposits", "Interest", "Status"]]
 
         for m in member_data:
-            table_data.append(
-                [
-                    m["name"],
-                    m["email"],
-                    f"KES {m['contributions']:,.2f}",
-                    m["deposits"],
-                    f"KES {m['interest']:,.2f}",
-                    m["status"],
-                ]
-            )
+            table_data.append([
+                m["name"],
+                m["email"],
+                f"KES {m['contributions']:,.2f}",
+                m["deposits"],
+                f"KES {m['interest']:,.2f}",
+                m["status"],
+            ])
 
         table = Table(table_data)
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3B82F6")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                ]
-            )
-        )
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3B82F6")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ]))
 
         elements.append(table)
         doc.build(elements)
 
         buffer.seek(0)
         response = HttpResponse(buffer.read(), content_type="application/pdf")
-        response[
-            "Content-Disposition"
-        ] = f'attachment; filename="member-analytics-{datetime.now():%Y%m%d}.pdf"'
+        response["Content-Disposition"] = (
+            f'attachment; filename="member-analytics-{datetime.now():%Y%m%d}.pdf"'
+        )
         return response
