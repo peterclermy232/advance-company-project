@@ -35,18 +35,18 @@ export class ApplicationListComponent implements OnInit {
   }
 
   loadApplications() {
-  this.applicationService.getApplications().subscribe({
-    next: (response) => {
-      this.applications = response ?? [];
-      this.isLoading = false;
-    },
-    error: (error) => {
-      console.error('Error loading applications:', error);
-      this.applications = [];
-      this.isLoading = false;
-    }
-  });
-}
+    this.applicationService.getApplications().subscribe({
+      next: (response) => {
+        this.applications = response ?? [];
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading applications:', error);
+        this.applications = [];
+        this.isLoading = false;
+      }
+    });
+  }
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
@@ -69,9 +69,12 @@ export class ApplicationListComponent implements OnInit {
   performAction() {
     if (!this.selectedApplication || !this.actionType) return;
 
+    // ✅ Use `id` — matches the API response field name
+    const applicationId = this.selectedApplication.id;
+
     const action = this.actionType === 'approve'
-      ? this.applicationService.approveApplication(this.selectedApplication.uuid, this.actionComments)
-      : this.applicationService.rejectApplication(this.selectedApplication.uuid, this.actionComments);
+      ? this.applicationService.approveApplication(applicationId, this.actionComments)
+      : this.applicationService.rejectApplication(applicationId, this.actionComments);
 
     action.subscribe({
       next: () => {
@@ -79,7 +82,7 @@ export class ApplicationListComponent implements OnInit {
         this.loadApplications();
         this.closeActionModal();
       },
-      error: (error) => {
+      error: () => {
         this.notificationService.error(`Failed to ${this.actionType} application`);
       }
     });

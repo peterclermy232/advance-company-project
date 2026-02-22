@@ -4,6 +4,22 @@ import { ApiService, PaginatedResponse } from './api.service';
 import { Application } from '../models/application.model';
 import { BackendResponse, BackendResponseHandler } from './backend-response-handler.service';
 
+export interface ApplicationTypeChoice {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export interface StatusChoice {
+  value: string;
+  label: string;
+}
+
+export interface ApplicationChoices {
+  application_types: ApplicationTypeChoice[];
+  status_choices: StatusChoice[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -12,13 +28,19 @@ export class ApplicationService {
   private responseHandler = inject(BackendResponseHandler);
 
   getApplications(): Observable<Application[]> {
-  return this.apiService.get<Application[]>('applications/')
-    .pipe(
-      tap(() => {}),
-      catchError(error => this.responseHandler.handleError(error, 'Failed to load applications'))
-    );
-}
+    return this.apiService.get<Application[]>('applications/')
+      .pipe(
+        tap(() => {}),
+        catchError(error => this.responseHandler.handleError(error, 'Failed to load applications'))
+      );
+  }
 
+  getChoices(): Observable<ApplicationChoices> {
+    return this.apiService.get<ApplicationChoices>('applications/choices/')
+      .pipe(
+        catchError(error => this.responseHandler.handleError(error, 'Failed to load application types'))
+      );
+  }
 
   getApplication(uuid: string): Observable<Application> {
     return this.apiService.get<BackendResponse<Application>>(`applications/${uuid}/`)
@@ -33,7 +55,6 @@ export class ApplicationService {
     return this.apiService.upload<BackendResponse<Application>>('applications/', data)
       .pipe(
         tap(response => {
-          // Show backend success message
           this.responseHandler.showToast(response);
         }),
         map(response => response.data as Application),
@@ -41,11 +62,10 @@ export class ApplicationService {
       );
   }
 
-  approveApplication(uuid: string, comments: string): Observable<any> {
-    return this.apiService.post<BackendResponse>(`applications/${uuid}/approve/`, { comments })
+  approveApplication(id: string, comments: string): Observable<any> {
+    return this.apiService.post<BackendResponse>(`applications/${id}/approve/`, { comments })
       .pipe(
         tap(response => {
-          // Show backend success message (e.g., "Application approved successfully")
           this.responseHandler.showToast(response);
         }),
         catchError(error => this.responseHandler.handleError(error, 'Failed to approve application'))
@@ -56,7 +76,6 @@ export class ApplicationService {
     return this.apiService.post<BackendResponse>(`applications/${uuid}/reject/`, { comments })
       .pipe(
         tap(response => {
-          // Show backend warning/error message (e.g., "Application rejected")
           this.responseHandler.showToast(response);
         }),
         catchError(error => this.responseHandler.handleError(error, 'Failed to reject application'))
@@ -67,7 +86,6 @@ export class ApplicationService {
     return this.apiService.post<BackendResponse>(`applications/${uuid}/review/`, {})
       .pipe(
         tap(response => {
-          // Show backend info message
           this.responseHandler.showToast(response);
         }),
         catchError(error => this.responseHandler.handleError(error))

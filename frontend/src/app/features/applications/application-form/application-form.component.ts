@@ -1,10 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
-import { ApplicationService } from '../../../core/services/application.service';
+import { ApplicationService, ApplicationTypeChoice } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
@@ -15,7 +15,7 @@ import { NotificationService } from '../../../core/services/notification.service
   templateUrl: './application-form.component.html',
   styleUrls: ['./application-form.component.scss']
 })
-export class ApplicationFormComponent {
+export class ApplicationFormComponent implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private applicationService = inject(ApplicationService);
@@ -24,15 +24,40 @@ export class ApplicationFormComponent {
 
   sidebarOpen = true;
   isSubmitting = false;
+  isLoadingChoices = true;
   applicationForm: FormGroup;
   selectedFile: File | null = null;
   currentUser = this.authService.getCurrentUser();
+  applicationTypes: ApplicationTypeChoice[] = [];
 
   constructor() {
     this.applicationForm = this.fb.group({
       application_type: ['', Validators.required],
       reason: ['', [Validators.required, Validators.minLength(20)]]
     });
+  }
+
+  ngOnInit(): void {
+    this.loadChoices();
+  }
+
+  private loadChoices(): void {
+    this.applicationService.getChoices().subscribe({
+      next: (choices) => {
+        this.applicationTypes = choices.application_types;
+        this.isLoadingChoices = false;
+      },
+      error: () => {
+        this.isLoadingChoices = false;
+      }
+    });
+  }
+
+  get selectedTypeDescription(): string {
+    const selectedValue = this.applicationForm.get('application_type')?.value;
+    if (!selectedValue) return '';
+    const found = this.applicationTypes.find(t => t.value === selectedValue);
+    return found?.description ?? '';
   }
 
   toggleSidebar() {
@@ -50,10 +75,10 @@ export class ApplicationFormComponent {
     if (this.applicationForm.valid) {
       this.isSubmitting = true;
       const formData = new FormData();
-      
+
       formData.append('application_type', this.applicationForm.value.application_type);
       formData.append('reason', this.applicationForm.value.reason);
-      
+
       if (this.selectedFile) {
         formData.append('supporting_document', this.selectedFile);
       }
@@ -63,7 +88,7 @@ export class ApplicationFormComponent {
           this.notificationService.success('Application submitted successfully');
           this.router.navigate(['/applications']);
         },
-        error: (error) => {
+        error: () => {
           this.notificationService.error('Failed to submit application');
           this.isSubmitting = false;
         }

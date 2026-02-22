@@ -1,5 +1,5 @@
 export interface Application {
-  uuid: string;
+  id: string;
   user: number;
   user_name?: string;
   application_type: 'entry' | 'exit';
