@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarConfig, MatSnackBarRef, TextOnlySnackBar } from '@angular/material/snack-bar';
 
 @Injectable({
   providedIn: 'root'
@@ -8,12 +8,12 @@ export class ToastService {
   constructor(private snackBar: MatSnackBar) {}
 
   private defaultConfig: MatSnackBarConfig = {
-    horizontalPosition: 'right',  
+    horizontalPosition: 'right',
     verticalPosition: 'top',
-    duration: 4000  
+    duration: 4000
   };
 
-  success(message: string, duration: number = 4000): void {
+  success(message: string, duration = 4000): void {
     this.snackBar.open(message, undefined, {
       ...this.defaultConfig,
       duration,
@@ -21,7 +21,7 @@ export class ToastService {
     });
   }
 
-  error(message: string, duration: number = 5000): void {  
+  error(message: string, duration = 5000): void {
     this.snackBar.open(message, undefined, {
       ...this.defaultConfig,
       duration,
@@ -29,7 +29,7 @@ export class ToastService {
     });
   }
 
-  warning(message: string, duration: number = 4000): void { 
+  warning(message: string, duration = 4000): void {
     this.snackBar.open(message, undefined, {
       ...this.defaultConfig,
       duration,
@@ -37,7 +37,7 @@ export class ToastService {
     });
   }
 
-  info(message: string, duration: number = 4000): void {  
+  info(message: string, duration = 4000): void {
     this.snackBar.open(message, undefined, {
       ...this.defaultConfig,
       duration,
@@ -45,25 +45,23 @@ export class ToastService {
     });
   }
 
-  // Custom toast with action button
-  withAction(message: string, action: string, duration: number = 4000) { 
+  withAction(message: string, action: string, duration = 6000): MatSnackBarRef<TextOnlySnackBar> {
     return this.snackBar.open(message, action, {
       ...this.defaultConfig,
       duration
     });
   }
 
-  // Loading toast (stays until dismissed)
-  loading(message: string = 'Processing...') {
+  loading(message = 'Processing...'): MatSnackBarRef<TextOnlySnackBar> {
     return this.snackBar.open(message, '', {
       horizontalPosition: 'right',
       verticalPosition: 'top',
       panelClass: ['snackbar-info']
+      // no duration — caller must call .dismiss()
     });
   }
 
-  // Dismiss all toasts
-  dismiss() {
+  dismiss(): void {
     this.snackBar.dismiss();
   }
 }

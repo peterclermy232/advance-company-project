@@ -18,71 +18,75 @@ body {
 }
 
 /* ============================================
-   TOAST NOTIFICATIONS - Enhanced Styles
+   TOAST NOTIFICATIONS
    ============================================ */
-/* Base toast */
-.app-toast.mat-mdc-snack-bar-container {
+
+/* Base container */
+.mat-mdc-snack-bar-container {
   border-radius: 10px !important;
-  padding: 14px 18px !important;
-  min-width: 320px;
-  max-width: 420px;
+  min-width: 320px !important;
+  max-width: 420px !important;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
   animation: slideIn 0.25s ease-out;
 }
 
+.mat-mdc-snack-bar-container .mdc-snackbar__surface {
+  border-radius: 10px !important;
+  padding: 14px 18px !important;
+}
+
 /* Message text */
-.app-toast .mat-mdc-snack-bar-label {
-  font-size: 14px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Icons (ONLY place icons live) */
-.toast-success .mat-mdc-snack-bar-label::before {
-  content: "✔";
-}
-
-.toast-error .mat-mdc-snack-bar-label::before {
-  content: "✖";
-}
-
-.toast-warning .mat-mdc-snack-bar-label::before {
-  content: "⚠";
-}
-
-.toast-info .mat-mdc-snack-bar-label::before {
-  content: "ℹ";
-}
-
-/* Colors — ONE solid color each */
-.toast-success {
-  background-color: #16a34a !important;
+.mat-mdc-snack-bar-container .mat-mdc-snack-bar-label {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
   color: #ffffff !important;
 }
 
-.toast-error {
-  background-color: #dc2626 !important;
-  color: #ffffff !important;
-}
-
-.toast-warning {
-  background-color: #f59e0b !important;
-  color: #ffffff !important;
-}
-
-.toast-info {
-  background-color: #2563eb !important;
-  color: #ffffff !important;
-}
-
-/* Remove Material button styles completely */
+/* Hide action button */
 .mat-mdc-snack-bar-action {
   display: none !important;
 }
 
-/* Animation */
+/* ── SUCCESS ─────────────────────────────── */
+.snackbar-success .mdc-snackbar__surface {
+  background-color: #16a34a !important;
+}
+.snackbar-success .mat-mdc-snack-bar-label::before {
+  content: "";
+  font-weight: 700;
+}
+
+/* ── ERROR ───────────────────────────────── */
+.snackbar-error .mdc-snackbar__surface {
+  background-color: #dc2626 !important;
+}
+.snackbar-error .mat-mdc-snack-bar-label::before {
+  content: "";
+  font-weight: 700;
+}
+
+/* ── WARNING ─────────────────────────────── */
+.snackbar-warning .mdc-snackbar__surface {
+  background-color: #f59e0b !important;
+}
+.snackbar-warning .mat-mdc-snack-bar-label::before {
+  content: "";
+  font-weight: 700;
+}
+
+/* ── INFO ────────────────────────────────── */
+.snackbar-info .mdc-snackbar__surface {
+  background-color: #2563eb !important;
+}
+.snackbar-info .mat-mdc-snack-bar-label::before {
+  content: "";
+  font-weight: 700;
+}
+
+/* ── Animation ───────────────────────────── */
 @keyframes slideIn {
   from {
     transform: translateX(40px);
