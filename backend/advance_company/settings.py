@@ -275,13 +275,15 @@ RATELIMIT_ENABLE = False
 RATELIMIT_USE_CACHE = 'default'
 
 # Email Configuration
+# Make all email vars optional with defaults
 EMAIL_BACKEND = strip_quotes(config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend'))
-EMAIL_HOST = strip_quotes(config('EMAIL_HOST'))
+EMAIL_HOST = strip_quotes(config('EMAIL_HOST', default=''))
 EMAIL_PORT = int(strip_quotes(config('EMAIL_PORT', default='587')))
 EMAIL_USE_TLS = parse_bool(config('EMAIL_USE_TLS', default=True))
-EMAIL_HOST_USER = strip_quotes(config('EMAIL_HOST_USER'))
-EMAIL_HOST_PASSWORD = strip_quotes(config('EMAIL_HOST_PASSWORD'))
-DEFAULT_FROM_EMAIL = strip_quotes(config('DEFAULT_FROM_EMAIL'))
+EMAIL_HOST_USER = strip_quotes(config('EMAIL_HOST_USER', default=''))
+EMAIL_HOST_PASSWORD = strip_quotes(config('EMAIL_HOST_PASSWORD', default=''))
+DEFAULT_FROM_EMAIL = strip_quotes(config('DEFAULT_FROM_EMAIL', default='Advance Company <onboarding@resend.dev>'))
+RESEND_API_KEY = strip_quotes(config('RESEND_API_KEY', default=''))
 
 # M-PESA Configuration
 MPESA_ENVIRONMENT = strip_quotes(config('MPESA_ENVIRONMENT', default='sandbox'))
