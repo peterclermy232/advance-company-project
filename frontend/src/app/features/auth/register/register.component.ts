@@ -116,22 +116,41 @@ export class RegisterComponent {
       : this.buildJsonPayload();
 
     this.authService.register(payload as any).subscribe({
-      next: (response) => {
-        const toastMessage = response?.message ?? 'Registration successful 🎉';
-        this.notificationService.success(toastMessage);
-
-        if (response?.errors) this.applyBackendErrors(response.errors);
-
-        this.router.navigate(['/login']);
+      next: (response: any) => {
         this.isLoading = false;
+
+        // Backend response shape:
+        // { success, message, toast_type, data: { user, tokens } }
+
+        // Show backend message e.g. "Registration successful! Please check your email..."
+        const message = response?.message ??
+          'Registration successful! Please verify your email to continue. 🎉';
+
+        const toastType = response?.toast_type || 'success';
+        if (toastType === 'success') this.notificationService.success(message);
+        else if (toastType === 'info') this.notificationService.info(message);
+        else if (toastType === 'warning') this.notificationService.warning(message);
+        else this.notificationService.success(message);
+
+        // Redirect to verify-email page with email pre-filled
+        const email = this.registerForm.get('email')?.value;
+        this.router.navigate(['/auth/verify-email'], {
+          queryParams: { email }
+        });
       },
-      error: (err) => {
-        const toastMessage = err?.message ?? 'Registration failed. Please try again.';
+      error: (err: any) => {
+        this.isLoading = false;
+
+        // Backend error shape:
+        // { success: false, message, toast_type: "error", errors: {...} }
+        const toastMessage = err?.error?.message ??
+                             'Registration failed. Please try again.';
         this.notificationService.error(toastMessage);
 
-        if (err?.errors) this.applyBackendErrors(err.errors);
-
-        this.isLoading = false;
+        // Apply field-level errors from backend if present
+        if (err?.error?.errors) {
+          this.applyBackendErrors(err.error.errors);
+        }
       }
     });
   }
@@ -197,30 +216,25 @@ export class RegisterComponent {
   toggleConfirmPassword() { this.showConfirmPassword = !this.showConfirmPassword; }
 
   // ---------------- PASSWORD REQUIREMENTS ----------------
+  passwordHasUpperCase(): boolean {
+    return /[A-Z]/.test(this.registerForm.get('password')?.value || '');
+  }
 
-passwordHasUpperCase(): boolean {
-  const value = this.registerForm.get('password')?.value || '';
-  return /[A-Z]/.test(value);
-}
+  passwordHasLowerCase(): boolean {
+    return /[a-z]/.test(this.registerForm.get('password')?.value || '');
+  }
 
-passwordHasLowerCase(): boolean {
-  const value = this.registerForm.get('password')?.value || '';
-  return /[a-z]/.test(value);
-}
+  passwordHasNumber(): boolean {
+    return /[0-9]/.test(this.registerForm.get('password')?.value || '');
+  }
 
-passwordHasNumber(): boolean {
-  const value = this.registerForm.get('password')?.value || '';
-  return /[0-9]/.test(value);
-}
+  passwordHasSpecialChar(): boolean {
+    return /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(
+      this.registerForm.get('password')?.value || ''
+    );
+  }
 
-passwordHasSpecialChar(): boolean {
-  const value = this.registerForm.get('password')?.value || '';
-  return /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(value);
-}
-
-passwordMinLength(): boolean {
-  const value = this.registerForm.get('password')?.value || '';
-  return value.length >= 12;
-}
-
+  passwordMinLength(): boolean {
+    return (this.registerForm.get('password')?.value || '').length >= 12;
+  }
 }

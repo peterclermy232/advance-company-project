@@ -1,7 +1,3 @@
-"""
-backend/apps/accounts/response_utils.py
-Standardized API response utilities with messages for frontend alerts
-"""
 from rest_framework.response import Response
 from rest_framework import status
 

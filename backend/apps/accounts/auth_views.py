@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 @throttle_classes([RegisterRateThrottle])
 @parser_classes([JSONParser, MultiPartParser, FormParser])
 def register(request):
-    """Register a new user."""
+    """Register a new user and send verification email."""
     logger.info('Register endpoint called')
 
     serializer = UserRegistrationSerializer(data=request.data)
@@ -96,7 +96,7 @@ def register(request):
 @permission_classes([AllowAny])
 @throttle_classes([EmailVerificationRateThrottle])
 def verify_email(request):
-    """Verify a user's email address using a token (email NOT required in URL)."""
+    """Verify a user's email address using token + email."""
     token = request.data.get('token')
     email = request.data.get('email')
 
@@ -122,7 +122,7 @@ def verify_email(request):
 
     except User.DoesNotExist:
         return APIResponse.error(
-            message='Invalid email',
+            message='Invalid email address',
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
@@ -131,6 +131,7 @@ def verify_email(request):
 @permission_classes([AllowAny])
 @throttle_classes([EmailVerificationRateThrottle])
 def resend_verification(request):
+    """Resend verification email."""
     email = request.data.get('email')
 
     if not email:
@@ -162,6 +163,12 @@ def resend_verification(request):
 @permission_classes([AllowAny])
 @throttle_classes([LoginRateThrottle])
 def login(request):
+    """
+    Login endpoint.
+    - Requires email verification before allowing login.
+    - Supports 2FA.
+    - Returns backend message for frontend toast.
+    """
     serializer = LoginSerializer(data=request.data)
 
     if not serializer.is_valid():
@@ -171,6 +178,17 @@ def login(request):
 
     if not user.is_active:
         return APIResponse.forbidden(message=Messages.AUTH_INACTIVE)
+
+    # Email must be verified before login
+    if not user.email_verified:
+        return APIResponse.error(
+            message=Messages.AUTH_VERIFY_EMAIL,
+            status_code=status.HTTP_403_FORBIDDEN,
+            errors={
+                'email_verified': False,
+                'email': user.email  
+            }
+        )
 
     # 2FA check
     if user.two_factor_enabled:
@@ -213,6 +231,7 @@ def login(request):
 @permission_classes([AllowAny])
 @throttle_classes([TwoFactorRateThrottle])
 def verify_2fa(request):
+    """Verify 2FA code or backup code."""
     temp_token = request.data.get('temp_token')
     code = request.data.get('code')
     email = request.data.get('email')
@@ -228,14 +247,13 @@ def verify_2fa(request):
     user_id = safe_cache_get(cache_key)
 
     if not user_id:
-        return APIResponse.unauthorized(message='Session expired')
+        return APIResponse.unauthorized(message='Session expired. Please login again.')
 
     try:
         user = User.objects.get(uuid=user_id, email=email)
     except User.DoesNotExist:
         return APIResponse.unauthorized(message=Messages.AUTH_FAILED)
 
-    # FIX 7: use verify_backup_code (defined in models.py) correctly
     if is_backup_code:
         valid = user.verify_backup_code(code)
     else:
@@ -271,10 +289,8 @@ def verify_2fa(request):
 @throttle_classes([PasswordResetRateThrottle])
 def forgot_password(request):
     """
-    Send a branded HTML password reset email.
+    Send branded HTML password reset email.
     Always returns 200 to prevent email enumeration.
-    FIX 4: uses send_password_reset_email() (branded HTML).
-    FIX 11: email is NOT included in the reset URL.
     """
     email = request.data.get('email', '').strip().lower()
 
@@ -290,8 +306,7 @@ def forgot_password(request):
         token = default_token_generator.make_token(user)
 
         frontend_url = getattr(settings, 'FRONTEND_URL', '').rstrip('/')
-        # FIX 11: email is NOT in the URL — looked up server-side via uid
-        reset_url = f'{frontend_url}/reset-password?uid={uid}&token={token}'
+        reset_url = f'{frontend_url}/auth/reset-password?uid={uid}&token={token}'
 
         send_password_reset_email(user, reset_url)
 
@@ -308,8 +323,9 @@ def forgot_password(request):
 @throttle_classes([PasswordResetRateThrottle])
 def reset_password_confirm(request):
     """
-    Confirm password reset and invalidate all existing JWT refresh tokens.
-    FIX 8: outstanding refresh tokens are blacklisted after a successful reset.
+    Confirm password reset.
+    - Validates password strength and returns field-level errors.
+    - Blacklists all existing refresh tokens after reset.
     """
     uid = request.data.get('uid')
     token = request.data.get('token')
@@ -327,22 +343,36 @@ def reset_password_confirm(request):
 
         if not default_token_generator.check_token(user, token):
             return APIResponse.error(
-                message='Invalid or expired token',
+                message='Invalid or expired reset link. Please request a new one.',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        validate_password(new_password, user)
+        # Validate password strength — return field-level errors to frontend
+        try:
+            validate_password(new_password, user)
+        except ValidationError as e:
+            return APIResponse.validation_error(
+                message='Password is not strong enough',
+                errors={'new_password': list(e.messages)},
+            )
+
         user.set_password(new_password)
         user.save()
 
-        # FIX 8: blacklist all outstanding refresh tokens for this user
+        # Blacklist all existing refresh tokens
         _blacklist_user_tokens(user)
 
         return APIResponse.success(message=Messages.PASSWORD_RESET_SUCCESS)
 
-    except (User.DoesNotExist, ValidationError):
+    except User.DoesNotExist:
         return APIResponse.error(
-            message=Messages.PASSWORD_RESET_FAILED,
+            message='Invalid or expired reset link. Please request a new one.',
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception:
+        logger.error('Password reset failed', exc_info=True)
+        return APIResponse.error(
+            message='Failed to reset password. Please try again.',
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -350,8 +380,7 @@ def reset_password_confirm(request):
 def _blacklist_user_tokens(user):
     """
     Blacklist all outstanding SimpleJWT refresh tokens for a user.
-    Requires INSTALLED_APPS to include 'rest_framework_simplejwt.token_blacklist'.
-    Fails silently if the token blacklist app is not installed.
+    Fails silently if token blacklist app is not installed.
     """
     try:
         from rest_framework_simplejwt.token_blacklist.models import (

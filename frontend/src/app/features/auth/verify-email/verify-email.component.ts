@@ -41,46 +41,53 @@ export class VerifyEmailComponent implements OnInit {
   }
 
   verifyEmail(): void {
-    if (!this.email || !this.token) return;
+  if (!this.email || !this.token) return;
 
-    this.isVerifying = true;
+  this.isVerifying = true;
 
-    this.authService.verifyEmail(this.email, this.token).subscribe({
-      next: () => {
-        this.verificationSuccess = true;
-        this.isVerifying = false;
-        this.notificationService.success('Email verified successfully! 🎉');
-      },
-      error: (error) => {
-        this.verificationSuccess = false;
-        this.isVerifying = false;
-        this.errorMessage = error.error?.error || 
-                          error.error?.detail || 
+  this.authService.verifyEmail(this.email, this.token).subscribe({
+    next: () => {
+      this.verificationSuccess = true;
+      this.isVerifying = false;
+      this.notificationService.success('Email verified successfully! 🎉');
+    },
+    error: (error) => {
+      this.verificationSuccess = false;
+      this.isVerifying = false;
+      this.errorMessage = error.error?.message ||
+                          error.error?.error ||
+                          error.error?.detail ||
                           'Verification failed. The link may have expired.';
-        this.notificationService.error(this.errorMessage);
-      }
-    });
-  }
-
-  resendVerification(): void {
-    if (!this.email) {
-      this.notificationService.error('Email address not found');
-      return;
+      this.notificationService.error(this.errorMessage);
     }
+  });
+}
 
-    this.isResending = true;
-
-    this.authService.resendVerification(this.email).subscribe({
-      next: () => {
-        this.isResending = false;
-        this.notificationService.success('Verification email sent! Check your inbox. 📧');
-      },
-      error: () => {
-        this.isResending = false;
-        this.notificationService.error('Failed to resend email. Please try again.');
-      }
-    });
+resendVerification(): void {
+  if (!this.email) {
+    this.notificationService.error('Email address not found');
+    return;
   }
+
+  this.isResending = true;
+
+  this.authService.resendVerification(this.email).subscribe({
+    next: (response) => {
+      this.isResending = false;
+      const message = response?.message || 'Verification email sent! Check your inbox. 📧';
+      this.notificationService.success(message);
+    },
+    error: (error) => {
+      this.isResending = false;
+      const errorMessage = error.error?.message ||
+                           error.error?.error ||
+                           'Failed to resend email. Please try again.';
+      this.notificationService.error(errorMessage);
+    }
+  });
+}
+
+  
 
   goToDashboard(): void {
     this.router.navigate(['/dashboard']);

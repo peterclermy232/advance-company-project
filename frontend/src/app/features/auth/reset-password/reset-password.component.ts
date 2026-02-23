@@ -90,33 +90,45 @@ export class ResetPasswordComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.resetPasswordForm.invalid || !this.uid || !this.token) {
-      if (!this.uid || !this.token) {
-        this.notificationService.error('Invalid reset link');
-      }
-      return;
+  if (this.resetPasswordForm.invalid || !this.uid || !this.token) {
+    if (!this.uid || !this.token) {
+      this.notificationService.error('Invalid reset link');
     }
-
-    this.isLoading = true;
-
-    const newPassword = this.resetPasswordForm.get('new_password')?.value;
-
-    this.authService.resetPasswordConfirm(this.uid, this.token, newPassword)
-      .subscribe({
-        next: () => {
-          this.resetSuccess = true;
-          this.isLoading = false;
-          this.notificationService.success('Password reset successful! 🎉');
-        },
-        error: (error) => {
-          this.isLoading = false;
-          const errorMessage = error.error?.error || 
-                             error.error?.detail || 
-                             'Failed to reset password. The link may have expired.';
-          this.notificationService.error(errorMessage);
-        }
-      });
+    return;
   }
+
+  this.isLoading = true;
+  const newPassword = this.resetPasswordForm.get('new_password')?.value;
+
+  this.authService.resetPasswordConfirm(this.uid, this.token, newPassword)
+    .subscribe({
+      next: () => {
+        this.resetSuccess = true;
+        this.isLoading = false;
+        this.notificationService.success('Password reset successful!');
+      },
+      error: (error) => {
+        this.isLoading = false;
+
+        // Check for field-level validation errors first
+        const errors = error.error?.errors;
+        if (errors?.new_password && errors.new_password.length > 0) {
+          // Show each password error as a separate toast
+          errors.new_password.forEach((msg: string) => {
+            this.notificationService.error(msg);
+          });
+          return;
+        }
+
+        // Fallback to general error message
+        const errorMessage = error.error?.message ||
+                             error.error?.error ||
+                             error.error?.detail ||
+                             'Failed to reset password. The link may have expired.';
+        this.notificationService.error(errorMessage);
+      }
+    });
+}
 
   togglePassword(): void {
     this.showPassword = !this.showPassword;
