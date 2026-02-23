@@ -114,15 +114,41 @@ def send_password_reset_email(user, reset_url: str):
 
 
 def _send(subject: str, text: str, html: str, to_email: str):
-    """Send a multipart email with plain-text and HTML alternatives."""
-    from_email = getattr(
-        settings, 'DEFAULT_FROM_EMAIL',
-        getattr(settings, 'EMAIL_HOST_USER', None)
-    )
-    if not from_email:
-        raise ValueError('DEFAULT_FROM_EMAIL or EMAIL_HOST_USER must be set')
+    """
+    Send email.
+    - Local/dev: uses Gmail SMTP (works fine locally)
+    - Production: uses Resend HTTP API (Railway-compatible)
+    """
+    from django.conf import settings
 
-    msg = EmailMultiAlternatives(subject, text, from_email, [to_email])
-    msg.attach_alternative(html, 'text/html')
-    msg.send()
-    logger.info(f'Email "{subject}" sent to {to_email}')
+    # Use Resend in production, Gmail SMTP in local
+    resend_api_key = getattr(settings, 'RESEND_API_KEY', None)
+
+    if resend_api_key:
+        # Production — Resend HTTP API
+        import resend
+        resend.api_key = resend_api_key
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Advance Company <onboarding@resend.dev>')
+
+        resend.Emails.send({
+            "from": from_email,
+            "to": to_email,
+            "subject": subject,
+            "html": html,
+            "text": text,
+        })
+        logger.info(f'Email "{subject}" sent to {to_email} via Resend')
+
+    else:
+        # Local — Gmail SMTP
+        from django.core.mail import EmailMultiAlternatives
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL',
+                             getattr(settings, 'EMAIL_HOST_USER', None))
+
+        if not from_email:
+            raise ValueError('DEFAULT_FROM_EMAIL or EMAIL_HOST_USER must be set')
+
+        msg = EmailMultiAlternatives(subject, text, from_email, [to_email])
+        msg.attach_alternative(html, 'text/html')
+        msg.send()
+        logger.info(f'Email "{subject}" sent to {to_email} via Gmail SMTP')
