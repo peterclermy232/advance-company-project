@@ -1,161 +1,107 @@
-# storage.py - Complete fix for Cloudinary storage
-from cloudinary_storage.storage import MediaCloudinaryStorage
-from django.conf import settings
-import cloudinary
-import cloudinary.uploader
-import logging
 import os
+import logging
+from django.core.files.storage import Storage
+from django.conf import settings
+from supabase import create_client
 
 logger = logging.getLogger(__name__)
 
 
-class CleanMediaCloudinaryStorage(MediaCloudinaryStorage):
+def get_supabase():
+    return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+
+
+class SupabaseStorage(Storage):
     """
-    Custom Cloudinary storage that properly handles images and documents
+    Django storage backend using Supabase Storage (private bucket).
+    Files are accessed via signed URLs, not public URLs.
     """
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Ensure cloudinary is configured
-        cloudinary.config(
-            cloud_name=settings.CLOUDINARY_STORAGE['CLOUD_NAME'],
-            api_key=settings.CLOUDINARY_STORAGE['API_KEY'],
-            api_secret=settings.CLOUDINARY_STORAGE['API_SECRET'],
-            secure=True
-        )
-    
+
+    def __init__(self, bucket=None):
+        self.bucket = bucket or settings.SUPABASE_BUCKET
+
+    def deconstruct(self):
+        """Required for Django migrations to serialize this storage class."""
+        return 'apps.documents.storage.SupabaseStorage', [], {}
+
     def _save(self, name, content):
-        """
-        Override save to upload directly to Cloudinary with correct settings
-        """
-        # Remove 'media/' prefix if present
-        if name.startswith('media/'):
-            name = name[6:]
-        
-        # Get file extension
-        file_ext = os.path.splitext(name)[1].lower().lstrip('.')
-        
-        # Determine resource type
-        image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-        resource_type = 'image' if file_ext in image_extensions else 'raw'
-        
-        # Clean the filename - remove folder structure for simpler paths
-        clean_name = os.path.basename(name)
-        public_id = os.path.splitext(clean_name)[0]
-        
-        logger.info(f"Uploading to Cloudinary: {clean_name} as {resource_type}")
-        
+        """Upload file to Supabase."""
+        supabase = get_supabase()
+        content.seek(0)
+        file_data = content.read()
+
+        # Determine content type
+        ext = os.path.splitext(name)[1].lower()
+        content_type_map = {
+            '.pdf': 'application/pdf',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+        }
+        content_type = content_type_map.get(ext, 'application/octet-stream')
+
         try:
-            # Upload directly using cloudinary uploader
-            result = cloudinary.uploader.upload(
-                content,
-                folder='documents',  # All files go in 'documents' folder
-                public_id=public_id,
-                resource_type=resource_type,
-                overwrite=False,  # Don't overwrite existing files
-                unique_filename=True,  # Generate unique names if needed
-                use_filename=True,  # Use original filename as base
+            supabase.storage.from_(self.bucket).upload(
+                path=name,
+                file=file_data,
+                file_options={
+                    'content-type': content_type,
+                    'upsert': 'true'
+                }
             )
-            
-            # Extract the public_id from result (includes folder)
-            saved_name = result['public_id']
-            
-            # Add extension back for proper URL generation
-            if not saved_name.endswith(f'.{file_ext}'):
-                saved_name = f"{saved_name}.{file_ext}"
-            
-            logger.info(f"✅ Uploaded successfully: {result['secure_url']}")
-            logger.info(f"   Public ID: {result['public_id']}")
-            logger.info(f"   Resource Type: {result['resource_type']}")
-            
-            # Return the path that will be stored in the database
-            return saved_name
-            
+            logger.info(f"Uploaded to Supabase: {name}")
+            return name
         except Exception as e:
-            logger.error(f"❌ Cloudinary upload failed: {str(e)}")
+            logger.error(f"Supabase upload error: {str(e)}")
             raise
-    
+
+    def _open(self, name, mode='rb'):
+        raise NotImplementedError("Direct file open not supported. Use url() to get signed URL.")
+
+    def delete(self, name):
+        """Delete file from Supabase."""
+        try:
+            supabase = get_supabase()
+            supabase.storage.from_(self.bucket).remove([name])
+            logger.info(f"Deleted from Supabase: {name}")
+        except Exception as e:
+            logger.error(f"Supabase delete error: {str(e)}")
+
+    def exists(self, name):
+        """Check if file exists."""
+        try:
+            supabase = get_supabase()
+            files = supabase.storage.from_(self.bucket).list(
+                path=os.path.dirname(name)
+            )
+            filename = os.path.basename(name)
+            return any(f['name'] == filename for f in files)
+        except Exception:
+            return False
+
     def url(self, name):
         """
-        Generate the correct Cloudinary URL
+        Generate a signed URL valid for 1 hour.
+        This is what gets returned when you access document.file.url
         """
-        if not name:
-            return ''
-        
-        # Remove 'media/' prefix if present
-        if name.startswith('media/'):
-            name = name[6:]
-        
-        # Get file extension
-        file_ext = os.path.splitext(name)[1].lower().lstrip('.')
-        
-        # Determine resource type
-        image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-        resource_type = 'image' if file_ext in image_extensions else 'raw'
-        
-        # Remove extension from name for public_id
-        public_id = os.path.splitext(name)[0]
-        
-        # Build Cloudinary URL
-        cloud_name = settings.CLOUDINARY_STORAGE['CLOUD_NAME']
-        url = f"https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/{public_id}.{file_ext}"
-        
-        logger.debug(f"Generated URL: {url}")
-        return url
-    
-    def delete(self, name):
-        """
-        Delete file from Cloudinary
-        """
-        if not name:
-            return
-        
         try:
-            # Remove extension and 'media/' prefix
-            if name.startswith('media/'):
-                name = name[6:]
-            
-            public_id = os.path.splitext(name)[0]
-            
-            # Get resource type
-            file_ext = os.path.splitext(name)[1].lower().lstrip('.')
-            image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-            resource_type = 'image' if file_ext in image_extensions else 'raw'
-            
-            # Delete from Cloudinary
-            result = cloudinary.uploader.destroy(
-                public_id,
-                resource_type=resource_type
+            supabase = get_supabase()
+            result = supabase.storage.from_(self.bucket).create_signed_url(
+                path=name,
+                expires_in=3600  # 1 hour
             )
-            
-            logger.info(f"Deleted from Cloudinary: {public_id} (result: {result.get('result')})")
-            
+            signed_url = result.get('signedURL') or result.get('signed_url')
+            logger.info(f"Generated signed URL for: {name}")
+            return signed_url
         except Exception as e:
-            logger.error(f"Error deleting from Cloudinary: {str(e)}")
-    
-    def exists(self, name):
-        """
-        Check if file exists in Cloudinary
-        """
-        if not name:
-            return False
-        
-        try:
-            if name.startswith('media/'):
-                name = name[6:]
-            
-            public_id = os.path.splitext(name)[0]
-            file_ext = os.path.splitext(name)[1].lower().lstrip('.')
-            
-            image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-            resource_type = 'image' if file_ext in image_extensions else 'raw'
-            
-            # Try to get resource info
-            cloudinary.api.resource(public_id, resource_type=resource_type)
-            return True
-            
-        except cloudinary.exceptions.NotFound:
-            return False
-        except Exception as e:
-            logger.error(f"Error checking file existence: {str(e)}")
-            return False
+            logger.error(f"Signed URL error: {str(e)}")
+            return ''
+
+    def size(self, name):
+        return 0  # Optional: implement if needed
+
+
+# Backward compatibility alias — keeps old migrations working
+CleanMediaCloudinaryStorage = SupabaseStorage

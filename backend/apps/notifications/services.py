@@ -1,12 +1,16 @@
 from .models import Notification
 from apps.accounts.models import User
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class NotificationService:
-    """Service for creating and managing notifications"""
-    
+    """Service for creating in-app notifications only."""
+
     @staticmethod
     def create_notification(user, notification_type, title, message, **kwargs):
-        """Create a notification for a user"""
+        """Create a single in-app notification for a user."""
         return Notification.objects.create(
             user=user,
             notification_type=notification_type,
@@ -14,135 +18,128 @@ class NotificationService:
             message=message,
             related_deposit_id=kwargs.get('related_deposit_id'),
             related_application_id=kwargs.get('related_application_id'),
-            related_user_name=kwargs.get('related_user_name')
+            related_user_name=kwargs.get('related_user_name'),
         )
-    
-    @staticmethod
-    def notify_deposit_created(deposit):
-        """Notify user when they create a deposit"""
-        NotificationService.create_notification(
-            user=deposit.user,
-            notification_type='deposit_created',
-            title='Deposit Initiated',
-            message=f'Your deposit of KES {deposit.amount:,.2f} via {deposit.get_payment_method_display()} has been submitted for approval.',
-            related_deposit_id=deposit.id
-        )
-        
-        # Notify all admins about new deposit
-        admins = User.objects.filter(role='admin', is_active=True)
-        for admin in admins:
-            NotificationService.create_notification(
-                user=admin,
-                notification_type='deposit_created',
-                title='New Deposit Pending',
-                message=f'{deposit.user.full_name} submitted a deposit of KES {deposit.amount:,.2f} for approval.',
-                related_deposit_id=deposit.id,
-                related_user_name=deposit.user.full_name
-            )
-    
+
+    # ------------------------------------------------------------------
+    # Deposit helpers (called from admin bulk-approve / bulk-reject only)
+    # ------------------------------------------------------------------
+
     @staticmethod
     def notify_deposit_approved(deposit, approved_by):
-        """Notify user when their deposit is approved"""
+        """In-app notify user when their deposit is approved (admin action)."""
         NotificationService.create_notification(
             user=deposit.user,
             notification_type='deposit_approved',
             title='Deposit Approved',
-            message=f'Your deposit of KES {deposit.amount:,.2f} has been approved. Your account has been credited.',
-            related_deposit_id=deposit.id
+            message=(
+                f'Your deposit of KES {deposit.amount:,.2f} has been approved '
+                f'and credited to your account.'
+            ),
+            related_deposit_id=deposit.uuid,
         )
-    
+
     @staticmethod
     def notify_deposit_rejected(deposit, rejected_by, reason):
-        """Notify user when their deposit is rejected"""
+        """In-app notify user when their deposit is rejected (admin action)."""
         NotificationService.create_notification(
             user=deposit.user,
             notification_type='deposit_rejected',
             title='Deposit Rejected',
-            message=f'Your deposit of KES {deposit.amount:,.2f} was rejected. Reason: {reason}',
-            related_deposit_id=deposit.id
+            message=(
+                f'Your deposit of KES {deposit.amount:,.2f} was rejected. '
+                f'Reason: {reason}'
+            ),
+            related_deposit_id=deposit.uuid,
         )
-    
+
+
     @staticmethod
     def notify_application_submitted(application):
-        """Notify admins when a new application is submitted"""
+        """
+        Notify admins about a new application.
+        Called ONLY from places where the post_save signal will NOT fire
+        (e.g. management commands, bulk imports).
+        For normal API flow the signal in signals.py handles this.
+        """
         admins = User.objects.filter(role='admin', is_active=True)
         for admin in admins:
-            NotificationService.create_notification(
-                user=admin,
-                notification_type='application_submitted',
-                title='New Application Submitted',
-                message=f'{application.user.full_name} submitted a new {application.get_application_type_display()} application.',
-                related_application_id=application.id,
-                related_user_name=application.user.full_name
-            )
-    
+            try:
+                NotificationService.create_notification(
+                    user=admin,
+                    notification_type='application_submitted',
+                    title='New Application Submitted',
+                    message=(
+                        f'{application.user.full_name} submitted a new '
+                        f'{application.get_application_type_display()} application.'
+                    ),
+                    related_application_id=application.uuid,
+                    related_user_name=application.user.full_name,
+                )
+            except Exception as e:
+                logger.error(f'Error notifying admin {admin.uuid}: {e}')
+
     @staticmethod
     def notify_application_approved(application):
-        """Notify user when their application is approved"""
+        """In-app notify user when their application is approved."""
         NotificationService.create_notification(
             user=application.user,
             notification_type='application_approved',
             title='Application Approved',
-            message=f'Your {application.get_application_type_display()} application has been approved.',
-            related_application_id=application.id
+            message=(
+                f'Your {application.get_application_type_display()} '
+                f'application has been approved.'
+            ),
+            related_application_id=application.uuid,
         )
-    
+
     @staticmethod
     def notify_application_rejected(application, reason):
-        """Notify user when their application is rejected"""
+        """In-app notify user when their application is rejected."""
         NotificationService.create_notification(
             user=application.user,
             notification_type='application_rejected',
             title='Application Rejected',
-            message=f'Your {application.get_application_type_display()} application was rejected. {reason}',
-            related_application_id=application.id
+            message=(
+                f'Your {application.get_application_type_display()} '
+                f'application was rejected. {reason}'
+            ),
+            related_application_id=application.uuid,
         )
-    
-    @staticmethod
-    def notify_beneficiary_added(beneficiary):
-        """Notify user when they add a beneficiary"""
-        NotificationService.create_notification(
-            user=beneficiary.user,
-            notification_type='beneficiary_added',
-            title='Beneficiary Added',
-            message=f'Beneficiary "{beneficiary.name}" has been added and is pending verification.',
-        )
-        
-        # Notify all admins about new beneficiary for verification
-        from apps.accounts.models import User
-        admins = User.objects.filter(role='admin', is_active=True)
-        for admin in admins:
-            NotificationService.create_notification(
-                user=admin,
-                notification_type='beneficiary_added',
-                title='New Beneficiary Pending Verification',
-                message=f'{beneficiary.user.full_name} added beneficiary: {beneficiary.name} ({beneficiary.get_relation_display()})',
-                related_user_name=beneficiary.user.full_name
-            )
-    
+
+    # ------------------------------------------------------------------
+    # Beneficiary helpers
+    # ------------------------------------------------------------------
+
     @staticmethod
     def notify_beneficiary_verified(beneficiary):
-        """Notify user when their beneficiary is verified"""
+        """In-app notify user when their beneficiary is verified."""
         NotificationService.create_notification(
             user=beneficiary.user,
             notification_type='beneficiary_verified',
             title='Beneficiary Verified',
-            message=f'Your beneficiary "{beneficiary.name}" has been verified and approved.',
+            message=(
+                f'Your beneficiary "{beneficiary.name}" has been '
+                f'verified and approved.'
+            ),
         )
-    
+
     @staticmethod
     def notify_beneficiary_rejected(beneficiary, reason):
-        """Notify user when their beneficiary is rejected"""
+        """In-app notify user when their beneficiary is rejected."""
         NotificationService.create_notification(
             user=beneficiary.user,
             notification_type='beneficiary_rejected',
             title='Beneficiary Rejected',
-            message=f'Your beneficiary "{beneficiary.name}" was rejected. Reason: {reason}',
+            message=(
+                f'Your beneficiary "{beneficiary.name}" was rejected. '
+                f'Reason: {reason}'
+            ),
         )
-    
+
     @staticmethod
     def notify_beneficiary_deceased(beneficiary):
-        """Notify user when beneficiary is marked deceased"""
+        """In-app notify user when beneficiary is marked deceased."""
         NotificationService.create_notification(
             user=beneficiary.user,
             notification_type='beneficiary_deceased',

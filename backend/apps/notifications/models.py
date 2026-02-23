@@ -8,14 +8,13 @@ from django.dispatch import receiver
 User = get_user_model()
 
 
-
 class Notification(models.Model):
     uuid = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
-        editable=False
+        editable=False,
     )
-    """Notification model with document deletion support"""
+
     NOTIFICATION_TYPES = (
         ('deposit_created', 'Deposit Created'),
         ('deposit_approved', 'Deposit Approved'),
@@ -26,27 +25,29 @@ class Notification(models.Model):
         ('document_uploaded', 'Document Uploaded'),
         ('document_verified', 'Document Verified'),
         ('document_rejected', 'Document Rejected'),
-        ('document_deleted', 'Document Deleted'),  # NEW
+        ('document_deleted', 'Document Deleted'),
         ('beneficiary_added', 'Beneficiary Added'),
         ('beneficiary_verified', 'Beneficiary Verified'),
+        ('beneficiary_rejected', 'Beneficiary Rejected'),   # FIX 13 — was missing
         ('beneficiary_deceased', 'Beneficiary Deceased'),
-        ('beneficiary_deleted', 'Beneficiary Deleted'),  # NEW
+        ('beneficiary_deleted', 'Beneficiary Deleted'),
         ('system', 'System Notification'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='notifications'
+    )
     notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
     title = models.CharField(max_length=255)
     message = models.TextField()
-    
-    # Store UUIDs as strings for flexibility
+
     related_deposit_id = models.UUIDField(null=True, blank=True)
     related_application_id = models.UUIDField(null=True, blank=True)
     related_user_name = models.CharField(max_length=255, null=True, blank=True)
-    
+
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -57,99 +58,87 @@ class Notification(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.full_name} - {self.title}"
+        return f'{self.user.full_name} - {self.title}'
 
     @property
     def time_ago(self):
         now = timezone.now()
         diff = now - self.created_at
-        
+
         if diff.days > 30:
-            return f"{diff.days // 30} month{'s' if diff.days // 30 > 1 else ''} ago"
+            months = diff.days // 30
+            return f"{months} month{'s' if months > 1 else ''} ago"
         elif diff.days > 0:
             return f"{diff.days} day{'s' if diff.days > 1 else ''} ago"
         elif diff.seconds > 3600:
-            return f"{diff.seconds // 3600} hour{'s' if diff.seconds // 3600 > 1 else ''} ago"
+            hours = diff.seconds // 3600
+            return f"{hours} hour{'s' if hours > 1 else ''} ago"
         elif diff.seconds > 60:
-            return f"{diff.seconds // 60} minute{'s' if diff.seconds // 60 > 1 else ''} ago"
+            minutes = diff.seconds // 60
+            return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
         else:
-            return "just now"
+            return 'just now'
 
 
 class NotificationPreferences(models.Model):
-    """User notification preferences for different channels"""
     uuid = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
-        editable=False
+        editable=False,
     )
     user = models.OneToOneField(
-        User, 
-        on_delete=models.CASCADE, 
-        related_name='notification_preferences'
+        User,
+        on_delete=models.CASCADE,
+        related_name='notification_preferences',
     )
-    
-    
+
     # Channel preferences
     email_enabled = models.BooleanField(
-        default=True,
-        help_text="Receive notifications via email"
+        default=True, help_text='Receive notifications via email'
     )
     sms_enabled = models.BooleanField(
-        default=True,
-        help_text="Receive notifications via SMS"
+        default=True, help_text='Receive notifications via SMS'
     )
     push_enabled = models.BooleanField(
-        default=True,
-        help_text="Receive push notifications in-app"
+        default=True, help_text='Receive push notifications in-app'
     )
-    
-    # Specific notification types
+
+    # Notification type preferences
     deposit_notifications = models.BooleanField(
-        default=True,
-        help_text="Notifications about deposits"
+        default=True, help_text='Notifications about deposits'
     )
     application_notifications = models.BooleanField(
-        default=True,
-        help_text="Notifications about applications"
+        default=True, help_text='Notifications about applications'
     )
     document_notifications = models.BooleanField(
-        default=True,
-        help_text="Notifications about documents"
+        default=True, help_text='Notifications about documents'
     )
     beneficiary_notifications = models.BooleanField(
-        default=True,
-        help_text="Notifications about beneficiaries"
+        default=True, help_text='Notifications about beneficiaries'
     )
-    
-    # Reports
     monthly_reports = models.BooleanField(
-        default=True,
-        help_text="Receive monthly financial reports"
+        default=True, help_text='Receive monthly financial reports'
     )
-    
-    # Timestamps
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Notification Preference"
-        verbose_name_plural = "Notification Preferences"
+        verbose_name = 'Notification Preference'
+        verbose_name_plural = 'Notification Preferences'
 
     def __str__(self):
         return f"{self.user.full_name}'s Preferences"
 
     def should_notify(self, notification_type, channel='push'):
-        """Check if user should receive a notification"""
-        # Check channel preference
+        """Return True if the user wants this notification on this channel."""
         if channel == 'email' and not self.email_enabled:
             return False
         if channel == 'sms' and not self.sms_enabled:
             return False
         if channel == 'push' and not self.push_enabled:
             return False
-        
-        # Check notification type preference
+
         if 'deposit' in notification_type and not self.deposit_notifications:
             return False
         if 'application' in notification_type and not self.application_notifications:
@@ -158,26 +147,17 @@ class NotificationPreferences(models.Model):
             return False
         if 'beneficiary' in notification_type and not self.beneficiary_notifications:
             return False
-        
+
         return True
 
 
+# ------------------------------------------------------------------
+# Signals — create preferences for new users only
+# ------------------------------------------------------------------
+
 @receiver(post_save, sender=User)
 def create_notification_preferences(sender, instance, created, **kwargs):
-    """Automatically create notification preferences for new users"""
+    """Automatically create notification preferences for new users."""
     if created:
-        NotificationPreferences.objects.create(user=instance)
+        NotificationPreferences.objects.get_or_create(user=instance)
 
-
-@receiver(post_save, sender=User)
-def save_notification_preferences(sender, instance, **kwargs):
-    """Ensure preferences are saved when user is saved"""
-    # Use try-except to avoid triggering hasattr database query
-    try:
-        # Only access if we're NOT in the creation phase
-        if not kwargs.get('created', False):
-            prefs = NotificationPreferences.objects.filter(user=instance).first()
-            if prefs:
-                prefs.save()
-    except NotificationPreferences.DoesNotExist:
-        pass

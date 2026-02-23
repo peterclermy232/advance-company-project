@@ -51,8 +51,6 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'cloudinary_storage',
-    'cloudinary',
     'django.contrib.staticfiles',
     
     # Third party
@@ -241,28 +239,10 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id'
 }
 
-# Cloudinary Configuration
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
-
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': strip_quotes(config('CLOUDINARY_CLOUD_NAME')),
-    'API_KEY': strip_quotes(config('CLOUDINARY_API_KEY')),
-    'API_SECRET': strip_quotes(config('CLOUDINARY_API_SECRET')),
-    'RESOURCE_TYPE': 'auto',
-}
-
-# Configure cloudinary library directly
-cloudinary.config(
-    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
-    api_key=CLOUDINARY_STORAGE['API_KEY'],
-    api_secret=CLOUDINARY_STORAGE['API_SECRET'],
-    secure=True
-)
 
 # Use standard MediaCloudinaryStorage
-DEFAULT_FILE_STORAGE = 'apps.documents.storage.CleanMediaCloudinaryStorage'
+# DEFAULT_FILE_STORAGE = 'apps.documents.storage.CleanMediaCloudinaryStorage'
+DEFAULT_FILE_STORAGE = 'apps.documents.storage.SupabaseStorage'
 
 # Cache Configuration
 REDIS_URL = config('REDIS_URL', default=None)
@@ -285,6 +265,10 @@ else:
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         }
     }
+
+SUPABASE_URL = strip_quotes(config('SUPABASE_URL'))
+SUPABASE_KEY = strip_quotes(config('SUPABASE_KEY'))
+SUPABASE_BUCKET = strip_quotes(config('SUPABASE_BUCKET'))
 
 # Rate Limiting
 RATELIMIT_ENABLE = False
@@ -360,5 +344,5 @@ print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
 print(f"CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
 print(f"CSRF Middleware: DISABLED (JWT API)")
 print(f"File Storage: {DEFAULT_FILE_STORAGE}")
-print(f"Cloudinary Cloud: {CLOUDINARY_STORAGE.get('CLOUD_NAME', 'NOT SET')}")
+print(f"Supabase Bucket: {SUPABASE_BUCKET}")
 print("="*50)

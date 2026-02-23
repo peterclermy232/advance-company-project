@@ -1,8 +1,9 @@
 import uuid
+import os
 from django.db import models
 from apps.accounts.models import User
 from .validators import validate_document_file
-from .storage import CleanMediaCloudinaryStorage
+from .storage import SupabaseStorage
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,10 +33,10 @@ class Document(models.Model):
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
     title = models.CharField(max_length=255)
 
-    # File field with validator and custom Cloudinary storage
+    # File stored in Supabase private bucket
     file = models.FileField(
         upload_to='documents/',
-        storage=CleanMediaCloudinaryStorage(),
+        storage=SupabaseStorage(),
         validators=[validate_document_file]
     )
 
@@ -55,21 +56,17 @@ class Document(models.Model):
         return f"{self.title} - {self.user.full_name}"
 
     def save(self, *args, **kwargs):
-        """Sanitize filename before saving"""
         if self.file:
             from .validators import SecureFileValidator
             self.file.name = SecureFileValidator.sanitize_filename(self.file.name)
             logger.info(f"Saving document: {self.title} - {self.file.name}")
-
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        """Delete file from Cloudinary when model is deleted"""
         if self.file:
             try:
                 self.file.delete(save=False)
-                logger.info(f"Deleted file from Cloudinary: {self.file.name}")
+                logger.info(f"Deleted file from Supabase: {self.file.name}")
             except Exception as e:
-                logger.error(f"Error deleting file from Cloudinary: {str(e)}")
-
+                logger.error(f"Error deleting file from Supabase: {str(e)}")
         super().delete(*args, **kwargs)

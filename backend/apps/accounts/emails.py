@@ -1,74 +1,128 @@
 from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+BRAND = 'Advance Company'
+BRAND_COLOR = '#2563eb'
+
+
+def _base_html(body_html: str) -> str:
+    """Wrap content in a consistent branded HTML shell."""
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6; }}
+    .wrapper {{ max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
+    .header {{ background: linear-gradient(135deg, {BRAND_COLOR}, #4f46e5); color: #fff; padding: 32px 30px; text-align: center; }}
+    .header h1 {{ margin: 0; font-size: 24px; }}
+    .content {{ padding: 30px; background: #f9fafb; }}
+    .button {{ display: inline-block; background: {BRAND_COLOR}; color: #fff !important; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }}
+    .url-fallback {{ word-break: break-all; color: {BRAND_COLOR}; font-size: 13px; }}
+    .footer {{ text-align: center; color: #9ca3af; font-size: 12px; padding: 20px 30px; }}
+    .info-box {{ background: #eff6ff; border-left: 4px solid {BRAND_COLOR}; padding: 15px; border-radius: 4px; margin: 16px 0; }}
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    {body_html}
+    <div class="footer">
+      <p>&copy; 2024 {BRAND}. All rights reserved.</p>
+      <p>If you did not request this email, please ignore it.</p>
+    </div>
+  </div>
+</body>
+</html>"""
+
 
 def send_verification_email(user):
-    """Send email verification"""
+    """Send a branded email verification message."""
+    frontend_url = getattr(settings, 'FRONTEND_URL', '').rstrip('/')
+    if not frontend_url:
+        logger.error('FRONTEND_URL is not set — cannot send verification email')
+        raise ValueError('FRONTEND_URL setting is required')
+
     token = user.generate_verification_token()
-    
-    # Construct verification URL
-    verification_url = f"{settings.FRONTEND_URL}/auth/verify-email?token={token}&email={user.email}"
-    
-    context = {
-        'user': user,
-        'verification_url': verification_url,
-        'expiry_hours': 24
-    }
-    
-    subject = 'Verify Your Email - Advance Company'
-    
-    text_content = f"""
-    Hello {user.full_name},
-    
-    Welcome to Advance Company! Please verify your email address by clicking the link below:
-    
-    {verification_url}
-    
-    This link will expire in 24 hours.
-    
-    If you didn't create this account, please ignore this email.
-    
-    Best regards,
-    Advance Company Team
-    """
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #2563eb, #4f46e5); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }}
-            .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }}
-            .button {{ display: inline-block; background: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }}
-            .footer {{ text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>Welcome to Advance Company!</h1>
-            </div>
-            <div class="content">
-                <p>Hello <strong>{user.full_name}</strong>,</p>
-                <p>Thank you for registering with Advance Company. To complete your registration and start using your account, please verify your email address.</p>
-                <div style="text-align: center;">
-                    <a href="{verification_url}" class="button">Verify Email Address</a>
-                </div>
-                <p>Or copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; color: #2563eb;">{verification_url}</p>
-                <p><strong>This link will expire in 24 hours.</strong></p>
-                <p>If you didn't create this account, please ignore this email.</p>
-            </div>
-            <div class="footer">
-                <p>&copy; 2024 Advance Company. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    msg = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [user.email])
-    msg.attach_alternative(html_content, "text/html")
+    verification_url = (
+        f'{frontend_url}/auth/verify-email'
+        f'?token={token}&email={user.email}'
+    )
+
+    subject = f'Verify Your Email — {BRAND}'
+
+    text_content = (
+        f'Hello {user.full_name},\n\n'
+        f'Welcome to {BRAND}! Please verify your email address by visiting:\n\n'
+        f'{verification_url}\n\n'
+        f'This link expires in 24 hours.\n\n'
+        f'If you did not create this account, please ignore this email.\n\n'
+        f'Best regards,\n{BRAND} Team'
+    )
+
+    body_html = f"""
+    <div class="header"><h1>Welcome to {BRAND}!</h1></div>
+    <div class="content">
+      <p>Hello <strong>{user.full_name}</strong>,</p>
+      <p>Thank you for registering. Please verify your email address to activate your account.</p>
+      <div style="text-align:center;">
+        <a href="{verification_url}" class="button">Verify Email Address</a>
+      </div>
+      <p>Or copy this link into your browser:</p>
+      <p class="url-fallback">{verification_url}</p>
+      <div class="info-box"><strong>This link expires in 24 hours.</strong></div>
+    </div>"""
+
+    _send(subject, text_content, _base_html(body_html), user.email)
+
+
+def send_password_reset_email(user, reset_url: str):
+    """Send a branded password reset email."""
+    subject = f'Reset Your Password — {BRAND}'
+
+    text_content = (
+        f'Hello {user.full_name},\n\n'
+        f'We received a request to reset your {BRAND} password.\n\n'
+        f'Click the link below to choose a new password:\n\n'
+        f'{reset_url}\n\n'
+        f'This link expires in 1 hour. If you did not request a password reset, '
+        f'please ignore this email — your account is safe.\n\n'
+        f'Best regards,\n{BRAND} Team'
+    )
+
+    body_html = f"""
+    <div class="header"><h1>Password Reset Request</h1></div>
+    <div class="content">
+      <p>Hello <strong>{user.full_name}</strong>,</p>
+      <p>We received a request to reset your <strong>{BRAND}</strong> password.</p>
+      <div style="text-align:center;">
+        <a href="{reset_url}" class="button">Reset My Password</a>
+      </div>
+      <p>Or copy this link into your browser:</p>
+      <p class="url-fallback">{reset_url}</p>
+      <div class="info-box">
+        <strong>This link expires in 1 hour.</strong><br>
+        If you did not request a password reset, you can safely ignore this email.
+        Your account has not been changed.
+      </div>
+    </div>"""
+
+    _send(subject, text_content, _base_html(body_html), user.email)
+
+
+def _send(subject: str, text: str, html: str, to_email: str):
+    """Send a multipart email with plain-text and HTML alternatives."""
+    from_email = getattr(
+        settings, 'DEFAULT_FROM_EMAIL',
+        getattr(settings, 'EMAIL_HOST_USER', None)
+    )
+    if not from_email:
+        raise ValueError('DEFAULT_FROM_EMAIL or EMAIL_HOST_USER must be set')
+
+    msg = EmailMultiAlternatives(subject, text, from_email, [to_email])
+    msg.attach_alternative(html, 'text/html')
     msg.send()
+    logger.info(f'Email "{subject}" sent to {to_email}')

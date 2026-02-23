@@ -1,72 +1,67 @@
-from django.http import JsonResponse
 from django.db import connection
 from django.core.cache import cache
-import redis
-from apps.accounts.models import User
-from apps.financial.models import Deposit
 from django.utils import timezone
-from datetime import timedelta
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+from rest_framework import status
+
+
+@api_view(['GET'])
+@permission_classes([])  # Public health check — no auth required
 def health_check(request):
     """
-    Health check endpoint
-    GET /api/health/
+    Simple public health check. Returns 200 when the server is up.
+    Does NOT expose internal metrics.
     """
-    checks = {
-        'database': False,
-        'cache': False,
-        'overall': False
-    }
-    
-    # Check database
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-        checks['database'] = True
-    except Exception as e:
-        checks['database_error'] = str(e)
-    
-    # Check cache/redis
-    try:
-        cache.set('health_check', 'ok', 10)
-        checks['cache'] = cache.get('health_check') == 'ok'
-    except Exception as e:
-        checks['cache_error'] = str(e)
-    
-    checks['overall'] = checks['database'] and checks['cache']
-    
-    status_code = 200 if checks['overall'] else 503
-    
-    return JsonResponse(checks, status=status_code)
+    return Response({'status': 'healthy', 'timestamp': timezone.now()})
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])  # FIX 10: require auth + staff
 def metrics(request):
     """
-    Basic metrics endpoint
-    GET /api/health/metrics/
-    Requires admin authentication
+    Detailed health metrics — staff only.
+    Previously had no permission class, allowing unauthenticated access.
     """
-    if not request.user.is_staff:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-    
-    now = timezone.now()
-    last_24h = now - timedelta(hours=24)
-    
-    metrics = {
-        'timestamp': now.isoformat(),
-        'users': {
-            'total': User.objects.count(),
-            'active': User.objects.filter(is_active=True).count(),
-            'new_24h': User.objects.filter(created_at__gte=last_24h).count(),
-        },
-        'deposits': {
-            'total': Deposit.objects.count(),
-            'pending': Deposit.objects.filter(status='pending').count(),
-            'completed_24h': Deposit.objects.filter(
-                status='completed',
-                created_at__gte=last_24h
-            ).count(),
-        }
+    checks = {
+        'database': _check_db(),
+        'cache': _check_cache(),
     }
-    
-    return JsonResponse(metrics)
+
+    all_healthy = all(c['status'] == 'healthy' for c in checks.values())
+
+    from apps.accounts.models import User
+    from apps.financial.models import Deposit
+    from apps.notifications.models import Notification
+
+    return Response({
+        'status': 'healthy' if all_healthy else 'degraded',
+        'timestamp': timezone.now(),
+        'checks': checks,
+        'stats': {
+            'total_users': User.objects.count(),
+            'active_users': User.objects.filter(is_active=True).count(),
+            'pending_deposits': Deposit.objects.filter(status='pending').count(),
+            'unread_notifications': Notification.objects.filter(is_read=False).count(),
+        },
+    }, status=status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+def _check_db():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+        return {'status': 'healthy'}
+    except Exception as e:
+        return {'status': 'unhealthy', 'error': str(e)}
+
+
+def _check_cache():
+    try:
+        cache.set('_health_check', '1', timeout=10)
+        val = cache.get('_health_check')
+        return {'status': 'healthy' if val == '1' else 'unhealthy'}
+    except Exception as e:
+        return {'status': 'unhealthy', 'error': str(e)}

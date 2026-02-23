@@ -5,7 +5,6 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -27,7 +26,7 @@ from .serializers import (
     UserRegistrationSerializer,
     LoginSerializer,
 )
-from .emails import send_verification_email
+from .emails import send_verification_email, send_password_reset_email
 from .throttles import (
     LoginRateThrottle,
     RegisterRateThrottle,
@@ -53,8 +52,8 @@ logger = logging.getLogger(__name__)
 @throttle_classes([RegisterRateThrottle])
 @parser_classes([JSONParser, MultiPartParser, FormParser])
 def register(request):
-    """Register a new user"""
-    logger.info("📝 Register endpoint called")
+    """Register a new user."""
+    logger.info('Register endpoint called')
 
     serializer = UserRegistrationSerializer(data=request.data)
 
@@ -70,23 +69,23 @@ def register(request):
         try:
             send_verification_email(user)
         except Exception as e:
-            logger.error(f"Verification email failed: {e}")
+            logger.error(f'Verification email failed: {e}')
 
         refresh = RefreshToken.for_user(user)
 
         return APIResponse.created(
             message=Messages.REGISTER_SUCCESS,
             data={
-                "user": UserSerializer(user, context={"request": request}).data,
-                "tokens": {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
+                'user': UserSerializer(user, context={'request': request}).data,
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
                 },
             },
         )
 
-    except Exception as e:
-        logger.error("Registration error", exc_info=True)
+    except Exception:
+        logger.error('Registration error', exc_info=True)
         return APIResponse.server_error(message=Messages.REGISTER_FAILED)
 
 
@@ -97,20 +96,21 @@ def register(request):
 @permission_classes([AllowAny])
 @throttle_classes([EmailVerificationRateThrottle])
 def verify_email(request):
-    token = request.data.get("token")
-    email = request.data.get("email")
+    """Verify a user's email address using a token (email NOT required in URL)."""
+    token = request.data.get('token')
+    email = request.data.get('email')
 
     if not token or not email:
         return APIResponse.validation_error(
-            message="Token and email are required",
-            errors={"token": ["Required"], "email": ["Required"]},
+            message='Token and email are required',
+            errors={'token': ['Required'], 'email': ['Required']},
         )
 
     try:
         user = User.objects.get(email=email)
 
         if user.email_verified:
-            return APIResponse.info(message="Email already verified")
+            return APIResponse.info(message='Email already verified')
 
         if user.verify_email(token):
             return APIResponse.success(message=Messages.EMAIL_VERIFIED)
@@ -122,7 +122,7 @@ def verify_email(request):
 
     except User.DoesNotExist:
         return APIResponse.error(
-            message="Invalid email",
+            message='Invalid email',
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
@@ -131,26 +131,27 @@ def verify_email(request):
 @permission_classes([AllowAny])
 @throttle_classes([EmailVerificationRateThrottle])
 def resend_verification(request):
-    email = request.data.get("email")
+    email = request.data.get('email')
 
     if not email:
         return APIResponse.validation_error(
-            message="Email is required",
-            errors={"email": ["Required"]},
+            message='Email is required',
+            errors={'email': ['Required']},
         )
 
     try:
         user = User.objects.get(email=email)
 
         if user.email_verified:
-            return APIResponse.info(message="Email already verified")
+            return APIResponse.info(message='Email already verified')
 
         send_verification_email(user)
         return APIResponse.success(message=Messages.EMAIL_VERIFICATION_SENT)
 
     except User.DoesNotExist:
+        # Return 200 to prevent email enumeration
         return APIResponse.success(
-            message="If the email exists, a verification link was sent."
+            message='If the email exists, a verification link was sent.'
         )
 
 
@@ -166,7 +167,7 @@ def login(request):
     if not serializer.is_valid():
         return APIResponse.unauthorized(message=Messages.AUTH_FAILED)
 
-    user = serializer.validated_data["user"]
+    user = serializer.validated_data['user']
 
     if not user.is_active:
         return APIResponse.forbidden(message=Messages.AUTH_INACTIVE)
@@ -174,34 +175,32 @@ def login(request):
     # 2FA check
     if user.two_factor_enabled:
         temp_token = secrets.token_urlsafe(32)
-        cache_key = f"2fa_{temp_token}"
+        cache_key = f'2fa_{temp_token}'
 
         if not safe_cache_set(cache_key, user.uuid, timeout=300):
-            return APIResponse.server_error(
-                message="2FA service unavailable"
-            )
+            return APIResponse.server_error(message='2FA service unavailable')
 
         return APIResponse.info(
             message=Messages.TWO_FA_REQUIRED,
             data={
-                "requires_2fa": True,
-                "temp_token": temp_token,
-                "email": user.email,
+                'requires_2fa': True,
+                'temp_token': temp_token,
+                'email': user.email,
             },
         )
 
     user.last_login = timezone.now()
-    user.save(update_fields=["last_login"])
+    user.save(update_fields=['last_login'])
 
     refresh = RefreshToken.for_user(user)
 
     return APIResponse.success(
         message=Messages.AUTH_SUCCESS,
         data={
-            "user": UserSerializer(user).data,
-            "tokens": {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
+            'user': UserSerializer(user).data,
+            'tokens': {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
             },
         },
     )
@@ -214,33 +213,33 @@ def login(request):
 @permission_classes([AllowAny])
 @throttle_classes([TwoFactorRateThrottle])
 def verify_2fa(request):
-    temp_token = request.data.get("temp_token")
-    code = request.data.get("code")
-    email = request.data.get("email")
-    is_backup_code = request.data.get("is_backup_code", False)
+    temp_token = request.data.get('temp_token')
+    code = request.data.get('code')
+    email = request.data.get('email')
+    is_backup_code = request.data.get('is_backup_code', False)
 
     if not all([temp_token, code, email]):
         return APIResponse.validation_error(
-            message="Missing fields",
-            errors={"fields": ["temp_token, code, email required"]},
+            message='Missing fields',
+            errors={'fields': ['temp_token, code, email required']},
         )
 
-    cache_key = f"2fa_{temp_token}"
+    cache_key = f'2fa_{temp_token}'
     user_id = safe_cache_get(cache_key)
 
     if not user_id:
-        return APIResponse.unauthorized(message="Session expired")
+        return APIResponse.unauthorized(message='Session expired')
 
     try:
         user = User.objects.get(uuid=user_id, email=email)
     except User.DoesNotExist:
         return APIResponse.unauthorized(message=Messages.AUTH_FAILED)
 
-    valid = (
-        user.verify_backup_code(code)
-        if is_backup_code
-        else user.verify_2fa_code(code)
-    )
+    # FIX 7: use verify_backup_code (defined in models.py) correctly
+    if is_backup_code:
+        valid = user.verify_backup_code(code)
+    else:
+        valid = user.verify_2fa_code(code)
 
     if not valid:
         return APIResponse.unauthorized(message=Messages.TWO_FA_INVALID)
@@ -248,17 +247,17 @@ def verify_2fa(request):
     safe_cache_delete(cache_key)
 
     user.last_login = timezone.now()
-    user.save(update_fields=["last_login"])
+    user.save(update_fields=['last_login'])
 
     refresh = RefreshToken.for_user(user)
 
     return APIResponse.success(
         message=Messages.AUTH_SUCCESS,
         data={
-            "user": UserSerializer(user).data,
-            "tokens": {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
+            'user': UserSerializer(user).data,
+            'tokens': {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
             },
         },
     )
@@ -271,12 +270,18 @@ def verify_2fa(request):
 @permission_classes([AllowAny])
 @throttle_classes([PasswordResetRateThrottle])
 def forgot_password(request):
-    email = request.data.get("email", "").lower()
+    """
+    Send a branded HTML password reset email.
+    Always returns 200 to prevent email enumeration.
+    FIX 4: uses send_password_reset_email() (branded HTML).
+    FIX 11: email is NOT included in the reset URL.
+    """
+    email = request.data.get('email', '').strip().lower()
 
     if not email:
         return APIResponse.validation_error(
-            message="Email is required",
-            errors={"email": ["Required"]},
+            message='Email is required',
+            errors={'email': ['Required']},
         )
 
     try:
@@ -284,16 +289,16 @@ def forgot_password(request):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
 
-        reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+        frontend_url = getattr(settings, 'FRONTEND_URL', '').rstrip('/')
+        # FIX 11: email is NOT in the URL — looked up server-side via uid
+        reset_url = f'{frontend_url}/reset-password?uid={uid}&token={token}'
 
-        send_mail(
-            subject="Password Reset",
-            message=f"Reset your password: {reset_url}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-        )
+        send_password_reset_email(user, reset_url)
+
     except User.DoesNotExist:
-        pass
+        pass  # Intentional: prevent email enumeration
+    except Exception:
+        logger.error('Password reset email failed', exc_info=True)
 
     return APIResponse.success(message=Messages.PASSWORD_RESET_SENT)
 
@@ -302,14 +307,18 @@ def forgot_password(request):
 @permission_classes([AllowAny])
 @throttle_classes([PasswordResetRateThrottle])
 def reset_password_confirm(request):
-    uid = request.data.get("uid")
-    token = request.data.get("token")
-    new_password = request.data.get("new_password")
+    """
+    Confirm password reset and invalidate all existing JWT refresh tokens.
+    FIX 8: outstanding refresh tokens are blacklisted after a successful reset.
+    """
+    uid = request.data.get('uid')
+    token = request.data.get('token')
+    new_password = request.data.get('new_password')
 
     if not all([uid, token, new_password]):
         return APIResponse.validation_error(
-            message="Missing fields",
-            errors={"fields": ["uid, token, new_password required"]},
+            message='Missing fields',
+            errors={'fields': ['uid, token, new_password required']},
         )
 
     try:
@@ -318,13 +327,16 @@ def reset_password_confirm(request):
 
         if not default_token_generator.check_token(user, token):
             return APIResponse.error(
-                message="Invalid or expired token",
+                message='Invalid or expired token',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         validate_password(new_password, user)
         user.set_password(new_password)
         user.save()
+
+        # FIX 8: blacklist all outstanding refresh tokens for this user
+        _blacklist_user_tokens(user)
 
         return APIResponse.success(message=Messages.PASSWORD_RESET_SUCCESS)
 
@@ -335,6 +347,30 @@ def reset_password_confirm(request):
         )
 
 
+def _blacklist_user_tokens(user):
+    """
+    Blacklist all outstanding SimpleJWT refresh tokens for a user.
+    Requires INSTALLED_APPS to include 'rest_framework_simplejwt.token_blacklist'.
+    Fails silently if the token blacklist app is not installed.
+    """
+    try:
+        from rest_framework_simplejwt.token_blacklist.models import (
+            OutstandingToken,
+            BlacklistedToken,
+        )
+        tokens = OutstandingToken.objects.filter(user=user)
+        for token in tokens:
+            BlacklistedToken.objects.get_or_create(token=token)
+        logger.info(f'Blacklisted {tokens.count()} token(s) for user {user.email}')
+    except ImportError:
+        logger.warning(
+            'rest_framework_simplejwt.token_blacklist is not installed. '
+            'Add it to INSTALLED_APPS to invalidate tokens on password reset.'
+        )
+    except Exception:
+        logger.error('Failed to blacklist tokens', exc_info=True)
+
+
 # ---------------------------------------------------------------------
 # TEST
 # ---------------------------------------------------------------------
@@ -342,6 +378,6 @@ def reset_password_confirm(request):
 @permission_classes([AllowAny])
 def test_endpoint(request):
     return APIResponse.success(
-        message="API is working",
-        data={"method": request.method, "time": timezone.now()},
+        message='API is working',
+        data={'method': request.method, 'time': timezone.now()},
     )

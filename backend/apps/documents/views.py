@@ -19,47 +19,39 @@ class DocumentViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
     filterset_fields = ['category', 'status']
     search_fields = ['title']
-    
+
     def get_queryset(self):
-        """Filter documents based on user role"""
         if self.request.user.role == 'admin':
             return Document.objects.all()
         return Document.objects.filter(user=self.request.user)
-    
+
     def create(self, request, *args, **kwargs):
-        """Upload document with validation"""
-        logger.info(f"📤 Upload request from: {request.user.email}")
-        
+        """Upload document — file goes to Supabase via SupabaseStorage."""
+        logger.info(f"Upload request from: {request.user.email}")
+
         try:
-            # Check if file is provided
             if 'file' not in request.FILES:
                 return Response(
                     {'error': 'No file provided'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             file = request.FILES['file']
             logger.info(f"Processing file: {file.name} ({file.size / 1024:.1f}KB)")
-            
-            # Validate file (size, extension, content)
+
             from .validators import SecureFileValidator
             try:
                 SecureFileValidator.validate_file(file)
             except ValidationError as e:
-                logger.warning(f"❌ Validation failed: {str(e)}")
-                return Response(
-                    {'error': str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Save document
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
             with transaction.atomic():
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 document = serializer.save(user=request.user)
-                
-                logger.info(f"✅ Document uploaded: ID={document.uuid}, File={document.file.name}")
-                
+
+                logger.info(f"Document uploaded: ID={document.uuid}, File={document.file.name}")
+
                 return Response(
                     {
                         'message': 'Document uploaded successfully',
@@ -67,73 +59,84 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     },
                     status=status.HTTP_201_CREATED
                 )
-            
+
         except ValidationError as e:
-            logger.warning(f"❌ Validation error: {str(e)}")
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"❌ Upload failed: {str(e)}", exc_info=True)
+            logger.error(f"Upload failed: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Upload failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
+    @action(detail=True, methods=['get'])
+    def view_url(self, request, pk=None):
+        """
+        Get a fresh signed URL for viewing a document.
+        The URL expires after 1 hour.
+
+        GET /api/documents/{id}/view_url/
+        """
+        document = self.get_object()
+
+        # Only owner or admin can view
+        if document.user != request.user and request.user.role != 'admin':
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not document.file:
+            return Response({'error': 'No file attached to this document'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # document.file.url calls SupabaseStorage.url() which returns a signed URL
+            signed_url = document.file.url
+            return Response({
+                'url': signed_url,
+                'expires_in': '1 hour',
+                'document_title': document.title,
+                'category': document.category,
+            })
+        except Exception as e:
+            logger.error(f"Failed to generate view URL: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Failed to generate view URL'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
-        """Admin: verify document"""
+        """Admin: verify document."""
         if request.user.role != 'admin':
-            return Response(
-                {'error': 'Admin access required'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             document = self.get_object()
             document.status = 'verified'
             document.save()
-            
-            logger.info(f"✅ Document verified: {document.uuid} by {request.user.email}")
-            
+            logger.info(f"Document verified: {document.uuid} by {request.user.email}")
             return Response({
                 'message': 'Document verified successfully',
                 'document': self.get_serializer(document).data
             })
-            
         except Exception as e:
-            logger.error(f"❌ Verification failed: {str(e)}", exc_info=True)
-            return Response(
-                {'error': 'Verification failed'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
+            logger.error(f"Verification failed: {str(e)}", exc_info=True)
+            return Response({'error': 'Verification failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
-        """Admin: reject document"""
+        """Admin: reject document."""
         if request.user.role != 'admin':
-            return Response(
-                {'error': 'Admin access required'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             document = self.get_object()
             document.status = 'rejected'
             document.rejection_reason = request.data.get('reason', 'No reason provided')
             document.save()
-            
-            logger.info(f"✅ Document rejected: {document.uuid} by {request.user.email}")
-            
+            logger.info(f"Document rejected: {document.uuid} by {request.user.email}")
             return Response({
                 'message': 'Document rejected',
                 'document': self.get_serializer(document).data
             })
-            
         except Exception as e:
-            logger.error(f"❌ Rejection failed: {str(e)}", exc_info=True)
-            return Response(
-                {'error': 'Rejection failed'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Rejection failed: {str(e)}", exc_info=True)
+            return Response({'error': 'Rejection failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
