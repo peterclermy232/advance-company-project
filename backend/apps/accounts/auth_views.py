@@ -410,3 +410,23 @@ def test_endpoint(request):
         message='API is working',
         data={'method': request.method, 'time': timezone.now()},
     )
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def test_email(request):
+    """Temporary debug endpoint to test email."""
+    to_email = request.data.get('email')
+    if not to_email:
+        return APIResponse.error(message='email field required')
+    
+    try:
+        from .emails import _send
+        _send(
+            subject='Test Email — Advance Company',
+            text='This is a test email.',
+            html='<p>This is a test email.</p>',
+            to_email=to_email
+        )
+        return APIResponse.success(message=f'Email sent to {to_email}')
+    except Exception as e:
+        return APIResponse.error(message=f'Email failed: {str(e)}')
