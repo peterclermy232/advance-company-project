@@ -152,3 +152,5 @@ def _send(subject: str, text: str, html: str, to_email: str):
         msg.attach_alternative(html, 'text/html')
         msg.send()
         logger.info(f'Email "{subject}" sent to {to_email} via Gmail SMTP')
+
+        
