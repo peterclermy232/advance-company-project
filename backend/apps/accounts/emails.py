@@ -116,7 +116,7 @@ def send_password_reset_email(user, reset_url: str):
 def _send(subject: str, text: str, html: str, to_email: str):
     from django.conf import settings
 
-    resend_api_key = getattr(settings, 'RESEND_API_KEY', None)
+    resend_api_key = getattr(settings, 'RESEND_API_KEY', None) or None
 
     if resend_api_key:
         try:
