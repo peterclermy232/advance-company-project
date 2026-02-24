@@ -114,33 +114,43 @@ def send_password_reset_email(user, reset_url: str):
 
 
 def _send(subject: str, text: str, html: str, to_email: str):
-    """
-    Send email.
-    - Local/dev: uses Gmail SMTP (works fine locally)
-    - Production: uses Resend HTTP API (Railway-compatible)
-    """
     from django.conf import settings
 
-    # Use Resend in production, Gmail SMTP in local
     resend_api_key = getattr(settings, 'RESEND_API_KEY', None)
 
     if resend_api_key:
-        # Production — Resend HTTP API
-        import resend
-        resend.api_key = resend_api_key
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Advance Company <onboarding@resend.dev>')
+        try:
+            import resend
+            resend.api_key = resend_api_key
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Advance Company <onboarding@resend.dev>')
 
-        resend.Emails.send({
-            "from": from_email,
-            "to": to_email,
-            "subject": subject,
-            "html": html,
-            "text": text,
-        })
-        logger.info(f'Email "{subject}" sent to {to_email} via Resend')
+            # Support both old and new Resend SDK versions
+            try:
+                # New SDK (>=1.0.0): resend.Emails.send(params={...})
+                params = {
+                    "from": from_email,
+                    "to": [to_email] if isinstance(to_email, str) else to_email,
+                    "subject": subject,
+                    "html": html,
+                    "text": text,
+                }
+                resend.Emails.send(params)
+            except TypeError:
+                # Old SDK: positional dict argument
+                resend.Emails.send({
+                    "from": from_email,
+                    "to": to_email,
+                    "subject": subject,
+                    "html": html,
+                    "text": text,
+                })
 
+            logger.info(f'Email "{subject}" sent to {to_email} via Resend')
+
+        except Exception as e:
+            logger.error(f'Resend email failed: {e}', exc_info=True)
+            raise
     else:
-        # Local — Gmail SMTP
         from django.core.mail import EmailMultiAlternatives
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL',
                              getattr(settings, 'EMAIL_HOST_USER', None))
@@ -152,5 +162,4 @@ def _send(subject: str, text: str, html: str, to_email: str):
         msg.attach_alternative(html, 'text/html')
         msg.send()
         logger.info(f'Email "{subject}" sent to {to_email} via Gmail SMTP')
-
         

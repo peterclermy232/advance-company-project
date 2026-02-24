@@ -20,6 +20,7 @@ urlpatterns = [
     path('reset-password-confirm/', auth_views.reset_password_confirm, name='reset-password-confirm'),
     path('test/', auth_views.test_endpoint, name='test'),
     path('test-email/', auth_views.test_email, name='test-email'),
+    path('debug-email/', auth_views.debug_email_config),
     # Protected user endpoints (require authentication)
     path('', include(router.urls)),
 ]

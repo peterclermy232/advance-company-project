@@ -296,8 +296,6 @@ MPESA_CALLBACK_URL = strip_quotes(config('MPESA_CALLBACK_URL', default=''))
 # Frontend URL
 FRONTEND_URL = strip_quotes(config('FRONTEND_URL'))
 
-RESEND_API_KEY = strip_quotes(config('RESEND_API_KEY', default=''))
-
 # Logging
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 LOGGING = {

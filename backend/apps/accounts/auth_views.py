@@ -430,3 +430,16 @@ def test_email(request):
         return APIResponse.success(message=f'Email sent to {to_email}')
     except Exception as e:
         return APIResponse.error(message=f'Email failed: {str(e)}')
+    
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def debug_email_config(request):
+    """Temporary — remove after debugging"""
+    from django.conf import settings
+    resend_key = getattr(settings, 'RESEND_API_KEY', 'NOT SET')
+    return APIResponse.success(data={
+        'resend_key_set': bool(resend_key),
+        'resend_key_prefix': resend_key[:6] if resend_key else None,
+        'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+        'frontend_url': getattr(settings, 'FRONTEND_URL', None),
+    })
