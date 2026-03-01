@@ -180,15 +180,15 @@ def login(request):
         return APIResponse.forbidden(message=Messages.AUTH_INACTIVE)
 
     # Email must be verified before login
-    if not user.email_verified:
-        return APIResponse.error(
-            message=Messages.AUTH_VERIFY_EMAIL,
-            status_code=status.HTTP_403_FORBIDDEN,
-            errors={
-                'email_verified': False,
-                'email': user.email  
-            }
-        )
+    # if not user.email_verified:
+    #     return APIResponse.error(
+    #         message=Messages.AUTH_VERIFY_EMAIL,
+    #         status_code=status.HTTP_403_FORBIDDEN,
+    #         errors={
+    #             'email_verified': False,
+    #             'email': user.email  
+    #         }
+    #     )
 
     # 2FA check
     if user.two_factor_enabled:
