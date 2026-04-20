@@ -136,7 +136,7 @@ class BeneficiaryVerificationSerializer(serializers.Serializer):
             })
         return data
 
-
+        
 class BeneficiarySummarySerializer(serializers.ModelSerializer):
     """Lightweight serializer for beneficiary lists"""
     

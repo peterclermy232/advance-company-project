@@ -28,20 +28,18 @@ COPY . /app/
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/media
 
-# Collect static files (will use environment variables at runtime)
-RUN python manage.py collectstatic --noinput --clear || true
-
 # Expose port
 EXPOSE 8000
 
-# Run with 30 second timeout
-CMD python manage.py migrate --noinput && \
+# Run collectstatic at runtime (needs env vars), then migrate and start
+CMD python manage.py collectstatic --noinput --clear && \
+    python manage.py migrate --noinput && \
     python manage.py create_admin && \
     gunicorn advance_company.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \
-    --workers 4 \
+    --workers 2 \
     --threads 2 \
-    --timeout 30 \
+    --timeout 60 \
     --graceful-timeout 30 \
     --keep-alive 5 \
     --max-requests 1000 \
