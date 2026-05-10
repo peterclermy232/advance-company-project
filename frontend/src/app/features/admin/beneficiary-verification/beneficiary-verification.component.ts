@@ -10,7 +10,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
 
 interface Beneficiary {
-  id: number;
+  uuid: string;
   user_name: string;
   user_email: string;
   user_phone: string;
@@ -151,7 +151,7 @@ export class BeneficiaryVerificationComponent implements OnInit {
     this.isProcessing = true;
     const loadingToast = this.toastService.loading('Verifying beneficiary...');
 
-    this.apiService.post(`beneficiary/${beneficiary.id}/verify/`, { 
+    this.apiService.post(`beneficiary/${beneficiary.uuid}/verify/`, { 
       notes: 'Verified via admin panel' 
     }).subscribe({
       next: (response) => {
@@ -191,7 +191,7 @@ export class BeneficiaryVerificationComponent implements OnInit {
     this.isProcessing = true;
     const loadingToast = this.toastService.loading('Processing rejection...');
 
-    this.apiService.post(`beneficiary/${this.selectedBeneficiary.id}/reject/`, { 
+    this.apiService.post(`beneficiary/${this.selectedBeneficiary.uuid}/reject/`, { 
       reason: this.rejectionReason 
     }).subscribe({
       next: (response) => {

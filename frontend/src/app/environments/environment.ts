@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://127.0.0.1:8000/api',
+  apiUrl: 'https://advance-company-backend-v1-0-3.onrender.com/api',
   apiTimeout: 30000
 };
