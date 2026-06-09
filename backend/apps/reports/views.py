@@ -97,43 +97,41 @@ def generate_signed_url(file_path, expires_in=SIGNED_URL_EXPIRES_IN):
 
 
 def send_report_email(user, report_type, signed_url, expires_hours=24):
-    """
-    Send an email to the user with the signed URL to access their report.
+    from apps.accounts.emails import _send, _base_html, BRAND
 
-    Args:
-        user: Django user object
-        report_type: e.g. 'Financial', 'Compensatory', 'Activity'
-        signed_url: The temporary download URL
-        expires_hours: How many hours the link is valid
-    """
-    subject = f"Your {report_type} Report is Ready"
-    message = f"""
-Hello {user.first_name or user.email},
+    subject = f"Your {report_type} Report is Ready — {BRAND}"
+
+    text = f"""Hello {user.first_name or user.email},
 
 Your {report_type} Report has been generated successfully.
 
-You can download it using the secure link below:
-
+Download it here:
 {signed_url}
 
-⚠️  This link expires in {expires_hours} hours for security reasons.
-If the link expires, you can generate a new report from your dashboard.
-
-If you did not request this report, please contact support immediately.
+⚠️  This link expires in {expires_hours} hours.
+If it expires, you can generate a new report from your dashboard.
 
 Regards,
-{settings.COMPANY_NAME if hasattr(settings, 'COMPANY_NAME') else 'The Team'}
-    """.strip()
+{BRAND} Team"""
 
-    send_mail(
-        subject=subject,
-        message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        fail_silently=False
-    )
+    body_html = f"""
+    <div class="header"><h1>Your {report_type} Report is Ready</h1></div>
+    <div class="content">
+      <p>Hello <strong>{user.first_name or user.email}</strong>,</p>
+      <p>Your <strong>{report_type} Report</strong> has been generated successfully.</p>
+      <div style="text-align:center;">
+        <a href="{signed_url}" class="button">Download Report</a>
+      </div>
+      <p>Or copy this link into your browser:</p>
+      <p class="url-fallback">{signed_url}</p>
+      <div class="info-box">
+        <strong>⚠️ This link expires in {expires_hours} hours.</strong><br>
+        If it expires, generate a new report from your dashboard.
+      </div>
+    </div>"""
+
+    _send(subject, text, _base_html(body_html), user.email)
     logger.info(f"Report email sent to {user.email}")
-
 
 class ReportViewSet(viewsets.ModelViewSet):
     queryset = Report.objects.all()

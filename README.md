@@ -1,275 +1,59 @@
 # Advance Company Management System
 
-A comprehensive full-stack web application for managing company member contributions, beneficiaries, documents, and financial reports.
+Frontend build reference for the Advance Company full-stack system.
 
-## 📋 Table of Contents
+This project is a member management platform with authentication, financial deposits, beneficiary management, document storage, applications, reporting, notifications, and admin analytics.
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [System Architecture](#system-architecture)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Running the Application](#running-the-application)
-- [API Documentation](#api-documentation)
-- [User Guide](#user-guide)
-- [Development](#development)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
+## Stack
 
----
+- Backend: Django, Django REST Framework, PostgreSQL, JWT auth, Supabase file storage, optional Redis cache.
+- Frontend: Angular 18, Angular Router, HttpClient, RxJS, SCSS/Tailwind styling.
+- Deployment targets present in repo: Render/Railway-style backend config, Netlify frontend config, Dockerfiles, Docker Compose, Nginx.
 
-## 🎯 Overview
+## Repository Layout
 
-The Advance Company Management System is a modern web application designed to streamline member management, financial tracking, beneficiary management, and document handling for companies and organizations.
-
-### Key Capabilities
-
-- **User Management**: Role-based access control (Admin/User)
-- **Financial Management**: Track deposits, contributions, and interest calculations
-- **Beneficiary Management**: Add and manage beneficiaries with document verification
-- **Document Centre**: Upload, categorize, and verify important documents
-- **Applications**: Submit and manage entry/exit applications
-- **Reports**: Generate financial and activity reports
-- **Real-time Notifications**: Stay updated with system activities
-
----
-
-## ✨ Features
-
-### For Users
-
-- **Dashboard**: Overview of contributions, deposits, and beneficiaries
-- **Financial Tracking**: 
-  - Make deposits via M-Pesa, Bank Transfer, or Mansa-X
-  - View transaction history
-  - Track interest earned
-- **Beneficiary Management**:
-  - Add multiple beneficiaries
-  - Upload supporting documents
-  - Track verification status
-- **Document Management**:
-  - Upload identity documents
-  - Store birth/death certificates
-  - Organize documents by category
-- **Applications**:
-  - Submit entry/exit applications
-  - Track application status
-  - View admin feedback
-
-### For Administrators
-
-- **User Management**: View and manage all users
-- **Application Review**: Approve or reject applications
-- **Document Verification**: Verify uploaded documents
-- **Report Generation**: Generate system-wide reports
-- **Dashboard Analytics**: System-wide metrics and insights
-
----
-
-## 🛠 Tech Stack
-
-### Backend (Django REST Framework)
-
-- **Framework**: Django 4.2.7
-- **API**: Django REST Framework 3.14.0
-- **Authentication**: JWT (djangorestframework-simplejwt)
-- **Database**: PostgreSQL
-- **Task Queue**: Celery 5.3.4 with Redis
-- **PDF Generation**: ReportLab 4.0.7
-- **File Storage**: Django FileField (with optional S3 support via boto3)
-
-### Frontend (Angular)
-
-- **Framework**: Angular 18
-- **UI**: Tailwind CSS 3.4
-- **HTTP Client**: Angular HttpClient
-- **Routing**: Angular Router
-- **Forms**: Reactive Forms
-- **State Management**: RxJS
-
----
-
-## 🏗 System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         Frontend                             │
-│              Angular 18 + Tailwind CSS                       │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
-│  │Dashboard │ │Financial │ │Documents │ │Settings  │      │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
-└────────────────────────┬─────────────────────────────────────┘
-                         │ HTTP/REST API
-                         │ JWT Authentication
-┌────────────────────────▼─────────────────────────────────────┐
-│                        Backend                               │
-│         Django REST Framework + PostgreSQL                   │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
-│  │  Auth    │ │Financial │ │Documents │ │ Reports  │      │
-│  │ Service  │ │ Service  │ │ Service  │ │ Service  │      │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
-│  ┌──────────────────────────────────────────────────┐       │
-│  │              PostgreSQL Database                  │       │
-│  └──────────────────────────────────────────────────┘       │
-│  ┌──────────────────────────────────────────────────┐       │
-│  │     Celery + Redis (Background Tasks)            │       │
-│  └──────────────────────────────────────────────────┘       │
-└──────────────────────────────────────────────────────────────┘
+```text
+backend/
+  advance_company/        Django project settings, URLs, Celery, ASGI/WSGI
+  apps/
+    accounts/             Auth, users, 2FA, biometric device metadata
+    financial/            Accounts, deposits, interest, M-Pesa callback
+    beneficiary/          Beneficiary CRUD and verification workflow
+    documents/            Secure document upload and verification
+    applications/         Member applications and admin review
+    reports/              Report generation and activity logs
+    notifications/        User notifications
+    analytics/            Admin analytics
+    health/               Health and metrics endpoints
+frontend/
+  src/app/core/           Guards, interceptors, services, models
+  src/app/features/       Auth, dashboard, financial, beneficiaries, documents, etc.
+  src/app/shared/         Header, sidebar, stat cards, loading, notification dropdown
 ```
 
----
+## Base URLs
 
-## 📦 Prerequisites
+Backend API routes are mounted under:
 
-### Required Software
-
-- **Python**: 3.8 or higher
-- **Node.js**: 18.x or higher
-- **PostgreSQL**: 12 or higher
-- **Redis**: 6.0 or higher (for Celery tasks)
-- **npm**: 9.x or higher
-
-### System Requirements
-
-- **Memory**: 4GB RAM minimum (8GB recommended)
-- **Storage**: 2GB free space
-- **OS**: Windows 10/11, macOS 10.15+, or Linux (Ubuntu 20.04+)
-
----
-
-## 🚀 Installation
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/your-username/advance-company.git
-cd advance-company
+```text
+/api/
 ```
 
-### 2. Backend Setup
+Current production frontend environment:
 
-#### a. Create Virtual Environment
-
-```bash
-cd backend
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS/Linuxs
-source venv/bin/activate
+```ts
+apiUrl: 'https://advance-company-backend-v1-0-3.onrender.com/api'
 ```
 
-#### b. Install Dependencies
+For local development, the frontend should normally use:
 
-```bash
-pip install -r requirements.txt
+```ts
+apiUrl: 'http://localhost:8000/api'
 ```
 
-#### c. Install PostgreSQL
+Create `frontend/src/app/environments/environment.ts` if it is missing:
 
-**Windows:**
-- Download from [postgresql.org](https://www.postgresql.org/download/windows/)
-- Install and note the password you set
-
-**macOS:**
-```bash
-brew install postgresql@14
-brew services start postgresql@14
-```
-
-**Linux (Ubuntu):**
-```bash
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-sudo systemctl start postgresql
-```
-
-#### d. Create Database
-
-```bash
-# Access PostgreSQL
-sudo -u postgres psql
-
-# Create database and user
-CREATE DATABASE advance_company_db;
-CREATE USER postgres WITH PASSWORD 'your_password';
-ALTER ROLE postgres SET client_encoding TO 'utf8';
-ALTER ROLE postgres SET default_transaction_isolation TO 'read committed';
-ALTER ROLE postgres SET timezone TO 'Africa/Nairobi';
-GRANT ALL PRIVILEGES ON DATABASE advance_company_db TO postgres;
-\q
-```
-
-#### e. Install Redis
-
-**Windows:**
-- Download from [Redis Windows](https://github.com/microsoftarchive/redis/releases)
-- Extract and run `redis-server.exe`
-
-**macOS:**
-```bash
-brew install redis
-brew services start redis
-```
-
-**Linux (Ubuntu):**
-```bash
-sudo apt install redis-server
-sudo systemctl start redis-server
-```
-
-### 3. Frontend Setup
-
-```bash
-cd ../frontend
-npm install
-```
-
----
-
-## ⚙️ Configuration
-
-### Backend Configuration
-
-Create `.env` file in `backend/` directory:
-
-```env
-# Django Settings
-SECRET_KEY=your-super-secret-key-change-in-production
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database
-DB_NAME=advance_company_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_HOST=localhost
-DB_PORT=5432
-
-# CORS
-CORS_ALLOWED_ORIGINS=http://localhost:4200
-
-# Email (Optional - for notifications)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=your-email@gmail.com
-EMAIL_HOST_PASSWORD=your-app-password
-
-# Celery
-CELERY_BROKER_URL=redis://localhost:6379
-CELERY_RESULT_BACKEND=redis://localhost:6379
-```
-
-### Frontend Configuration
-
-Update `frontend/src/app/environments/environment.ts`:
-
-```typescript
+```ts
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:8000/api',
@@ -277,499 +61,506 @@ export const environment = {
 };
 ```
 
----
+## Authentication Model
 
-## 🏃 Running the Application
+The backend uses JWT Bearer authentication through `djangorestframework-simplejwt`.
 
-### Backend
+Store both tokens after login/register:
 
-#### 1. Apply Migrations
-
-```bash
-cd backend
-python manage.py makemigrations
-python manage.py migrate
+```json
+{
+  "tokens": {
+    "access": "...",
+    "refresh": "..."
+  }
+}
 ```
 
-#### 2. Create Admin User
+Authenticated requests must include:
 
-```bash
-python manage.py create_admin
-# Or manually:
-python manage.py createsuperuser
-```
-
-**Default Admin Credentials** (if using create_admin command):
-- Email: `admin@advancecompany.com`
-- Password: `admin123`
-
-#### 3. Start Django Server
-
-```bash
-python manage.py runserver
-```
-
-Server will run at: `http://localhost:8000`
-
-#### 4. Start Celery Worker (Optional - for background tasks)
-
-Open a new terminal:
-
-```bash
-cd backend
-# Windows
-celery -A advance_company worker -l info --pool=solo
-
-# macOS/Linux
-celery -A advance_company worker -l info
-```
-
-#### 5. Start Celery Beat (Optional - for scheduled tasks)
-
-Open another terminal:
-
-```bash
-cd backend
-celery -A advance_company beat -l info
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm start
-# or
-ng serve
-```
-
-Application will run at: `http://localhost:4200`
-
----
-
-## 📚 API Documentation
-
-### Base URL
-
-```
-http://localhost:8000/api
-```
-
-### Authentication
-
-All protected endpoints require JWT authentication:
-
-```bash
+```http
 Authorization: Bearer <access_token>
 ```
 
-### Key Endpoints
-
-#### Authentication
+Refresh endpoint:
 
 ```http
-POST /auth/users/register/
-POST /auth/users/login/
-POST /token/refresh/
-GET  /auth/users/me/
-PUT  /auth/users/update_profile/
+POST /api/token/refresh/
+Body: { "refresh": "<refresh_token>" }
 ```
 
-#### Financial
+JWT settings:
+
+- Access token lifetime: 30 minutes
+- Refresh token lifetime: 7 days
+- Refresh tokens rotate and old refresh tokens are blacklisted
+- JWT user id claim is `user_id`
+- User primary key is `uuid`
+
+## Standard Response Shape
+
+Many auth endpoints return this wrapper:
+
+```json
+{
+  "success": true,
+  "message": "User-friendly message",
+  "toast_type": "success",
+  "data": {}
+}
+```
+
+Error responses may include:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "toast_type": "error",
+  "errors": {}
+}
+```
+
+Important frontend note: not every endpoint uses this wrapper. Some DRF viewsets return raw serializer data or DRF paginated data directly. Frontend services should handle both:
+
+- Wrapped: `response.data`
+- Raw list/object: `response`
+- Paginated: `{ count, next, previous, results }`
+
+## User Roles
+
+Supported roles:
+
+- `user`: normal member
+- `admin`: administrator
+
+Admin-only frontend areas currently include:
+
+- `/admin/analytics`
+- `/admin/beneficiary-verification`
+- Deposit approval/rejection
+- Application approval/rejection
+- Document/beneficiary verification
+
+## Frontend Routes
+
+Main Angular routes:
+
+```text
+/auth
+/dashboard
+/financial
+/deposit-form
+/beneficiary
+/documents
+/applications
+/reports
+/settings
+/support
+/notifications
+/admin/analytics
+/admin/beneficiary-verification
+```
+
+Most app routes use `authGuard`; admin routes also use `adminGuard`.
+
+## API Endpoint Map
+
+All endpoints below are relative to `/api`.
+
+### Auth and Users
+
+Public:
 
 ```http
+POST /auth/register/
+POST /auth/login/
+POST /auth/verify-email/
+POST /auth/resend-verification/
+POST /auth/verify-2fa/
+POST /auth/forgot-password/
+POST /auth/reset-password-confirm/
+POST /token/refresh/
+```
+
+Protected user router:
+
+```http
+GET    /auth/users/
+GET    /auth/users/{uuid}/
+PATCH  /auth/users/{uuid}/
+DELETE /auth/users/{uuid}/
+POST   /auth/users/change_password/
+POST   /auth/users/enable_2fa/
+POST   /auth/users/confirm_2fa/
+POST   /auth/users/disable_2fa/
+GET    /auth/users/regenerate_backup_codes/
+POST   /auth/users/register_biometric/
+GET    /auth/users/biometric_devices/
+DELETE /auth/users/{uuid}/biometric-devices/{device_id}/
+DELETE /auth/users/delete_account/
+POST   /auth/users/upload_profile_photo/
+DELETE /auth/users/delete_profile_photo/
+```
+
+User fields returned by `UserSerializer` include:
+
+```text
+uuid, email, phone_number, full_name, role, age, gender,
+marital_status, number_of_kids, profession, salary_range,
+spouse_name, spouse_age, spouse_profession, profile_photo,
+identity_document, activity_status, created_at, updated_at,
+biometric_enabled, fingerprint_enabled, face_id_enabled,
+has_biometric, biometric_devices_count
+```
+
+Registration body:
+
+```json
+{
+  "email": "member@example.com",
+  "phone_number": "0712345678",
+  "full_name": "Member Name",
+  "password": "StrongPassword123!",
+  "password_confirm": "StrongPassword123!",
+  "role": "user"
+}
+```
+
+Login body:
+
+```json
+{
+  "email": "member@example.com",
+  "password": "StrongPassword123!"
+}
+```
+
+If 2FA is enabled, login returns `requires_2fa`, `temp_token`, and `email`; then call `/auth/verify-2fa/`.
+
+### Financial
+
+```http
+GET  /financial/accounts/
+GET  /financial/accounts/{uuid}/
 GET  /financial/accounts/my_account/
+
 GET  /financial/deposits/
 POST /financial/deposits/
-POST /financial/deposits/{id}/confirm_payment/
+GET  /financial/deposits/{uuid}/
+GET  /financial/deposits/can_deposit/
 GET  /financial/deposits/monthly_summary/
+GET  /financial/deposits/pending_approvals/       admin
+POST /financial/deposits/{uuid}/approve_deposit/  admin
+POST /financial/deposits/{uuid}/reject_deposit/   admin
+
+GET  /financial/interest/
+GET  /financial/interest/{uuid}/
+
+POST /financial/mpesa/callback/
 ```
 
-#### Beneficiaries
+Deposit rules:
+
+- Monthly deposit amount is fixed at KES `20000.00`.
+- A member can only have one completed monthly deposit.
+- Payment methods: `mpesa`, `bank`, `mansa_x`.
+- Status values: `pending`, `processing`, `completed`, `failed`, `cancelled`.
+
+Deposit creation body should include at least:
+
+```json
+{
+  "payment_method": "mpesa",
+  "mpesa_phone": "254712345678",
+  "notes": "Optional note"
+}
+```
+
+### Beneficiaries
 
 ```http
 GET    /beneficiary/
 POST   /beneficiary/
-GET    /beneficiary/{id}/
-PUT    /beneficiary/{id}/
-DELETE /beneficiary/{id}/
-POST   /beneficiary/{id}/verify/
-POST   /beneficiary/{id}/mark_deceased/
+GET    /beneficiary/{uuid}/
+PATCH  /beneficiary/{uuid}/
+DELETE /beneficiary/{uuid}/
+POST   /beneficiary/{uuid}/verify/       admin
+POST   /beneficiary/{uuid}/reject/       admin
+POST   /beneficiary/{uuid}/mark_deceased/
+GET    /beneficiary/pending_verification/ admin
+GET    /beneficiary/statistics/
 ```
 
-#### Documents
+Beneficiary fields:
+
+```text
+uuid, user, user_name, user_email, user_phone, name, relation,
+age, gender, phone_number, profession, salary_range,
+percentage_allocation, identity_document, birth_certificate,
+death_certificate, death_certificate_number, additional_documents,
+status, verification_status, created_at, updated_at
+```
+
+Choices:
+
+- Relation: `spouse`, `child`, `parent`, `sibling`, `other`
+- Gender: `M`, `F`, `O`
+- Status: `active`, `deceased`, `removed`
+- Verification: `verified`, `pending`, `rejected`
+
+Upload bodies should use `FormData` because documents are file fields.
+
+### Documents
 
 ```http
 GET    /documents/
 POST   /documents/
-DELETE /documents/{id}/
-POST   /documents/{id}/verify/
-POST   /documents/{id}/reject/
+GET    /documents/{uuid}/
+PATCH  /documents/{uuid}/
+DELETE /documents/{uuid}/
+GET    /documents/{uuid}/view_url/
+POST   /documents/{uuid}/verify/       admin
+POST   /documents/{uuid}/reject/       admin
 ```
 
-#### Applications
+Document fields:
+
+```text
+uuid, user, user_name, category, title, file, file_url,
+status, rejection_reason, uploaded_at, updated_at
+```
+
+Categories:
+
+- `identity`
+- `beneficiary`
+- `birth_certificate`
+- `death_certificate`
+- `additional`
+
+Status values:
+
+- `pending`
+- `verified`
+- `rejected`
+
+Use `FormData` for create/update:
+
+```text
+category: identity
+title: National ID
+file: <File>
+```
+
+### Applications
 
 ```http
-GET  /applications/
-POST /applications/
-POST /applications/{id}/approve/
-POST /applications/{id}/reject/
-POST /applications/{id}/review/
+GET    /applications/
+POST   /applications/
+GET    /applications/{id}/
+PATCH  /applications/{id}/
+DELETE /applications/{id}/
+GET    /applications/choices/
+POST   /applications/{id}/approve/       admin
+POST   /applications/{id}/reject/        admin
+POST   /applications/{id}/review/        admin
 ```
 
-#### Reports
+Application fields:
+
+```text
+id, user, user_name, application_type, reason, supporting_document,
+status, admin_comments, submitted_at, reviewed_at, approved_at,
+reviewed_by, created_at, updated_at, activities
+```
+
+Application types:
+
+```text
+new_membership, membership_withdrawal, membership_transfer,
+loan, loan_top_up, loan_restructure,
+withdrawal, contribution_change,
+beneficiary_update, personal_details_change, next_of_kin_update,
+statement_request, other
+```
+
+Status values:
+
+```text
+pending, under_review, approved, rejected
+```
+
+Use `FormData` if `supporting_document` is included.
+
+### Reports
 
 ```http
 GET  /reports/
+POST /reports/
+GET  /reports/{uuid}/
 POST /reports/generate_financial_report/
+POST /reports/generate_compensatory_report/
+POST /reports/generate_activity_report/
+POST /reports/{uuid}/resend_report_email/
 GET  /reports/dashboard_summary/
+GET  /reports/summary/
+GET  /reports/deposit_trends/
+GET  /reports/activity-logs/
 ```
 
----
+Reports support generated PDF/file workflows. File URLs may be returned as direct storage URLs.
 
-## 👤 User Guide
+### Notifications
 
-### First Time Login
-
-1. Navigate to `http://localhost:4200`
-2. Click "Register" and create an account
-3. Fill in all required information
-4. Login with your credentials
-
-### Making a Deposit
-
-1. Navigate to **Financial** section
-2. Click "Make Deposit"
-3. Enter amount and select payment method
-4. For M-Pesa: Enter phone number
-5. Click "Submit Deposit"
-6. Wait for payment confirmation
-
-### Adding a Beneficiary
-
-1. Go to **Beneficiary** section
-2. Click "Add Beneficiary"
-3. Fill in beneficiary details
-4. Upload required documents
-5. Submit for verification
-
-### Uploading Documents
-
-1. Navigate to **Documents**
-2. Click "Upload Document"
-3. Select category
-4. Choose file (PDF, JPG, PNG)
-5. Submit
-
-### Submitting an Application
-
-1. Go to **Applications**
-2. Click "New Application"
-3. Select type (Entry/Exit)
-4. Provide detailed reason
-5. Attach supporting documents
-6. Submit
-
----
-
-## 💻 Development
-
-### Backend Development
-
-#### Project Structure
-
-```
-backend/
-├── advance_company/          # Main project directory
-│   ├── settings.py          # Django settings
-│   ├── urls.py              # URL routing
-│   └── celery.py            # Celery configuration
-├── apps/                    # Django apps
-│   ├── accounts/            # User management
-│   ├── financial/           # Financial operations
-│   ├── beneficiary/         # Beneficiary management
-│   ├── documents/           # Document handling
-│   ├── applications/        # Application processing
-│   └── reports/             # Report generation
-├── media/                   # Uploaded files
-├── staticfiles/             # Static files
-└── manage.py               # Django management
+```http
+GET    /notifications/
+GET    /notifications/{uuid}/
+GET    /notifications/unread/
+GET    /notifications/unread_count/
+GET    /notifications/recent/
+POST   /notifications/{uuid}/mark_as_read/
+POST   /notifications/mark_all_as_read/
+DELETE /notifications/clear_all/
+DELETE /notifications/{uuid}/delete_notification/
 ```
 
-#### Adding New Features
+Frontend should poll `unread_count` or call it after successful mutations.
 
-1. Create new app:
+### Admin Analytics
+
+```http
+GET /admin/analytics/members/
+GET /admin/analytics/summary/
+GET /admin/analytics/export/?format=excel
+GET /admin/analytics/export/?format=pdf
+```
+
+Note: `frontend/src/app/core/services/admin-analytics.service.ts` currently references `/admin/analytics/trends/`, but the backend does not expose a `trends` action in `apps.analytics.views`. Use the trend data embedded in `members/`, add a backend `trends` action, or update the frontend service.
+
+### Health
+
+```http
+GET /health/
+GET /health/metrics/
+```
+
+## Frontend Service Pattern
+
+The existing Angular `ApiService` expects endpoint strings without the `/api` prefix:
+
+```ts
+this.api.get('auth/users/');
+this.api.post('auth/login/', payload);
+this.api.upload('documents/', formData);
+```
+
+For file uploads:
+
+- Use `FormData`
+- Do not manually set `Content-Type`; Angular will add the multipart boundary
+- Keep `Authorization: Bearer ...` through the auth interceptor
+
+For UUID routes:
+
+```ts
+this.api.get(`beneficiary/${beneficiary.uuid}/`);
+```
+
+## Local Development
+
+Backend:
+
 ```bash
-python manage.py startapp app_name
-```
-
-2. Add to `INSTALLED_APPS` in `settings.py`
-
-3. Create models in `models.py`
-
-4. Create serializers in `serializers.py`
-
-5. Create views in `views.py`
-
-6. Register URLs in `urls.py`
-
-7. Run migrations:
-```bash
-python manage.py makemigrations
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 python manage.py migrate
+python manage.py runserver
 ```
 
-### Frontend Development
-
-#### Project Structure
-
-```
-frontend/src/
-├── app/
-│   ├── core/                    # Core functionality
-│   │   ├── guards/             # Route guards
-│   │   ├── interceptors/       # HTTP interceptors
-│   │   ├── models/             # TypeScript interfaces
-│   │   └── services/           # API services
-│   ├── features/               # Feature modules
-│   │   ├── auth/              # Authentication
-│   │   ├── dashboard/         # Dashboard
-│   │   ├── financial/         # Financial management
-│   │   ├── beneficiary/       # Beneficiary management
-│   │   ├── documents/         # Document management
-│   │   ├── applications/      # Applications
-│   │   ├── reports/           # Reports
-│   │   ├── settings/          # User settings
-│   │   └── support/           # Help & support
-│   ├── shared/                # Shared components
-│   │   ├── components/        # Reusable components
-│   │   └── pipes/             # Custom pipes
-│   └── app.routes.ts          # Application routes
-├── environments/              # Environment configs
-└── styles.scss               # Global styles
-```
-
-#### Adding New Components
-
-```bash
-ng generate component features/feature-name/component-name --standalone
-```
-
-#### Adding New Services
-
-```bash
-ng generate service core/services/service-name
-```
-
----
-
-## 🚢 Deployment
-
-### Backend Deployment (Production)
-
-#### 1. Update Settings
-
-Create `backend/advance_company/settings_prod.py`:
-
-```python
-from .settings import *
-
-DEBUG = False
-ALLOWED_HOSTS = ['your-domain.com', 'www.your-domain.com']
-
-# Security settings
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-
-# Static files
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATIC_URL = '/static/'
-
-# Media files
-MEDIA_ROOT = BASE_DIR / 'mediafiles'
-MEDIA_URL = '/media/'
-
-# Database - use production credentials
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('PROD_DB_NAME'),
-        'USER': config('PROD_DB_USER'),
-        'PASSWORD': config('PROD_DB_PASSWORD'),
-        'HOST': config('PROD_DB_HOST'),
-        'PORT': config('PROD_DB_PORT'),
-    }
-}
-```
-
-#### 2. Collect Static Files
-
-```bash
-python manage.py collectstatic --noinput
-```
-
-#### 3. Configure Web Server (Nginx)
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location /static/ {
-        alias /path/to/backend/staticfiles/;
-    }
-
-    location /media/ {
-        alias /path/to/backend/mediafiles/;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-#### 4. Use Gunicorn
-
-```bash
-pip install gunicorn
-gunicorn advance_company.wsgi:application --bind 0.0.0.0:8000
-```
-
-### Frontend Deployment
-
-#### 1. Build for Production
+Frontend:
 
 ```bash
 cd frontend
-ng build --configuration production
-```
-
-#### 2. Configure Nginx
-
-```nginx
-server {
-    listen 80;
-    server_name your-frontend-domain.com;
-    root /path/to/frontend/dist/advance-company-frontend/browser;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-```
-
----
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-#### Backend Issues
-
-**Issue**: `django.db.utils.OperationalError: could not connect to server`
-
-**Solution**:
-- Verify PostgreSQL is running
-- Check database credentials in `.env`
-- Ensure database exists
-
-**Issue**: `ModuleNotFoundError: No module named 'rest_framework'`
-
-**Solution**:
-```bash
-pip install -r requirements.txt
-```
-
-**Issue**: Celery worker not starting
-
-**Solution**:
-- Verify Redis is running
-- Check Celery configuration in `celery.py`
-- On Windows, use `--pool=solo` flag
-
-#### Frontend Issues
-
-**Issue**: `Cannot find module '@angular/core'`
-
-**Solution**:
-```bash
-rm -rf node_modules package-lock.json
 npm install
+npm start
 ```
 
-**Issue**: API calls returning 401 Unauthorized
+Useful backend commands:
 
-**Solution**:
-- Check token in localStorage
-- Verify token hasn't expired
-- Re-login to get new token
+```bash
+python manage.py createsuperuser
+python manage.py quick_seed
+python manage.py check_system
+```
 
-**Issue**: CORS errors
+Docker Compose is also available from the repo root:
 
-**Solution**:
-- Verify `CORS_ALLOWED_ORIGINS` in backend settings
-- Ensure frontend URL is included
-- Check browser console for specific error
+```bash
+docker compose up --build
+```
 
-### Performance Issues
+## Backend Environment Variables
 
-**Slow page loads**:
-- Enable production build
-- Optimize images
-- Use lazy loading
-- Enable caching
+The backend reads configuration from `backend/.env`.
 
-**Slow API responses**:
-- Add database indexes
-- Use select_related() and prefetch_related()
-- Enable query caching
-- Scale database
+Required or commonly used values:
 
----
+```env
+SECRET_KEY=
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:4200
+CSRF_TRUSTED_ORIGINS=http://localhost:4200
+DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DB_NAME
+REDIS_URL=
 
-## 📝 Additional Resources
+SUPABASE_URL=
+SUPABASE_KEY=
+SUPABASE_BUCKET=
 
-### Documentation
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+DEFAULT_FROM_EMAIL=
+RESEND_API_KEY=
 
-- [Django Documentation](https://docs.djangoproject.com/)
-- [Django REST Framework](https://www.django-rest-framework.org/)
-- [Angular Documentation](https://angular.io/docs)
-- [Tailwind CSS](https://tailwindcss.com/docs)
+MPESA_ENVIRONMENT=sandbox
+MPESA_CONSUMER_KEY=
+MPESA_CONSUMER_SECRET=
+MPESA_SHORTCODE=
+MPESA_PASSKEY=
+MPESA_CALLBACK_URL=
 
-### Support
+FRONTEND_URL=http://localhost:4200
+```
 
-For issues and questions:
-- Email: support@advancecompany.com
-- Phone: +254 700 000 000
+## Important Integration Notes
 
----
+- IDs are UUIDs. Do not assume numeric `id` except where the application model exposes `id` as a UUID.
+- Some services still refer to `id` in method names, but the actual value should be a UUID.
+- Auth responses are wrapped; many CRUD viewsets are raw DRF responses.
+- Profile photos, identity documents, beneficiary documents, application documents, and general documents are multipart uploads.
+- CORS must include the frontend origin exactly, including scheme and port.
+- Passwords must be at least 12 characters and pass Django validators.
+- Email verification is implemented, but login currently does not enforce `email_verified` because that check is commented in the backend.
+- Rate throttles are configured for auth endpoints; handle `429` in the frontend.
+- File URLs may be absolute or storage-provider URLs depending on serializer and storage backend.
 
-## 📄 License
+## Suggested Frontend Build Checklist
 
-This project is proprietary software. All rights reserved.
-
----
-
-## 👥 Contributors
-
-- Development Team at Advance Company
-- [Your Name] - Lead Developer
-
----
-
-## 🎉 Acknowledgments
-
-- Django and Angular communities
-- Open source contributors
-- Beta testers and early users
-
----
-
-**Last Updated**: January 2026
-**Version**: 1.0.0
+1. Configure `environment.apiUrl`.
+2. Implement login/register and store `access` plus `refresh`.
+3. Add an HTTP interceptor for Bearer tokens and refresh handling.
+4. Normalize backend responses in one helper so wrapped and raw DRF responses both work.
+5. Build route guards from current user role.
+6. Use `FormData` for all file-bearing create/update forms.
+7. Use UUID strings for all detail, update, delete, and action URLs.
+8. Surface `message` and `toast_type` where present.
+9. Handle admin-only states separately from member states.
+10. Test upload, token refresh, deposit creation, and admin approval flows end to end.
