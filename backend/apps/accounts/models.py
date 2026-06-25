@@ -6,6 +6,7 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils import timezone
+from apps.documents.storage import SupabaseStorage
 
 
 # ==========================
@@ -85,11 +86,17 @@ class User(AbstractUser):
     # Files
     profile_photo = models.ImageField(
         upload_to=user_profile_photo_path,
+        storage=SupabaseStorage(),
         null=True,
         blank=True,
         help_text='JPEG, PNG, GIF (Max 5MB)',
     )
-    identity_document = models.FileField(upload_to='identity_docs/', null=True, blank=True)
+    identity_document = models.FileField(
+        upload_to='identity_docs/',
+        storage=SupabaseStorage(),
+        null=True,
+        blank=True,
+    )
 
     # Biometric
     biometric_enabled = models.BooleanField(default=False)

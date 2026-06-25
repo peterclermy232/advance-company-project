@@ -3,6 +3,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from apps.accounts.models import User
+from apps.documents.storage import SupabaseStorage
 
 class Beneficiary(models.Model):
     uuid = models.UUIDField(
@@ -52,11 +53,11 @@ class Beneficiary(models.Model):
     )
     
     # Documents
-    identity_document = models.FileField(upload_to='beneficiary_docs/')
-    birth_certificate = models.FileField(upload_to='beneficiary_docs/', null=True, blank=True)
-    death_certificate = models.FileField(upload_to='beneficiary_docs/', null=True, blank=True)
+    identity_document = models.FileField(upload_to='beneficiary_docs/', storage=SupabaseStorage())
+    birth_certificate = models.FileField(upload_to='beneficiary_docs/', storage=SupabaseStorage(), null=True, blank=True)
+    death_certificate = models.FileField(upload_to='beneficiary_docs/', storage=SupabaseStorage(), null=True, blank=True)
     death_certificate_number = models.CharField(max_length=100, null=True, blank=True)
-    additional_documents = models.FileField(upload_to='beneficiary_docs/', null=True, blank=True)
+    additional_documents = models.FileField(upload_to='beneficiary_docs/', storage=SupabaseStorage(), null=True, blank=True)
     
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
