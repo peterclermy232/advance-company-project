@@ -1,5 +1,6 @@
 # backend/apps/accounts/urls.py
 
+from django.conf import settings
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import UserViewSet
@@ -18,9 +19,14 @@ urlpatterns = [
     path('verify-2fa/', auth_views.verify_2fa, name='verify-2fa'),
     path('forgot-password/', auth_views.forgot_password, name='forgot-password'),
     path('reset-password-confirm/', auth_views.reset_password_confirm, name='reset-password-confirm'),
-    path('test/', auth_views.test_endpoint, name='test'),
-    path('test-email/', auth_views.test_email, name='test-email'),
-    path('debug-email/', auth_views.debug_email_config),
     # Protected user endpoints (require authentication)
     path('', include(router.urls)),
 ]
+
+# Debug-only endpoints — never available in production
+if settings.DEBUG:
+    urlpatterns += [
+        path('test/', auth_views.test_endpoint, name='test'),
+        path('test-email/', auth_views.test_email, name='test-email'),
+        path('debug-email/', auth_views.debug_email_config, name='debug-email'),
+    ]

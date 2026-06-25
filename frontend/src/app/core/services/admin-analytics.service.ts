@@ -7,8 +7,8 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class AdminAnalyticsService {
-  private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/admin/analytics`;
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = `${environment.apiUrl}/admin/analytics`;
 
   getMemberAnalytics(): Observable<any> {
     return this.http.get(`${this.apiUrl}/members/`);
@@ -23,7 +23,7 @@ export class AdminAnalyticsService {
   }
 
   exportAnalytics(format: 'excel' | 'pdf'): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/export/?format=${format}`, {
+    return this.http.get(`${this.apiUrl}/export/?export_format=${format}`, {
       responseType: 'blob'
     });
   }

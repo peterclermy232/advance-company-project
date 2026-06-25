@@ -78,8 +78,6 @@ export class FinancialComponent implements OnInit {
     this.isLoading = true;
     this.financialService.getDeposits().subscribe({
       next: (response) => {
-        console.log('Deposits loaded:', response); // Debug log
-        
         // Handle both array response and paginated response with results
         if (Array.isArray(response)) {
           this.allDeposits = response;
@@ -88,10 +86,6 @@ export class FinancialComponent implements OnInit {
         } else {
           this.allDeposits = [];
         }
-        
-        console.log('All deposits:', this.allDeposits); // Debug log
-        console.log('Pending deposits:', this.pendingDeposits); // Debug log
-        console.log('Filtered deposits:', this.filteredDeposits); // Debug log
         this.isLoading = false;
       },
       error: (error) => {
@@ -109,8 +103,6 @@ export class FinancialComponent implements OnInit {
 
   onFilterChange(status: 'pending' | 'completed' | 'failed') {
     this.filterStatus = status;
-    console.log('Filter changed to:', status); // Debug log
-    console.log('Filtered deposits:', this.filteredDeposits); // Debug log
   }
 
   handleApprove(deposit: Deposit) {
@@ -138,7 +130,7 @@ export class FinancialComponent implements OnInit {
     const loadingToast = this.notificationService.loading('Processing approval...');
     
     this.financialService.approveDeposit(this.selectedDeposit.uuid).subscribe({
-      next: (response) => {
+      next: () => {
         loadingToast.dismiss();
         this.notificationService.success(`✓ Deposit of ${this.selectedDeposit!.amount} approved for ${this.selectedDeposit!.user_name}!`);
         this.loadDeposits();
@@ -161,7 +153,7 @@ export class FinancialComponent implements OnInit {
     const loadingToast = this.notificationService.loading('Processing rejection...');
     
     this.financialService.rejectDeposit(this.selectedDeposit.uuid, reason).subscribe({
-      next: (response) => {
+      next: () => {
         loadingToast.dismiss();
         this.notificationService.warning(`⚠️ Deposit rejected for ${this.selectedDeposit!.user_name}`);
         this.loadDeposits();

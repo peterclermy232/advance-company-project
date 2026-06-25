@@ -26,10 +26,12 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'name', 'age']
     
     def get_queryset(self):
-        """Users see their beneficiaries, admins see all"""
+        """Users see their active/deceased beneficiaries; admins see all."""
         if self.request.user.role == 'admin':
             return Beneficiary.objects.all().select_related('user').order_by('-created_at')
-        return Beneficiary.objects.filter(user=self.request.user).order_by('-created_at')
+        return Beneficiary.objects.filter(
+            user=self.request.user
+        ).exclude(status='removed').order_by('-created_at')
     
     def perform_create(self, serializer):
         """Create beneficiary for current user"""

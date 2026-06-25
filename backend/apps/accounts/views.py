@@ -1,4 +1,3 @@
-import os
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -16,6 +15,7 @@ from .serializers import (
     TwoFactorSetupSerializer,
     BiometricDeviceSerializer,
 )
+from .response_utils import APIResponse, Messages
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,7 @@ class UserViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         
         logger.info(f"✅ Profile updated for user {instance.email}")
-        
-        return Response(serializer.data)
+        return APIResponse.success(Messages.PROFILE_UPDATED, data=serializer.data)
 
     def partial_update(self, request, *args, **kwargs):
         """Handle PATCH requests."""
@@ -129,11 +128,10 @@ class UserViewSet(viewsets.ModelViewSet):
         secret = request.user.generate_2fa_secret()
         qr_code = request.user.get_2fa_qr_code()
         
-        return Response({
-            'secret': secret,
-            'qr_code': qr_code,
-            'message': 'Scan the QR code with your authenticator app and enter the code to confirm.'
-        })
+        return APIResponse.success(
+            'Scan the QR code with your authenticator app and enter the code to confirm.',
+            data={'secret': secret, 'qr_code': qr_code}
+        )
 
     @action(detail=False, methods=['post'])
     def confirm_2fa(self, request):
@@ -357,21 +355,19 @@ class UserViewSet(viewsets.ModelViewSet):
 
         try:
             if request.user.profile_photo:
-                old_photo_path = request.user.profile_photo.path
-                if os.path.exists(old_photo_path):
-                    os.remove(old_photo_path)
+                try:
+                    request.user.profile_photo.delete(save=False)
+                except Exception:
+                    pass  # don't block upload if old file removal fails
 
             request.user.profile_photo = profile_photo
             request.user.save(update_fields=['profile_photo'])
 
             serializer = self.get_serializer(request.user)
-            return Response({
-                'message': 'Profile photo uploaded successfully',
-                'user': serializer.data,
-                'profile_photo_url': request.build_absolute_uri(
-                    request.user.profile_photo.url
-                )
-            })
+            return APIResponse.success(
+                Messages.PROFILE_PHOTO_UPLOADED,
+                data={'user': serializer.data}
+            )
 
         except Exception as e:
             logger.error(f"❌ Error uploading profile photo: {str(e)}", exc_info=True)
@@ -395,16 +391,11 @@ class UserViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            photo_path = request.user.profile_photo.path
-            if os.path.exists(photo_path):
-                os.remove(photo_path)
-
+            request.user.profile_photo.delete(save=False)
             request.user.profile_photo = None
             request.user.save(update_fields=['profile_photo'])
 
-            return Response({
-                'message': 'Profile photo deleted successfully'
-            })
+            return APIResponse.success(Messages.PROFILE_PHOTO_DELETED)
 
         except Exception as e:
             logger.error(f"❌ Error deleting profile photo: {str(e)}", exc_info=True)

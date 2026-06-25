@@ -207,8 +207,7 @@ class User(AbstractUser):
     def delete(self, *args, **kwargs):
         if self.profile_photo:
             try:
-                if os.path.isfile(self.profile_photo.path):
-                    os.remove(self.profile_photo.path)
+                self.profile_photo.delete(save=False)
             except Exception:
                 pass
         super().delete(*args, **kwargs)

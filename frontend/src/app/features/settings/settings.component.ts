@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { type AbstractControl, FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import { SidebarComponent } from '../../shared/components/sidebar/sidebar.component';
 import { AuthService } from '../../core/services/auth.service';
@@ -12,37 +12,39 @@ import { ProfileAvatarComponent } from '../../shared/components/profile-avatar/p
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, HeaderComponent, SidebarComponent,ProfileAvatarComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, HeaderComponent, SidebarComponent, ProfileAvatarComponent],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss']
 })
 export class SettingsComponent implements OnInit {
-  private fb = inject(FormBuilder);
-  private authService = inject(AuthService);
-  private notificationService = inject(NotificationService);
+  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly notificationService = inject(NotificationService);
 
   sidebarOpen = true;
   isUpdating = false;
   currentUser: User | null = null;
   selectedPhoto: File | null = null;
   photoPreview: string | null = null;
-  
+
   // Modal states
   showPasswordModal = false;
   show2FAModal = false;
   showDeleteModal = false;
-  
+
   // 2FA Setup
   qrCodeUrl: string | null = null;
   secretKey: string | null = null;
   backupCodes: string[] = [];
   show2FASetup = false;
-  
+  showDisable2FAConfirm = false;
+  disable2FAPassword = '';
+
   profileForm: FormGroup;
   passwordForm: FormGroup;
   twoFactorForm: FormGroup;
   deleteAccountForm: FormGroup;
-  
+
   notificationPreferences = {
     email: true,
     sms: true,
@@ -94,9 +96,9 @@ export class SettingsComponent implements OnInit {
     });
   }
 
-  passwordMatchValidator(group: FormGroup) {
-    const newPassword = group.get('new_password')?.value;
-    const confirmPassword = group.get('confirm_password')?.value;
+  passwordMatchValidator(control: AbstractControl) {
+    const newPassword = control.get('new_password')?.value;
+    const confirmPassword = control.get('confirm_password')?.value;
     return newPassword === confirmPassword ? null : { passwordMismatch: true };
   }
 
@@ -115,29 +117,28 @@ export class SettingsComponent implements OnInit {
   onPhotoSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    
+
     if (file) {
       if (!file.type.startsWith('image/')) {
         this.notificationService.error('Please select an image file');
         input.value = '';
         return;
       }
-      
-      const maxSize = 5 * 1024 * 1024;
-      if (file.size > maxSize) {
+
+      if (file.size > 5 * 1024 * 1024) {
         this.notificationService.error('Image size should be less than 5MB');
         input.value = '';
         return;
       }
-      
+
       this.selectedPhoto = file;
-      
+
       const reader = new FileReader();
       reader.onload = (e: ProgressEvent<FileReader>) => {
         this.photoPreview = e.target?.result as string;
       };
       reader.readAsDataURL(file);
-      
+
       this.notificationService.info('Photo selected. Click "Save Changes" to upload');
     }
   }
@@ -150,83 +151,69 @@ export class SettingsComponent implements OnInit {
   }
 
   onUpdateProfile() {
-  if (this.profileForm.invalid) {
-    this.notificationService.error('Please fill in all required fields correctly');
-    return;
+    if (this.profileForm.invalid) {
+      this.notificationService.error('Please fill in all required fields correctly');
+      return;
+    }
+
+    this.isUpdating = true;
+
+    if (this.selectedPhoto) {
+      this.authService.uploadProfilePhoto(this.selectedPhoto).subscribe({
+        next: () => {
+          this.updateProfileFields();
+        },
+        error: () => {
+          this.isUpdating = false;
+        }
+      });
+    } else {
+      this.updateProfileFields();
+    }
   }
 
-  this.isUpdating = true;
+  private updateProfileFields() {
+    const userId = this.currentUser?.id;
+    if (!userId) {
+      this.isUpdating = false;
+      return;
+    }
 
-  if (this.selectedPhoto) {
-    // Upload photo separately first
-    this.authService.uploadProfilePhoto(this.selectedPhoto).subscribe({
+    this.authService.updateProfile(userId, this.profileForm.value).subscribe({
       next: (user) => {
-        // Then update other profile fields
-        this.updateProfileFields();
+        this.currentUser = user;
+        this.selectedPhoto = null;
+        this.photoPreview = null;
+        this.isUpdating = false;
+
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
       },
-      error: (error) => {
-        console.error('Photo upload error:', error);
+      error: () => {
         this.isUpdating = false;
       }
     });
-  } else {
-    // Just update profile fields
-    this.updateProfileFields();
-  }
-}
-
-private updateProfileFields() {
-  const userId = this.currentUser?.id;
-  if (!userId) {
-    this.isUpdating = false;
-    return;
   }
 
-  this.authService.updateProfile(userId, this.profileForm.value).subscribe({
-    next: (user) => {
-      this.currentUser = user;
-      this.selectedPhoto = null;
-      this.photoPreview = null;
-      this.isUpdating = false;
-      
-      // Clear file input
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = '';
-      }
-    },
-    error: (error) => {
-      console.error('Profile update error:', error);
-      this.isUpdating = false;
-    }
-  });
-}
+  deleteProfilePhoto() {
+    const confirmed = confirm('Are you sure you want to delete your profile photo?');
+    if (!confirmed) return;
 
-// Add method to delete photo
-deleteProfilePhoto() {
-  const confirmed = confirm('Are you sure you want to delete your profile photo?');
-  if (!confirmed) return;
+    this.authService.deleteProfilePhoto().subscribe({
+      next: () => {
+        if (this.currentUser) {
+          this.currentUser.profile_photo = null;
+          this.currentUser.profile_photo_url = null;
+        }
+        this.selectedPhoto = null;
+        this.photoPreview = null;
 
-  this.authService.deleteProfilePhoto().subscribe({
-    next: () => {
-      if (this.currentUser) {
-        this.currentUser.profile_photo = null;
-        this.currentUser.profile_photo_url = null;
-      }
-      this.selectedPhoto = null;
-      this.photoPreview = null;
-      
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = '';
-      }
-    },
-    error: (error) => {
-      console.error('Failed to delete photo:', error);
-    }
-  });
-}
-
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+      },
+      error: () => {}
+    });
+  }
 
   // Password Change
   openPasswordModal() {
@@ -253,24 +240,21 @@ deleteProfilePhoto() {
     const loadingToast = this.notificationService.loading('Changing password...');
 
     this.authService.changePassword(this.passwordForm.value).subscribe({
-      next: (response) => {
+      next: () => {
         loadingToast.dismiss();
         this.notificationService.success('✓ Password changed successfully! Please login again.');
         this.closePasswordModal();
-        setTimeout(() => {
-          this.authService.logout();
-        }, 2000);
+        setTimeout(() => this.authService.logout(), 2000);
       },
       error: (error) => {
         loadingToast.dismiss();
-        const errorMessage = error.error?.error || 
-                           (Array.isArray(error.error?.error) ? error.error.error.join(', ') : '') ||
-                           'Failed to change password';
+        const errorMessage = error.error?.error ||
+          (Array.isArray(error.error?.error) ? error.error.error.join(', ') : '') ||
+          'Failed to change password';
         this.notificationService.error(errorMessage);
       }
     });
   }
-
 
   // Two-Factor Authentication
   open2FAModal() {
@@ -282,6 +266,8 @@ deleteProfilePhoto() {
   close2FAModal() {
     this.show2FAModal = false;
     this.show2FASetup = false;
+    this.showDisable2FAConfirm = false;
+    this.disable2FAPassword = '';
     this.qrCodeUrl = null;
     this.secretKey = null;
     this.backupCodes = [];
@@ -290,16 +276,16 @@ deleteProfilePhoto() {
 
   enable2FA() {
     const loadingToast = this.notificationService.loading('Setting up 2FA...');
-    
+
     this.authService.enable2FA().subscribe({
       next: (response) => {
         loadingToast.dismiss();
-        this.qrCodeUrl = response.qr_code;
+        this.qrCodeUrl = `data:image/png;base64,${response.qr_code}`;
         this.secretKey = response.secret;
         this.show2FASetup = true;
         this.notificationService.info('Scan the QR code with your authenticator app');
       },
-      error: (error) => {
+      error: () => {
         loadingToast.dismiss();
         this.notificationService.error('Failed to enable 2FA');
       }
@@ -323,7 +309,7 @@ deleteProfilePhoto() {
           this.currentUser.two_factor_enabled = true;
         }
       },
-      error: (error) => {
+      error: () => {
         loadingToast.dismiss();
         this.notificationService.error('Invalid verification code');
       }
@@ -331,12 +317,11 @@ deleteProfilePhoto() {
   }
 
   disable2FA() {
-    const password = prompt('🔐 Enter your password to disable 2FA:');
-    if (!password) return;
+    if (!this.disable2FAPassword) return;
 
     const loadingToast = this.notificationService.loading('Disabling 2FA...');
 
-    this.authService.disable2FA(password).subscribe({
+    this.authService.disable2FA(this.disable2FAPassword).subscribe({
       next: () => {
         loadingToast.dismiss();
         this.notificationService.success('✓ 2FA disabled successfully');
@@ -345,12 +330,13 @@ deleteProfilePhoto() {
         }
         this.close2FAModal();
       },
-      error: (error) => {
+      error: () => {
         loadingToast.dismiss();
         this.notificationService.error('Failed to disable 2FA. Please check your password.');
       }
     });
   }
+
   copyBackupCodes() {
     const codesText = this.backupCodes.join('\n');
     navigator.clipboard.writeText(codesText).then(() => {
@@ -360,16 +346,15 @@ deleteProfilePhoto() {
     });
   }
 
-
   downloadBackupCodes() {
     const codesText = this.backupCodes.join('\n');
     const blob = new Blob([codesText], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
+    const url = globalThis.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = '2fa-backup-codes.txt';
     a.click();
-    window.URL.revokeObjectURL(url);
+    globalThis.URL.revokeObjectURL(url);
     this.notificationService.success('Backup codes downloaded');
   }
 
@@ -397,9 +382,7 @@ deleteProfilePhoto() {
       next: () => {
         this.notificationService.success('Account deleted successfully');
         this.closeDeleteModal();
-        setTimeout(() => {
-          this.authService.logout();
-        }, 2000);
+        setTimeout(() => this.authService.logout(), 2000);
       },
       error: (error) => {
         const errorMessage = error.error?.error || 'Failed to delete account';
@@ -409,7 +392,6 @@ deleteProfilePhoto() {
   }
 
   saveNotificationPreferences() {
-    // TODO: Implement API call to save notification preferences
     this.notificationService.success('Notification preferences saved');
   }
 }

@@ -5,19 +5,21 @@ from .models import User, BiometricDevice, BiometricAuthLog
 class UserSerializer(serializers.ModelSerializer):
     has_biometric = serializers.SerializerMethodField()
     biometric_devices_count = serializers.SerializerMethodField()
-    
+    profile_photo_url = serializers.SerializerMethodField()
+    identity_document_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
             'uuid', 'email', 'phone_number', 'full_name', 'role', 'age', 'gender',
             'marital_status', 'number_of_kids', 'profession', 'salary_range',
             'spouse_name', 'spouse_age', 'spouse_profession', 'profile_photo',
-            'identity_document', 'activity_status', 'created_at', 'updated_at',
+            'profile_photo_url', 'identity_document', 'identity_document_url',
+            'activity_status', 'created_at', 'updated_at',
             'biometric_enabled', 'fingerprint_enabled', 'face_id_enabled',
             'has_biometric', 'biometric_devices_count'
         ]
         read_only_fields = ['uuid', 'created_at', 'updated_at']
-
 
     def get_profile_photo_url(self, obj):
         """Return full URL for profile photo"""
@@ -27,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.profile_photo.url)
         return None
 
-    def get_identity_document(self, obj):
+    def get_identity_document_url(self, obj):
         request = self.context.get('request')
         if obj.identity_document:
             if request:

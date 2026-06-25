@@ -3,7 +3,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from django.utils import timezone
-from django.db.models import Sum, Q
+from django.db.models import Sum, Count, Q
 from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, timedelta
@@ -191,7 +191,7 @@ class DepositViewSet(viewsets.ModelViewSet):
             'created_at__year'
         ).annotate(
             total=Sum('amount'),
-            count=Sum(1)
+            count=Count('uuid')
         ).order_by('-created_at__year', '-created_at__month')[:12]
         
         return Response({

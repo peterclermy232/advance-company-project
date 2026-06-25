@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -30,7 +30,7 @@ from apps.accounts.models import User
 from apps.financial.models import FinancialAccount, Deposit
 
 
-class AdminAnalyticsViewSet(GenericViewSet):
+class AdminAnalyticsViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def _check_admin(self, request):
@@ -196,7 +196,7 @@ class AdminAnalyticsViewSet(GenericViewSet):
         if admin_check:
             return admin_check
 
-        export_format = request.query_params.get("format", "excel")
+        export_format = request.query_params.get("export_format", "excel")
 
         if export_format not in ("excel", "pdf"):
             return Response(

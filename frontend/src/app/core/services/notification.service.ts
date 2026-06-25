@@ -31,29 +31,25 @@ interface NotificationResponse {
   providedIn: 'root'
 })
 export class NotificationService implements OnDestroy {
-  private apiService = inject(ApiService);
-  private snackBar = inject(MatSnackBar);
+  private readonly apiService = inject(ApiService);
+  private readonly snackBar = inject(MatSnackBar);
 
-  private unreadCountSubject = new BehaviorSubject<number>(0);
+  private readonly unreadCountSubject = new BehaviorSubject<number>(0);
   public unreadCount$ = this.unreadCountSubject.asObservable();
 
-  private notificationsSubject = new BehaviorSubject<AppNotification[]>([]);
+  private readonly notificationsSubject = new BehaviorSubject<AppNotification[]>([]);
   public notifications$ = this.notificationsSubject.asObservable();
 
   private pollingSubscription: any;
-  
 
-  constructor() {
-    //this.initialize();
-  }
+  constructor() {}
 
   // Initialize service and start polling
   initialize(): void {
     const token = localStorage.getItem('access_token');
-  if (!token) {
-    return; //  Not logged in → do nothing
-  }
-    console.log('NotificationService: Initializing...');
+    if (!token) {
+      return; // Not logged in → do nothing
+    }
     this.refresh();
     this.startPolling();
   }
@@ -88,7 +84,6 @@ export class NotificationService implements OnDestroy {
   getNotifications(): Observable<NotificationResponse> {
     return this.apiService.get<NotificationResponse>('notifications/').pipe(
       tap(response => {
-        console.log('NotificationService: Received notifications', response);
         this.notificationsSubject.next(response.results ?? []);
       }),
       catchError(error => {
@@ -100,13 +95,7 @@ export class NotificationService implements OnDestroy {
 
   getUnreadNotifications(): Observable<NotificationResponse> {
     return this.apiService.get<NotificationResponse>('notifications/unread/').pipe(
-      tap(response => {
-        console.log('NotificationService: Unread notifications', response);
-      }),
-      catchError(error => {
-        console.error('NotificationService: Error fetching unread notifications', error);
-        return of({ count: 0, next: null, previous: null, results: [] });
-      })
+      catchError(() => of({ count: 0, next: null, previous: null, results: [] }))
     );
   }
 
@@ -115,27 +104,19 @@ export class NotificationService implements OnDestroy {
       tap(response => {
         this.unreadCountSubject.next(response.count ?? 0);
       }),
-      catchError(error => {
-        console.error('NotificationService: Error fetching unread count', error);
-        return of({ count: 0 });
-      })
+      catchError(() => of({ count: 0 }))
     );
   }
 
   getRecentNotifications(): Observable<NotificationResponse | AppNotification[]> {
-  return this.apiService.get<NotificationResponse | AppNotification[]>('notifications/recent/').pipe(
-    tap(response => {
-      // Handle both response formats: array or object with results
-      const notifications = Array.isArray(response) ? response : (response.results ?? []);
-      console.log('NotificationService: Setting notifications', notifications);
-      this.notificationsSubject.next(notifications);
-    }),
-    catchError(error => {
-      console.error('NotificationService: Error fetching recent notifications', error);
-      return of({ count: 0, next: null, previous: null, results: [] });
-    })
-  );
-}
+    return this.apiService.get<NotificationResponse | AppNotification[]>('notifications/recent/').pipe(
+      tap(response => {
+        const notifications = Array.isArray(response) ? response : (response.results ?? []);
+        this.notificationsSubject.next(notifications);
+      }),
+      catchError(() => of({ count: 0, next: null, previous: null, results: [] }))
+    );
+  }
 
   markAsRead( uuid: string): Observable<AppNotification> {
     return this.apiService.post<AppNotification>(`notifications/${uuid}/mark_as_read/`, {}).pipe(
@@ -147,10 +128,7 @@ export class NotificationService implements OnDestroy {
         const updatedNotifications = notifications.map(n => n.uuid === uuid ? { ...n, is_read: true } : n);
         this.notificationsSubject.next(updatedNotifications);
       }),
-      catchError(error => {
-        console.error('NotificationService: Error marking as read', error);
-        return of(null as unknown as AppNotification); // fallback
-      })
+      catchError(() => of(null as unknown as AppNotification))
     );
   }
 
@@ -163,10 +141,7 @@ export class NotificationService implements OnDestroy {
         const updatedNotifications = notifications.map(n => ({ ...n, is_read: true }));
         this.notificationsSubject.next(updatedNotifications);
       }),
-      catchError(error => {
-        console.error('NotificationService: Error marking all as read', error);
-        return of(null);
-      })
+      catchError(() => of(null))
     );
   }
 
@@ -177,10 +152,7 @@ export class NotificationService implements OnDestroy {
         const unreadNotifications = notifications.filter(n => !n.is_read);
         this.notificationsSubject.next(unreadNotifications);
       }),
-      catchError(error => {
-        console.error('NotificationService: Error clearing notifications', error);
-        return of(null);
-      })
+      catchError(() => of(null))
     );
   }
 

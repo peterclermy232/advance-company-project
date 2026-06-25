@@ -106,13 +106,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'advance_company.wsgi.application'
 
 # Database
-DATABASES = {
-    'default': dj_database_url.parse(
-        strip_quotes(config('DATABASE_URL')),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+# In development without network access to Neon, set USE_SQLITE=True in .env
+_use_sqlite = config('USE_SQLITE', default=False, cast=bool)
+if _use_sqlite:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            strip_quotes(config('DATABASE_URL')),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -242,7 +252,12 @@ SIMPLE_JWT = {
 
 # Use standard MediaCloudinaryStorage
 # DEFAULT_FILE_STORAGE = 'apps.documents.storage.CleanMediaCloudinaryStorage'
-DEFAULT_FILE_STORAGE = 'apps.documents.storage.SupabaseStorage'
+if config('USE_LOCAL_STORAGE', default=False, cast=bool):
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
+else:
+    DEFAULT_FILE_STORAGE = 'apps.documents.storage.SupabaseStorage'
 
 # Cache Configuration
 REDIS_URL = config('REDIS_URL', default=None)
@@ -344,7 +359,7 @@ print(f"DEBUG: {DEBUG}")
 print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
 print(f"CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
-print(f"CSRF Middleware: DISABLED (JWT API)")
+print("CSRF Middleware: DISABLED (JWT API)")
 print(f"File Storage: {DEFAULT_FILE_STORAGE}")
 print(f"Supabase Bucket: {SUPABASE_BUCKET}")
 print("="*50)

@@ -1,229 +1,318 @@
 <div class="flex h-screen bg-gray-50 overflow-hidden">
   <app-sidebar [isOpen]="sidebarOpen"></app-sidebar>
-  
+
   <div class="flex-1 flex flex-col overflow-hidden">
     <app-header (toggleSidebar)="toggleSidebar()"></app-header>
-    
+
     <main class="flex-1 overflow-y-auto p-6">
       <div class="max-w-3xl mx-auto">
+
+        <!-- Back link -->
         <div class="mb-6">
-          <button routerLink="/beneficiary" class="text-blue-600 hover:text-blue-700 flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button routerLink="/beneficiary" class="text-blue-600 hover:text-blue-700 flex items-center gap-2 text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>
             Back to Beneficiaries
           </button>
         </div>
 
-        <!-- Allocation Summary Card -->
-        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-6 mb-6 text-white">
+        <!-- Allocation summary banner -->
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-5 mb-6 text-white">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-lg font-semibold">Allocation Summary</h3>
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h3 class="font-semibold">Allocation Summary</h3>
+            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
             </svg>
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 gap-4 mb-3">
             <div>
-              <p class="text-blue-100 text-sm">Currently Allocated</p>
+              <p class="text-blue-200 text-xs">Currently allocated (others)</p>
               <p class="text-3xl font-bold">{{ totalAllocated }}%</p>
             </div>
             <div>
-              <p class="text-blue-100 text-sm">Available</p>
+              <p class="text-blue-200 text-xs">Available for this beneficiary</p>
               <p class="text-3xl font-bold">{{ remainingAllocation }}%</p>
             </div>
           </div>
-          <div class="mt-4 bg-white bg-opacity-20 rounded-full h-2">
-            <div class="bg-white h-2 rounded-full transition-all duration-300" [style.width.%]="totalAllocated"></div>
+          <div class="bg-white bg-opacity-20 rounded-full h-2">
+            <div class="bg-white h-2 rounded-full transition-all" [style.width.%]="totalAllocated"></div>
           </div>
         </div>
 
+        <!-- Form card -->
         <div class="bg-white rounded-xl p-6 shadow-sm">
-          <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ isEditMode ? 'Edit' : 'Add' }} Beneficiary</h2>
-          
-          <form [formGroup]="beneficiaryForm" (ngSubmit)="onSubmit()" class="space-y-6">
-            <!-- Basic Information -->
-            <div class="grid md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                <input
-                  type="text"
-                  formControlName="name"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  [class.border-red-500]="beneficiaryForm.get('name')?.invalid && beneficiaryForm.get('name')?.touched"
-                  placeholder="Enter full name">
-                <p *ngIf="beneficiaryForm.get('name')?.invalid && beneficiaryForm.get('name')?.touched" 
-                   class="text-red-500 text-xs mt-1">Name is required (min 3 characters)</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Relation *</label>
-                <select formControlName="relation" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        [class.border-red-500]="beneficiaryForm.get('relation')?.invalid && beneficiaryForm.get('relation')?.touched">
-                  <option value="">Select relation</option>
-                  <option value="spouse">Spouse</option>
-                  <option value="child">Child</option>
-                  <option value="parent">Parent</option>
-                  <option value="sibling">Sibling</option>
-                  <option value="other">Other</option>
-                </select>
-                <p *ngIf="beneficiaryForm.get('relation')?.invalid && beneficiaryForm.get('relation')?.touched" 
-                   class="text-red-500 text-xs mt-1">Relation is required</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Age *</label>
-                <input
-                  type="number"
-                  formControlName="age"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  [class.border-red-500]="beneficiaryForm.get('age')?.invalid && beneficiaryForm.get('age')?.touched"
-                  placeholder="Enter age">
-                <p *ngIf="beneficiaryForm.get('age')?.invalid && beneficiaryForm.get('age')?.touched" 
-                   class="text-red-500 text-xs mt-1">Valid age is required</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-                <select formControlName="gender" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        [class.border-red-500]="beneficiaryForm.get('gender')?.invalid && beneficiaryForm.get('gender')?.touched">
-                  <option value="">Select gender</option>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
-                  <option value="O">Other</option>
-                </select>
-                <p *ngIf="beneficiaryForm.get('gender')?.invalid && beneficiaryForm.get('gender')?.touched" 
-                   class="text-red-500 text-xs mt-1">Gender is required</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  formControlName="phone_number"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="+254712345678">
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Profession</label>
-                <input
-                  type="text"
-                  formControlName="profession"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter profession">
-              </div>
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
             </div>
+            <h2 class="text-xl font-bold text-gray-800">{{ isEditMode ? 'Edit' : 'Add' }} Beneficiary</h2>
+          </div>
 
-            <!-- Allocation Percentage -->
-            <div class="bg-blue-50 rounded-xl p-6 border-2 border-blue-200">
-              <div class="flex items-center gap-3 mb-4">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
-                </svg>
-                <h3 class="text-lg font-semibold text-gray-800">Allocation Percentage *</h3>
+          <form [formGroup]="beneficiaryForm" (ngSubmit)="onSubmit()" class="space-y-6">
+
+            <!-- ── Personal information ── -->
+            <fieldset>
+              <legend class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Personal Information</legend>
+              <div class="grid md:grid-cols-2 gap-4">
+
+                <div>
+                  <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
+                  <input id="name" type="text" formControlName="name"
+                         class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                         [class.border-red-400]="beneficiaryForm.get('name')?.invalid && beneficiaryForm.get('name')?.touched"
+                         placeholder="Enter full legal name">
+                  <p *ngIf="beneficiaryForm.get('name')?.invalid && beneficiaryForm.get('name')?.touched"
+                     class="text-red-500 text-xs mt-1">Full name is required (min 3 characters)</p>
+                </div>
+
+                <div>
+                  <label for="relation" class="block text-sm font-medium text-gray-700 mb-1">Relationship <span class="text-red-500">*</span></label>
+                  <select id="relation" formControlName="relation"
+                          class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                          [class.border-red-400]="beneficiaryForm.get('relation')?.invalid && beneficiaryForm.get('relation')?.touched">
+                    <option value="">Select relationship</option>
+                    <option value="spouse">Spouse</option>
+                    <option value="child">Child</option>
+                    <option value="parent">Parent</option>
+                    <option value="sibling">Sibling</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <p *ngIf="beneficiaryForm.get('relation')?.invalid && beneficiaryForm.get('relation')?.touched"
+                     class="text-red-500 text-xs mt-1">Relationship is required</p>
+                </div>
+
+                <div>
+                  <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Age <span class="text-red-500">*</span></label>
+                  <input id="age" type="number" formControlName="age" min="0" max="150"
+                         class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                         [class.border-red-400]="beneficiaryForm.get('age')?.invalid && beneficiaryForm.get('age')?.touched"
+                         placeholder="Age in years">
+                  <p *ngIf="beneficiaryForm.get('age')?.invalid && beneficiaryForm.get('age')?.touched"
+                     class="text-red-500 text-xs mt-1">Valid age (0–150) is required</p>
+                </div>
+
+                <div>
+                  <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">Gender <span class="text-red-500">*</span></label>
+                  <select id="gender" formControlName="gender"
+                          class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                          [class.border-red-400]="beneficiaryForm.get('gender')?.invalid && beneficiaryForm.get('gender')?.touched">
+                    <option value="">Select gender</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Other</option>
+                  </select>
+                  <p *ngIf="beneficiaryForm.get('gender')?.invalid && beneficiaryForm.get('gender')?.touched"
+                     class="text-red-500 text-xs mt-1">Gender is required</p>
+                </div>
+
+                <div>
+                  <label for="phone_number" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input id="phone_number" type="tel" formControlName="phone_number"
+                         class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                         placeholder="+254712345678">
+                </div>
+
+                <div>
+                  <label for="profession" class="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                  <input id="profession" type="text" formControlName="profession"
+                         class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                         placeholder="e.g. Teacher, Farmer">
+                </div>
+
               </div>
-              
-              <div class="space-y-3">
-                <div class="flex items-center gap-4">
-                  <input
-                    type="number"
-                    formControlName="percentage_allocation"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    class="flex-1 px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-xl font-bold"
-                    [class.border-red-500]="beneficiaryForm.get('percentage_allocation')?.invalid && beneficiaryForm.get('percentage_allocation')?.touched"
-                    placeholder="0.00">
-                  <span class="text-2xl font-bold text-gray-600">%</span>
+            </fieldset>
+
+            <!-- ── Allocation ── -->
+            <fieldset class="bg-blue-50 rounded-xl p-5 border border-blue-100">
+              <legend id="allocation-legend" class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Allocation Percentage <span class="text-red-500">*</span></legend>
+
+              <div class="flex items-center gap-4 mb-3">
+                <div class="relative flex-1">
+                  <input id="percentage_allocation" type="number" formControlName="percentage_allocation"
+                         aria-labelledby="allocation-legend"
+                         min="0" [max]="remainingAllocation" step="0.01"
+                         class="w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-2xl font-bold"
+                         [class.border-red-400]="beneficiaryForm.get('percentage_allocation')?.errors?.['maxExceeded']"
+                         [class.border-blue-300]="!beneficiaryForm.get('percentage_allocation')?.errors?.['maxExceeded']"
+                         placeholder="0">
+                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-bold text-gray-400">%</span>
                 </div>
-                
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Available to allocate:</span>
-                  <span [class]="'font-bold text-lg ' + getAllocationPercentageClass()">
-                    {{ remainingAllocation }}%
-                  </span>
+                <div class="text-right">
+                  <p class="text-xs text-gray-500">Available</p>
+                  <p [class]="'text-2xl font-bold ' + getAllocationClass()">{{ remainingAllocation }}%</p>
+                </div>
+              </div>
+
+              <div *ngIf="beneficiaryForm.get('percentage_allocation')?.errors?.['maxExceeded']"
+                   class="flex items-center gap-2 bg-red-100 text-red-700 text-sm px-4 py-2.5 rounded-lg mb-3">
+                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                Only {{ remainingAllocation }}% remaining across all beneficiaries
+              </div>
+
+              <p class="text-xs text-gray-500">
+                The allocated percentage determines this beneficiary's share of your savings contributions. Total across all beneficiaries cannot exceed 100%.
+              </p>
+            </fieldset>
+
+            <!-- ── Documents ── -->
+            <fieldset>
+              <legend class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Documents</legend>
+              <div class="space-y-4">
+
+                <!-- Identity document -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                  <label for="identity_document" class="block text-sm font-semibold text-gray-700 mb-2">
+                    National ID / Passport
+                    <span *ngIf="!isEditMode" class="text-red-500"> *</span>
+                    <span *ngIf="isEditMode" class="text-gray-400 font-normal"> (leave blank to keep existing)</span>
+                  </label>
+                  <!-- Existing file (edit mode) -->
+                  <div *ngIf="isEditMode && existingFiles['identity_document_url']"
+                       class="flex items-center gap-2 mb-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span>Current file uploaded</span>
+                    <button type="button" (click)="openExistingFile(existingFiles['identity_document_url'])"
+                            class="ml-auto text-xs underline hover:text-blue-800">View</button>
+                  </div>
+                  <input id="identity_document" type="file"
+                         (change)="onFileSelected($event, 'identity_document')"
+                         accept=".pdf,.jpg,.jpeg,.png"
+                         class="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                  <p *ngIf="fileNames['identity_document']" class="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Selected: {{ fileNames['identity_document'] }}
+                  </p>
+                  <p class="text-xs text-gray-400 mt-1">PDF, JPG or PNG · Max 5 MB</p>
                 </div>
 
-                <div *ngIf="beneficiaryForm.get('percentage_allocation')?.errors?.['maxExceeded']" 
-                     class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-                  <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                <!-- Birth certificate -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                  <label for="birth_certificate" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Birth Certificate
+                    <span class="text-gray-400 font-normal"> (optional)</span>
+                  </label>
+                  <div *ngIf="isEditMode && existingFiles['birth_certificate_url']"
+                       class="flex items-center gap-2 mb-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    <span class="font-medium">Only {{ remainingAllocation }}% remaining!</span>
+                    <span>Current file uploaded</span>
+                    <button type="button" (click)="openExistingFile(existingFiles['birth_certificate_url'])"
+                            class="ml-auto text-xs underline hover:text-blue-800">View</button>
+                  </div>
+                  <input id="birth_certificate" type="file"
+                         (change)="onFileSelected($event, 'birth_certificate')"
+                         accept=".pdf,.jpg,.jpeg,.png"
+                         class="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                  <p *ngIf="fileNames['birth_certificate']" class="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Selected: {{ fileNames['birth_certificate'] }}
+                  </p>
+                  <p class="text-xs text-gray-400 mt-1">PDF, JPG or PNG · Max 5 MB</p>
+                </div>
+
+                <!-- Death certificate -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                  <label for="death_certificate" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Death Certificate
+                    <span class="text-gray-400 font-normal"> (if beneficiary is deceased)</span>
+                  </label>
+                  <div *ngIf="isEditMode && existingFiles['death_certificate_url']"
+                       class="flex items-center gap-2 mb-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span>Current file uploaded</span>
+                    <button type="button" (click)="openExistingFile(existingFiles['death_certificate_url'])"
+                            class="ml-auto text-xs underline hover:text-blue-800">View</button>
+                  </div>
+                  <input id="death_certificate" type="file"
+                         (change)="onFileSelected($event, 'death_certificate')"
+                         accept=".pdf,.jpg,.jpeg,.png"
+                         class="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                  <p *ngIf="fileNames['death_certificate']" class="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Selected: {{ fileNames['death_certificate'] }}
+                  </p>
+
+                  <div class="mt-3">
+                    <label for="death_certificate_number" class="block text-xs font-medium text-gray-600 mb-1">Certificate Number</label>
+                    <input id="death_certificate_number" type="text" formControlName="death_certificate_number"
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g. DC/2024/123456">
                   </div>
                 </div>
 
-                <div class="bg-white bg-opacity-50 rounded p-3">
-                  <p class="text-xs text-gray-600">
-                    <strong>Note:</strong> The percentage you allocate here determines how much of your contributions this beneficiary will receive.
-                    Total allocation across all beneficiaries cannot exceed 100%.
+                <!-- Additional documents -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                  <label for="additional_documents" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Additional Documents
+                    <span class="text-gray-400 font-normal"> (optional)</span>
+                  </label>
+                  <div *ngIf="isEditMode && existingFiles['additional_documents_url']"
+                       class="flex items-center gap-2 mb-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span>Current file uploaded</span>
+                    <button type="button" (click)="openExistingFile(existingFiles['additional_documents_url'])"
+                            class="ml-auto text-xs underline hover:text-blue-800">View</button>
+                  </div>
+                  <input id="additional_documents" type="file"
+                         (change)="onFileSelected($event, 'additional_documents')"
+                         accept=".pdf,.jpg,.jpeg,.png"
+                         class="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                  <p *ngIf="fileNames['additional_documents']" class="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Selected: {{ fileNames['additional_documents'] }}
                   </p>
+                  <p class="text-xs text-gray-400 mt-1">Marriage certificate, guardianship order, etc. · PDF, JPG or PNG · Max 5 MB</p>
                 </div>
+
               </div>
+            </fieldset>
+
+            <!-- Info note -->
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 flex gap-3">
+              <svg class="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <p>Beneficiaries are subject to <strong>admin verification</strong>. Please ensure documents are clear and legible. Verification typically takes 1–3 business days.</p>
             </div>
 
-            <!-- Documents -->
-            <div class="space-y-4">
-              <h3 class="text-lg font-semibold text-gray-800">Documents</h3>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Identity Document *</label>
-                <input
-                  type="file"
-                  (change)="onFileSelected($event, 'identity_document')"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  class="w-full px-4 py-2 border rounded-lg">
-                <p class="text-xs text-gray-500 mt-1">Accepted formats: PDF, JPG, PNG (Max 5MB)</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Birth Certificate</label>
-                <input
-                  type="file"
-                  (change)="onFileSelected($event, 'birth_certificate')"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  class="w-full px-4 py-2 border rounded-lg">
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Death Certificate (if applicable)</label>
-                <input
-                  type="file"
-                  (change)="onFileSelected($event, 'death_certificate')"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  class="w-full px-4 py-2 border rounded-lg">
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Death Certificate Number</label>
-                <input
-                  type="text"
-                  formControlName="death_certificate_number"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter certificate number">
-              </div>
-            </div>
-
-            <!-- Submit Button -->
-            <div class="flex gap-4">
-              <button
-                type="button"
-                routerLink="/beneficiary"
-                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold">
+            <!-- Action buttons -->
+            <div class="flex gap-4 pt-2">
+              <button type="button" routerLink="/beneficiary"
+                      class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold text-gray-700 transition-colors">
                 Cancel
               </button>
-              <button
-                type="submit"
-                [disabled]="isSubmitting || beneficiaryForm.invalid"
-                class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                {{ isSubmitting ? 'Saving...' : (isEditMode ? 'Update' : 'Add') + ' Beneficiary' }}
+              <button type="submit"
+                      [disabled]="isSubmitting || beneficiaryForm.invalid || beneficiaryForm.get('percentage_allocation')?.errors?.['maxExceeded']"
+                      class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <svg *ngIf="isSubmitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                {{ isSubmitting ? 'Saving...' : (isEditMode ? 'Update Beneficiary' : 'Add Beneficiary') }}
               </button>
             </div>
+
           </form>
         </div>
       </div>

@@ -215,7 +215,7 @@ def login(request):
     return APIResponse.success(
         message=Messages.AUTH_SUCCESS,
         data={
-            'user': UserSerializer(user).data,
+            'user': UserSerializer(user, context={'request': request}).data,
             'tokens': {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -272,7 +272,7 @@ def verify_2fa(request):
     return APIResponse.success(
         message=Messages.AUTH_SUCCESS,
         data={
-            'user': UserSerializer(user).data,
+            'user': UserSerializer(user, context={'request': request}).data,
             'tokens': {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),

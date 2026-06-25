@@ -199,10 +199,26 @@
         </button>
       </div>
       <div *ngIf="currentUser?.two_factor_enabled">
-        <p class="text-gray-600 mb-4">Two-factor authentication is currently enabled for your account.</p>
-        <button (click)="disable2FA()" class="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 mb-2">
-          Disable 2FA
-        </button>
+        <ng-container *ngIf="!showDisable2FAConfirm">
+          <p class="text-gray-600 mb-4">Two-factor authentication is currently enabled for your account.</p>
+          <button (click)="showDisable2FAConfirm = true" class="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 mb-2">
+            Disable 2FA
+          </button>
+        </ng-container>
+        <ng-container *ngIf="showDisable2FAConfirm">
+          <p class="text-gray-600 mb-3">Enter your password to confirm disabling 2FA.</p>
+          <label for="disable2fa-password" class="block text-sm font-medium text-gray-700 mb-1">Current password</label>
+          <input id="disable2fa-password" type="password" [(ngModel)]="disable2FAPassword" placeholder="Enter your password"
+            class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-red-500">
+          <button (click)="disable2FA()" [disabled]="!disable2FAPassword"
+            class="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 mb-2">
+            Confirm Disable
+          </button>
+          <button (click)="showDisable2FAConfirm = false; disable2FAPassword = ''"
+            class="w-full bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300">
+            Cancel
+          </button>
+        </ng-container>
       </div>
       <button (click)="close2FAModal()" class="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300">
         Close
