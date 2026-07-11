@@ -1,0 +1,102 @@
+name: Nightly E2E Tests
+
+on:
+  schedule:
+    # Runs at 02:00 UTC every night
+    - cron: '0 2 * * *'
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: false
+        default: 'local'
+        type: choice
+        options:
+          - local
+          - production
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  e2e-nightly:
+    name: Nightly Cypress E2E
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # ── Run against local dev server (default / cron) ──────────────────────
+      - name: Run Cypress E2E (local)
+        if: github.event.inputs.environment != 'production'
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: frontend
+          start: npx ng serve --configuration production
+          wait-on: 'http://localhost:4200'
+          wait-on-timeout: 180
+          browser: chrome
+          config: video=true,screenshotOnRunFailure=true
+        env:
+          CYPRESS_baseUrl: 'http://localhost:4200'
+          CYPRESS_apiUrl: 'http://127.0.0.1:8000/api/v1'
+
+      # ── Run against deployed Netlify app (manual trigger only) ────────────
+      - name: Run Cypress E2E (production)
+        if: github.event.inputs.environment == 'production'
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: frontend
+          browser: chrome
+          config: video=true,screenshotOnRunFailure=true,baseUrl=https://advance-company.netlify.app
+        env:
+          CYPRESS_baseUrl: 'https://advance-company.netlify.app'
+          CYPRESS_apiUrl: 'https://advance-company-backend-v1-0-3.onrender.com/api/v1'
+
+      # ── Artifacts ─────────────────────────────────────────────────────────
+      - name: Upload screenshots on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: nightly-screenshots-${{ github.run_number }}
+          path: frontend/cypress/screenshots
+          retention-days: 14
+
+      - name: Upload videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-videos-${{ github.run_number }}
+          path: frontend/cypress/videos
+          retention-days: 7
+
+  # ── Notify on failure ──────────────────────────────────────────────────────
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: e2e-nightly
+    if: failure()
+
+    steps:
+      - name: Create failure summary
+        run: |
+          echo "## ❌ Nightly E2E Tests Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for screenshots and logs." >> $GITHUB_STEP_SUMMARY

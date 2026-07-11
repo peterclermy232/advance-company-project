@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "message": "Two-factor authentication required.",
+  "toast_type": "info",
+  "data": {
+    "requires_2fa": true
+  }
+}

@@ -106,7 +106,7 @@ export class DepositHistoryComponent implements OnInit {
     if (!this.selectedDeposit) return;
 
     this.isProcessing = true;
-    this.financialService.approveDeposit(this.selectedDeposit.id).subscribe({
+    this.financialService.approveDeposit(this.selectedDeposit.uuid).subscribe({
       next: (response) => {
         this.toastService.success('Deposit approved successfully');
         this.loadDeposits();
@@ -127,7 +127,7 @@ export class DepositHistoryComponent implements OnInit {
     this.isProcessing = true;
     const reason = this.rejectForm.get('reason')?.value;
 
-    this.financialService.rejectDeposit(this.selectedDeposit.id, reason).subscribe({
+    this.financialService.rejectDeposit(this.selectedDeposit.uuid, reason).subscribe({
       next: (response) => {
         this.toastService.success('Deposit rejected');
         this.loadDeposits();

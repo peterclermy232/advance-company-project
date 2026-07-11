@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../out-tsc/cypress",
+    "baseUrl": ".",
+    "types": ["cypress", "node"],
+    "lib": ["ES2022", "dom"],
+    "isolatedModules": false
+  },
+  "include": [
+    "**/*.ts",
+    "../node_modules/cypress/types/index.d.ts"
+  ],
+  "exclude": [
+    "../node_modules"
+  ]
+}

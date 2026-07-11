@@ -31,13 +31,19 @@ import { NotificationService } from '../../../core/services/notification.service
           <div class="mb-6">
             <span class="material-icons text-green-600 text-6xl">mark_email_read</span>
           </div>
-          <h2 class="text-2xl font-bold text-gray-800 mb-2">Check Your Email! 📧</h2>
-          <p class="text-gray-600 mb-6">
+          <h2 class="text-2xl font-bold text-gray-800 mb-2">Email Sent!</h2>
+          <p class="text-gray-600 mb-4">
             We've sent a password reset link to <strong>{{ forgotPasswordForm.get('email')?.value }}</strong>.
             Please check your inbox and follow the instructions.
           </p>
-          <a routerLink="/auth/login" 
-             class="inline-block text-blue-600 hover:text-blue-700 font-medium">
+          <button
+            type="button"
+            (click)="resetForm()"
+            class="w-full mt-2 text-blue-600 hover:text-blue-700 font-medium py-2">
+            Send another email
+          </button>
+          <a routerLink="/auth/login"
+             class="inline-block text-gray-500 hover:text-gray-700 text-sm mt-3">
             Back to Login
           </a>
         </div>
@@ -49,17 +55,18 @@ import { NotificationService } from '../../../core/services/notification.service
             No worries! Enter your email and we'll send you a reset link.
           </p>
 
-          <form [formGroup]="forgotPasswordForm" (ngSubmit)="onSubmit()" class="space-y-4">
+          <form [formGroup]="forgotPasswordForm" (ngSubmit)="onSubmit()" class="space-y-4" data-cy="forgot-password-form">
             <!-- Email Field -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
               <input
                 type="email"
                 formControlName="email"
+                data-cy="email-input"
                 class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 [class.border-red-500]="forgotPasswordForm.get('email')?.invalid && forgotPasswordForm.get('email')?.touched"
                 placeholder="Enter your email">
-              <p *ngIf="forgotPasswordForm.get('email')?.invalid && forgotPasswordForm.get('email')?.touched" 
+              <p *ngIf="forgotPasswordForm.get('email')?.invalid && forgotPasswordForm.get('email')?.touched"
                  class="text-red-500 text-sm mt-1">
                 Please enter a valid email address
               </p>
@@ -68,6 +75,7 @@ import { NotificationService } from '../../../core/services/notification.service
             <!-- Submit Button -->
             <button
               type="submit"
+              data-cy="send-reset-btn"
               [disabled]="isLoading || forgotPasswordForm.invalid"
               class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
               <span *ngIf="!isLoading">Send Reset Link</span>
@@ -83,7 +91,7 @@ import { NotificationService } from '../../../core/services/notification.service
             <!-- Back to Login -->
             <p class="text-center text-sm text-gray-600 mt-4">
               Remember your password?
-              <a routerLink="/auth/login" class="text-blue-600 hover:text-blue-700 font-medium">
+              <a routerLink="/auth/login" data-cy="back-to-login" class="text-blue-600 hover:text-blue-700 font-medium">
                 Sign in here
               </a>
             </p>
@@ -106,6 +114,11 @@ export class ForgotPasswordComponent {
     this.forgotPasswordForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]]
     });
+  }
+
+  resetForm(): void {
+    this.emailSent = false;
+    this.forgotPasswordForm.reset();
   }
 
   onSubmit(): void {

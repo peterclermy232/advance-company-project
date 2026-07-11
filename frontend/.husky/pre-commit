@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+
+echo "🔍 Pre-commit: TypeScript type check..."
+cd frontend && ./node_modules/.bin/tsc --noEmit
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Type check failed. Fix the errors above before committing."
+  echo "   Tip: run 'npm run type-check' to see all errors."
+  exit 1
+fi
+
+echo "✅ Type check passed."

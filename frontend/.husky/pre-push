@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+
+echo "🧪 Pre-push: Running unit tests (headless)..."
+cd frontend && ./node_modules/.bin/ng test --watch=false --browsers=ChromeHeadless --code-coverage
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Unit tests failed. Fix failing tests before pushing."
+  echo "   Tip: run 'npm run test:ci' to reproduce locally."
+  exit 1
+fi
+
+echo "✅ All unit tests passed."

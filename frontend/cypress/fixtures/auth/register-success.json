@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "message": "Account created successfully!",
+  "toast_type": "success",
+  "data": {
+    "user": {
+      "id": 2,
+      "email": "newuser@example.com",
+      "full_name": "New User",
+      "role": "member",
+      "email_verified": false,
+      "activity_status": "Active"
+    },
+    "tokens": {
+      "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new",
+      "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.newrefresh"
+    }
+  }
+}

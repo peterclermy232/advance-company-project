@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "message": "Login successful! Welcome back 👋",
+  "toast_type": "success",
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "test@example.com",
+      "full_name": "Test User",
+      "role": "member",
+      "email_verified": true,
+      "activity_status": "Active"
+    },
+    "tokens": {
+      "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test",
+      "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh"
+    },
+    "requires_2fa": false
+  }
+}

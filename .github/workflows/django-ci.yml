@@ -1,0 +1,106 @@
+name: Django CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/django-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  test:
+    name: Run Django Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: advance_company_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        working-directory: backend
+        env:
+          SECRET_KEY: ci-test-secret-key-not-for-production
+          DEBUG: 'True'
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/advance_company_test
+          REDIS_URL: redis://localhost:6379/0
+          USE_LOCAL_STORAGE: 'True'
+          SUPABASE_URL: http://localhost
+          SUPABASE_KEY: test-key
+          SUPABASE_BUCKET: test-bucket
+          EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
+          RESEND_API_KEY: ''
+        run: |
+          python -m pytest \
+            --cov=apps \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=50 \
+            -v
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: backend/coverage.xml
+          flags: django
+          name: django-coverage
+
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install linting tools
+        run: pip install flake8 black isort
+      - name: Run flake8
+        working-directory: backend
+        run: flake8 apps --max-line-length=120 --extend-ignore=E203,W503 || true
+      - name: Check black formatting
+        working-directory: backend
+        run: black --check apps || true

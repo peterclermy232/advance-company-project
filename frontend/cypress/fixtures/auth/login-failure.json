@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "message": "Invalid email or password.",
+  "toast_type": "error"
+}
