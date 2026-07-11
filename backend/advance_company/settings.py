@@ -311,6 +311,24 @@ MPESA_CALLBACK_URL = strip_quotes(config('MPESA_CALLBACK_URL', default=''))
 # Frontend URL
 FRONTEND_URL = strip_quotes(config('FRONTEND_URL'))
 
+# Sentry error tracking
+SENTRY_DSN = strip_quotes(config('SENTRY_DSN', default=''))
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(),
+            LoggingIntegration(level=None, event_level='ERROR'),
+        ],
+        environment=strip_quotes(config('SENTRY_ENVIRONMENT', default='development' if DEBUG else 'production')),
+        traces_sample_rate=float(config('SENTRY_TRACES_SAMPLE_RATE', default=0.1)),
+        send_default_pii=False,
+    )
+
 # Logging
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 LOGGING = {
