@@ -1,5 +1,15 @@
 #!/usr/bin/env sh
 
+# GUI git clients (VS Code, Tower, etc.) run hooks with a stripped PATH that
+# excludes Homebrew. Restore Node.js locations explicitly.
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
+
+# nvm support — use the most recent installed version if present
+if [ -d "$HOME/.nvm/versions/node" ]; then
+  nvm_ver=$(ls "$HOME/.nvm/versions/node" | sort -V | tail -1)
+  [ -n "$nvm_ver" ] && export PATH="$HOME/.nvm/versions/node/$nvm_ver/bin:$PATH"
+fi
+
 echo "🔍 Pre-commit: TypeScript type check..."
 cd frontend && ./node_modules/.bin/tsc --noEmit
 
