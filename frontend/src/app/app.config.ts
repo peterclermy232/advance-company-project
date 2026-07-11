@@ -12,6 +12,7 @@ import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarModule } from '@angular/mater
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { timingInterceptor } from './core/interceptors/timing.interceptor';
 import { NotificationService } from './core/services/notification.service';
 import { AuthService } from './core/services/auth.service';
 
@@ -38,7 +39,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([authInterceptor])
+      withInterceptors([authInterceptor, timingInterceptor])
     ),
 
     // REQUIRED for Angular Material SnackBar
