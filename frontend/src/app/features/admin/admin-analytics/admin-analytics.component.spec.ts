@@ -15,13 +15,16 @@ describe('AdminAnalyticsComponent', () => {
   beforeEach(async () => {
     const analyticsSpy = jasmine.createSpyObj('AdminAnalyticsService', [
       'getOverview', 'getMonthlyTrends', 'getContributionDistribution',
-      'getGrowthTimeline', 'getMemberActivity',
+      'getGrowthTimeline', 'getMemberActivity', 'getMemberAnalytics',
+      'exportAnalytics',
     ]);
     analyticsSpy.getOverview.and.returnValue(of({} as any));
     analyticsSpy.getMonthlyTrends.and.returnValue(of({ results: [] } as any));
     analyticsSpy.getContributionDistribution.and.returnValue(of({ results: [] } as any));
     analyticsSpy.getGrowthTimeline.and.returnValue(of({ results: [] } as any));
     analyticsSpy.getMemberActivity.and.returnValue(of({ results: [] } as any));
+    analyticsSpy.getMemberAnalytics.and.returnValue(of({ members: [] } as any));
+    analyticsSpy.exportAnalytics.and.returnValue(of(new Blob() as any));
 
     const authSpy = jasmine.createSpyObj('AuthService', ['isAdmin', 'logout', 'getCurrentUser'], {
       currentUser$: of(null),
@@ -41,12 +44,6 @@ describe('AdminAnalyticsComponent', () => {
     notifSpy.markAsRead.and.returnValue(of({} as any));
     notifSpy.markAllAsRead.and.returnValue(of({} as any));
     notifSpy.clearAll.and.returnValue(of({} as any));
-
-    // Stub Chart.js to avoid canvas rendering errors in JSDOM
-    spyOn(window as any, 'Chart').and.returnValue({
-      destroy: jasmine.createSpy('destroy'),
-      update: jasmine.createSpy('update'),
-    });
 
     await TestBed.configureTestingModule({
       imports: [AdminAnalyticsComponent, FormsModule],

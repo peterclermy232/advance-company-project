@@ -57,8 +57,8 @@ describe('DepositFormComponent', () => {
   });
 
   it('depositForm should have amount and payment_method controls', () => {
-    expect(component.depositForm.contains('amount')).toBeTrue();
-    expect(component.depositForm.contains('payment_method')).toBeTrue();
+    expect(component.depositForm.get('amount')).not.toBeNull();
+    expect(component.depositForm.get('payment_method')).not.toBeNull();
   });
 
   it('MONTHLY_DEPOSIT_AMOUNT should be 20000', () => {

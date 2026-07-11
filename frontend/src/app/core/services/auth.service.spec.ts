@@ -1,3 +1,4 @@
+import { Component } from '@angular/core';
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import {
   HttpTestingController,
@@ -8,6 +9,9 @@ import { provideRouter } from '@angular/router';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
 import { environment } from '../../environments/environment';
+
+@Component({ standalone: true, template: '' })
+class StubComponent {}
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -44,7 +48,10 @@ describe('AuthService', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([]),
+        provideRouter([
+          { path: 'auth/login', component: StubComponent },
+          { path: 'dashboard', component: StubComponent },
+        ]),
         AuthService,
         { provide: ToastService, useValue: toastSpy },
       ],

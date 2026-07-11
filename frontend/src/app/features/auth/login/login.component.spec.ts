@@ -1,7 +1,11 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { Component } from '@angular/core';
+import { ComponentFixture, TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+
+@Component({ standalone: true, template: '' })
+class StubComponent {}
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -13,8 +17,13 @@ describe('LoginComponent', () => {
   let toastSpy: jasmine.SpyObj<ToastService>;
 
   const mockLoginResponse = {
-    user: { id: 1, email: 'test@example.com', full_name: 'Test User', role: 'member', email_verified: true },
-    tokens: { access: 'access-token', refresh: 'refresh-token' },
+    success: true,
+    message: 'Login successful',
+    toast_type: 'success',
+    data: {
+      user: { id: 1, email: 'test@example.com', full_name: 'Test User', role: 'member', email_verified: true },
+      tokens: { access: 'access-token', refresh: 'refresh-token' },
+    },
   };
 
   beforeEach(async () => {
@@ -31,7 +40,11 @@ describe('LoginComponent', () => {
     await TestBed.configureTestingModule({
       imports: [LoginComponent, ReactiveFormsModule],
       providers: [
-        provideRouter([]),
+        provideRouter([
+          { path: 'dashboard', component: StubComponent },
+          { path: 'auth/login', component: StubComponent },
+          { path: 'auth/verify-email', component: StubComponent },
+        ]),
         { provide: AuthService, useValue: authSpy },
         { provide: ToastService, useValue: toastSpy },
       ],
@@ -144,7 +157,7 @@ describe('LoginComponent', () => {
 
   it('should open the 2FA modal when backend returns requires_2fa', fakeAsync(() => {
     authSpy.login.and.returnValue(
-      of({ ...mockLoginResponse, requires_2fa: true } as any)
+      of({ ...mockLoginResponse, data: { ...mockLoginResponse.data, requires_2fa: true } } as any)
     );
     component.loginForm.setValue({
       email: 'test@example.com',
@@ -153,7 +166,7 @@ describe('LoginComponent', () => {
     });
 
     component.onSubmit();
-    tick();
+    flush();
 
     expect(component.show2FAModal).toBeTrue();
   }));

@@ -1,7 +1,11 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+
+@Component({ standalone: true, template: '' })
+class StubComponent {}
 import { RegisterComponent } from './register.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -28,7 +32,7 @@ describe('RegisterComponent', () => {
     await TestBed.configureTestingModule({
       imports: [RegisterComponent, ReactiveFormsModule],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: 'auth/verify-email', component: StubComponent }]),
         { provide: AuthService, useValue: authSpy },
         { provide: NotificationService, useValue: notifSpy },
       ],

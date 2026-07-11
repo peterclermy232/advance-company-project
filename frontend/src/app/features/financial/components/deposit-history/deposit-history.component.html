@@ -12,7 +12,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
-            <tr *ngFor="let deposit of deposits" class="hover:bg-gray-50">
+            <tr *ngFor="let deposit of filteredDeposits" class="hover:bg-gray-50">
               <td class="px-4 py-3 text-sm text-gray-800">{{ deposit.created_at | date:'medium' }}</td>
               <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ deposit.amount | currencyFormat }}</td>
               <td class="px-4 py-3 text-sm text-gray-600">{{ getPaymentMethodLabel(deposit.payment_method) }}</td>
@@ -23,7 +23,7 @@
                 </span>
               </td>
             </tr>
-            <tr *ngIf="deposits.length === 0">
+            <tr *ngIf="filteredDeposits.length === 0">
               <td colspan="5" class="px-4 py-8 text-center text-gray-500">
                 <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>

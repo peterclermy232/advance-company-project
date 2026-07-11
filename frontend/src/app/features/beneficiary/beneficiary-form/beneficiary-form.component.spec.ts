@@ -14,9 +14,10 @@ describe('BeneficiaryFormComponent', () => {
 
   beforeEach(async () => {
     const beneficiarySpy = jasmine.createSpyObj('BeneficiaryService', [
-      'getBeneficiary', 'createBeneficiary', 'updateBeneficiary', 'getStatistics',
+      'getBeneficiary', 'getBeneficiaries', 'createBeneficiary', 'updateBeneficiary', 'getStatistics',
     ]);
     beneficiarySpy.getBeneficiary.and.returnValue(of({} as any));
+    beneficiarySpy.getBeneficiaries.and.returnValue(of({ results: [], count: 0 } as any));
     beneficiarySpy.getStatistics.and.returnValue(of({ total_allocated: 0 } as any));
 
     const authSpy = jasmine.createSpyObj('AuthService', ['isAdmin', 'logout', 'getCurrentUser'], {
