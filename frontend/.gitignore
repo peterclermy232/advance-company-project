@@ -32,6 +32,9 @@ environment.ts
 coverage/
 .nyc_output/
 *.lcov
+cypress/reports/
+cypress/screenshots/
+cypress/videos/
 
 # OS
 .DS_Store

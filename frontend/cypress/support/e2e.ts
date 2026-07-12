@@ -1,5 +1,6 @@
 // Import custom commands
 import './commands';
+import 'cypress-mochawesome-reporter/register';
 
 // Suppress uncaught exceptions from the app that would fail the test
 Cypress.on('uncaught:exception', (err) => {
