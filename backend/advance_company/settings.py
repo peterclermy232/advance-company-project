@@ -309,7 +309,7 @@ MPESA_PASSKEY = strip_quotes(config('MPESA_PASSKEY', default='bfb279f9aa9bdbcf15
 MPESA_CALLBACK_URL = strip_quotes(config('MPESA_CALLBACK_URL', default=''))
 
 # Frontend URL
-FRONTEND_URL = strip_quotes(config('FRONTEND_URL'))
+FRONTEND_URL = strip_quotes(config('FRONTEND_URL', default=''))
 
 # Sentry error tracking
 SENTRY_DSN = strip_quotes(config('SENTRY_DSN', default=''))
