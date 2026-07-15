@@ -70,7 +70,7 @@ describe('Register Page', () => {
     cy.get('[data-cy="email-input"]').type('newuser@example.com');
     cy.get('[data-cy="phone-input"]').type('+254712345678');
     cy.get('[data-cy="password-input"]').type('Str0ngP@ssword!');
-    cy.get('[data-cy="confirm-password-input"]').type('Str0ngP@ssword!');
+    cy.get('[data-cy="confirm-password-input"]').type('Str0ngP@ssword!').should('have.value', 'Str0ngP@ssword!');
     cy.get('[data-cy="register-btn"]').click();
 
     cy.wait('@registerSuccess');

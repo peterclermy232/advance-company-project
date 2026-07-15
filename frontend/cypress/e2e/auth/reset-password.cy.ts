@@ -39,7 +39,7 @@ describe('Reset Password Page', () => {
     cy.visit('/auth/reset-password?uid=abc123&token=fake-token');
 
     cy.get('[formControlName="new_password"]').type('NewStr0ng!Pass');
-    cy.get('[formControlName="confirm_password"]').type('NewStr0ng!Pass');
+    cy.get('[formControlName="confirm_password"]').type('NewStr0ng!Pass').should('have.value', 'NewStr0ng!Pass');
     cy.get('button[type="submit"]').click();
 
     cy.wait('@resetPassword');
@@ -57,7 +57,7 @@ describe('Reset Password Page', () => {
     cy.visit('/auth/reset-password?uid=abc123&token=expired-token');
 
     cy.get('[formControlName="new_password"]').type('NewStr0ng!Pass');
-    cy.get('[formControlName="confirm_password"]').type('NewStr0ng!Pass');
+    cy.get('[formControlName="confirm_password"]').type('NewStr0ng!Pass').should('have.value', 'NewStr0ng!Pass');
     cy.get('button[type="submit"]').click();
 
     cy.wait('@resetPasswordFail');

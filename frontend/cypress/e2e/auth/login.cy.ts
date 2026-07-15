@@ -95,7 +95,7 @@ describe('Login Page', () => {
     }).as('loginSuccess');
 
     cy.get('[data-cy="email-input"]').type('test@example.com');
-    cy.get('[data-cy="password-input"]').type('TestPass123!');
+    cy.get('[data-cy="password-input"]').type('TestPass123!').should('have.value', 'TestPass123!');
     cy.get('[data-cy="login-btn"]').click();
 
     cy.wait('@loginSuccess');
@@ -108,7 +108,7 @@ describe('Login Page', () => {
     }).as('loginSuccess');
 
     cy.get('[data-cy="email-input"]').type('test@example.com');
-    cy.get('[data-cy="password-input"]').type('TestPass123!');
+    cy.get('[data-cy="password-input"]').type('TestPass123!').should('have.value', 'TestPass123!');
     cy.get('[data-cy="login-btn"]').click();
 
     cy.wait('@loginSuccess');
@@ -124,7 +124,7 @@ describe('Login Page', () => {
     }).as('loginFail');
 
     cy.get('[data-cy="email-input"]').type('test@example.com');
-    cy.get('[data-cy="password-input"]').type('WrongPassword!');
+    cy.get('[data-cy="password-input"]').type('WrongPassword!').should('have.value', 'WrongPassword!');
     cy.get('[data-cy="login-btn"]').click();
 
     cy.wait('@loginFail');
@@ -138,7 +138,7 @@ describe('Login Page', () => {
     }).as('loginFail');
 
     cy.get('[data-cy="email-input"]').type('test@example.com');
-    cy.get('[data-cy="password-input"]').type('WrongPassword!');
+    cy.get('[data-cy="password-input"]').type('WrongPassword!').should('have.value', 'WrongPassword!');
     cy.get('[data-cy="login-btn"]').click();
 
     cy.wait('@loginFail');
@@ -154,7 +154,7 @@ describe('Login Page', () => {
     }).as('login2FA');
 
     cy.get('[data-cy="email-input"]').type('2fa@example.com');
-    cy.get('[data-cy="password-input"]').type('TestPass123!');
+    cy.get('[data-cy="password-input"]').type('TestPass123!').should('have.value', 'TestPass123!');
     cy.get('[data-cy="login-btn"]').click();
 
     cy.wait('@login2FA');
