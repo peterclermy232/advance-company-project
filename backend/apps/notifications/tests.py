@@ -3,7 +3,7 @@ import pytest
 from rest_framework import status
 
 
-NOTIFICATIONS_URL = '/api/v1/notifications/'
+NOTIFICATIONS_URL = '/api/notifications/'
 
 
 @pytest.mark.django_db
@@ -17,11 +17,10 @@ class TestNotifications:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_mark_all_read(self, auth_client):
-        response = auth_client.post(f'{NOTIFICATIONS_URL}mark_all_read/')
+        response = auth_client.post(f'{NOTIFICATIONS_URL}mark_all_as_read/')
         assert response.status_code in [
             status.HTTP_200_OK,
             status.HTTP_204_NO_CONTENT,
-            status.HTTP_404_NOT_FOUND,
         ]
 
     def test_notification_count_returns_unread(self, auth_client):

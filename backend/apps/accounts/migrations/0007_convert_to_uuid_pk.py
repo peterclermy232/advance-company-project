@@ -1,4 +1,6 @@
-from django.db import migrations
+import uuid
+
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
@@ -8,7 +10,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
+        migrations.SeparateDatabaseAndState(
+            database_operations=[migrations.RunSQL(
             sql="""
             DO $$ 
             DECLARE
@@ -48,6 +51,24 @@ class Migration(migrations.Migration):
             ALTER TABLE accounts_user ADD CONSTRAINT accounts_user_pkey PRIMARY KEY (uuid);
             ALTER TABLE accounts_user DROP COLUMN IF EXISTS id CASCADE;
             """,
-            reverse_sql=migrations.RunSQL.noop
+                reverse_sql=migrations.RunSQL.noop,
+            )],
+            # The raw SQL above changes the real database directly, so mirror
+            # that here to keep Django's migration state in sync (uuid becomes
+            # the sole pk, id is gone). Without this, later migrations that
+            # were auto-generated against the (stale) old state try to redo
+            # these same changes for real and fail against a freshly-built
+            # database (fresh test DBs, new local/CI setups).
+            state_operations=[
+                migrations.AlterField(
+                    model_name='user',
+                    name='uuid',
+                    field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+                ),
+                migrations.RemoveField(
+                    model_name='user',
+                    name='id',
+                ),
+            ],
         ),
     ]

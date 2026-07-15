@@ -19,10 +19,14 @@ class Migration(migrations.Migration):
             model_name='biometricdevice',
             name='id',
         ),
-        migrations.RemoveField(
-            model_name='user',
-            name='id',
-        ),
+        # NOTE: `user.id` removal and `user.uuid` becoming the primary key are
+        # NOT repeated here — both already happened for real via the raw SQL
+        # in 0007_convert_to_uuid_pk.py, and 0007's state_operations now keep
+        # Django's migration state in sync with that. Redoing either as a
+        # real operation here would fail against a database built from
+        # scratch: dropping `id` again ("column does not exist"), or
+        # re-adding a primary key on `uuid` that 0007 already added
+        # ("multiple primary keys ... are not allowed").
         migrations.AlterField(
             model_name='biometricauthlog',
             name='uuid',
@@ -30,11 +34,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='biometricdevice',
-            name='uuid',
-            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
-        ),
-        migrations.AlterField(
-            model_name='user',
             name='uuid',
             field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
         ),

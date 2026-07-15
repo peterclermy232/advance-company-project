@@ -3,7 +3,7 @@ import pytest
 from rest_framework import status
 
 
-HEALTH_URL = '/api/v1/health/'
+HEALTH_URL = '/api/health/'
 
 
 @pytest.mark.django_db

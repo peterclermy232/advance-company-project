@@ -2,6 +2,7 @@
 import pytest
 import factory
 from factory.django import DjangoModelFactory
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
@@ -78,6 +79,20 @@ def sample_image():
         content=b'\xff\xd8\xff\xe0' + b'\x00' * 100,
         content_type='image/jpeg',
     )
+
+
+@pytest.fixture(autouse=True)
+def clear_throttle_cache():
+    """
+    DRF's AnonRateThrottle classes (RegisterRateThrottle, LoginRateThrottle,
+    etc.) key by client IP, and Django's test client always uses the same
+    fake IP — so without this, throttle counters accumulate in the cache
+    across every test in the session and eventually trip later tests that
+    hit the same endpoint, regardless of what they're actually testing.
+    """
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

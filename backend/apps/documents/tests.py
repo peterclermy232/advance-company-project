@@ -4,7 +4,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
 
-DOCUMENT_URL = '/api/v1/documents/'
+DOCUMENT_URL = '/api/documents/'
 
 
 def _make_pdf(name='test.pdf'):
@@ -17,7 +17,7 @@ class TestDocumentUpload:
         payload = {
             'title': 'Test Document',
             'file': _make_pdf(),
-            'document_type': 'other',
+            'category': 'additional',
         }
         response = auth_client.post(DOCUMENT_URL, payload, format='multipart')
         assert response.status_code in [
@@ -48,10 +48,10 @@ class TestDocumentUpload:
         payload = {
             'title': 'My Doc',
             'file': _make_pdf(),
-            'document_type': 'other',
+            'category': 'additional',
         }
         auth_client.post(DOCUMENT_URL, payload, format='multipart')
-        docs = Document.objects.filter(uploaded_by=user)
+        docs = Document.objects.filter(user=user)
         assert docs.exists()
 
     def test_other_user_cannot_see_my_documents(self, auth_client, db):
@@ -62,14 +62,15 @@ class TestDocumentUpload:
         other_client.force_authenticate(user=other)
         # Upload as other user (model-level to bypass API quirks)
         Document.objects.create(
-            uploaded_by=other,
+            user=other,
             title='Private',
-            document_type='other',
+            category='additional',
             file=_make_pdf(),
         )
         response = auth_client.get(DOCUMENT_URL)
         assert response.status_code == status.HTTP_200_OK
-        titles = [d.get('title') for d in response.data.get('results', response.data)]
+        results = response.data.get('results', response.data) if hasattr(response.data, 'get') else response.data
+        titles = [d.get('title') for d in results]
         assert 'Private' not in titles
 
 
@@ -77,5 +78,5 @@ class TestDocumentUpload:
 class TestDocumentModel:
     def test_document_str_contains_title(self, user):
         from .models import Document
-        doc = Document(uploaded_by=user, title='Annual Report', document_type='report')
+        doc = Document(user=user, title='Annual Report', category='additional')
         assert 'Annual Report' in str(doc) or doc is not None

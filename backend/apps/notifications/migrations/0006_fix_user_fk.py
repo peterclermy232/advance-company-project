@@ -1,4 +1,6 @@
-from django.db import migrations
+import uuid
+
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
@@ -9,7 +11,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
+        migrations.SeparateDatabaseAndState(
+            database_operations=[migrations.RunSQL(
             sql="""
             TRUNCATE TABLE notifications_notificationpreferences CASCADE;
             
@@ -54,6 +57,25 @@ class Migration(migrations.Migration):
             ALTER TABLE notifications_notificationpreferences
             ADD CONSTRAINT notifications_notificationpreferences_user_id_key UNIQUE (user_id);
             """,
-            reverse_sql=migrations.RunSQL.noop
+                reverse_sql=migrations.RunSQL.noop,
+            )],
+            # The raw SQL above changes the real database directly (drops
+            # NotificationPreferences.id, adds uuid as its pk, repoints
+            # user_id at accounts_user.uuid), so mirror those changes in
+            # Django's state here. Without this, 0007_remove_notification_id_
+            # and_more.py — auto-generated against the stale old state —
+            # tries to redo them for real and fails against any database
+            # built from scratch (fresh test DBs, new local/CI setups).
+            state_operations=[
+                migrations.RemoveField(
+                    model_name='notificationpreferences',
+                    name='id',
+                ),
+                migrations.AddField(
+                    model_name='notificationpreferences',
+                    name='uuid',
+                    field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+                ),
+            ],
         ),
     ]

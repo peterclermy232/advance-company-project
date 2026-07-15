@@ -15,24 +15,47 @@ class Migration(migrations.Migration):
             model_name='notification',
             name='id',
         ),
-        migrations.RemoveField(
-            model_name='notificationpreferences',
-            name='id',
+        # NOTE: `notificationpreferences.id` removal and its `uuid` field
+        # becoming the primary key are NOT repeated here — both already
+        # happened for real via the raw SQL in 0006_fix_user_fk.py, and
+        # 0006's state_operations now keep Django's migration state in sync
+        # with that. Redoing either as a real operation here would fail
+        # against a database built from scratch.
+        # `related_application_id`/`related_deposit_id` were BigIntegerFields
+        # (referencing the pre-conversion int-based applications/financial
+        # tables, which are now UUID-keyed). There's no valid bigint->uuid
+        # cast, and the old integer values are meaningless post-conversion,
+        # so discard them (both fields are nullable) rather than attempting
+        # Django's auto-generated `::uuid` cast, which fails outright.
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql='ALTER TABLE notifications_notification ALTER COLUMN related_application_id TYPE uuid USING NULL;',
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='notification',
+                    name='related_application_id',
+                    field=models.UUIDField(blank=True, null=True),
+                ),
+            ],
         ),
-        migrations.AddField(
-            model_name='notificationpreferences',
-            name='uuid',
-            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
-        ),
-        migrations.AlterField(
-            model_name='notification',
-            name='related_application_id',
-            field=models.UUIDField(blank=True, null=True),
-        ),
-        migrations.AlterField(
-            model_name='notification',
-            name='related_deposit_id',
-            field=models.UUIDField(blank=True, null=True),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql='ALTER TABLE notifications_notification ALTER COLUMN related_deposit_id TYPE uuid USING NULL;',
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='notification',
+                    name='related_deposit_id',
+                    field=models.UUIDField(blank=True, null=True),
+                ),
+            ],
         ),
         migrations.AlterField(
             model_name='notification',

@@ -8,11 +8,11 @@ from rest_framework import status
 from .models import Deposit, FinancialAccount
 
 
-DEPOSIT_LIST_URL = '/api/v1/financial/deposits/'
+DEPOSIT_LIST_URL = '/api/financial/deposits/'
 
 
 def deposit_approve_url(pk):
-    return f'/api/v1/financial/deposits/{pk}/approve/'
+    return f'/api/financial/deposits/{pk}/approve_deposit/'
 
 
 # ---------------------------------------------------------------------------
@@ -40,15 +40,19 @@ class TestDepositCreation:
         deposit = Deposit.objects.get(user=user)
         assert deposit.user == user
 
-    def test_deposit_initial_status_is_pending(self, auth_client, user):
+    def test_deposit_initial_status_is_processing_for_mpesa(self, auth_client, user):
+        # M-Pesa deposits go straight to 'processing' since creation immediately
+        # triggers an STK push; only non-M-Pesa methods start as 'pending'.
         auth_client.post(DEPOSIT_LIST_URL, self._payload())
         deposit = Deposit.objects.get(user=user)
-        assert deposit.status == 'pending'
+        assert deposit.status == 'processing'
 
-    def test_deposit_amount_saved_correctly(self, auth_client, user):
+    def test_deposit_amount_is_fixed_monthly_amount(self, auth_client, user):
+        # DepositViewSet.create() ignores any client-supplied amount and
+        # always charges the fixed MONTHLY_DEPOSIT_AMOUNT.
         auth_client.post(DEPOSIT_LIST_URL, self._payload(amount=50000))
         deposit = Deposit.objects.get(user=user)
-        assert deposit.amount == Decimal('50000.00')
+        assert deposit.amount == Decimal('20000.00')
 
     def test_cannot_create_duplicate_deposit_same_month(self, auth_client, user):
         Deposit.objects.create(
@@ -65,14 +69,13 @@ class TestDepositCreation:
         response = api_client.post(DEPOSIT_LIST_URL, self._payload())
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_deposit_missing_amount_rejected(self, auth_client):
+    def test_deposit_missing_mpesa_phone_rejected(self, auth_client):
+        # amount isn't client-controlled (see test above), but mpesa_phone is
+        # required whenever payment_method='mpesa'.
         payload = self._payload()
-        del payload['amount']
+        del payload['mpesa_phone']
         response = auth_client.post(DEPOSIT_LIST_URL, payload)
-        assert response.status_code in [
-            status.HTTP_400_BAD_REQUEST,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-        ]
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +92,7 @@ class TestDepositApproval:
             status='pending',
             transaction_reference='REF002',
         )
-        response = admin_client.post(deposit_approve_url(deposit.id))
+        response = admin_client.post(deposit_approve_url(deposit.uuid))
         assert response.status_code == status.HTTP_200_OK
 
         deposit.refresh_from_db()
@@ -103,7 +106,7 @@ class TestDepositApproval:
             status='pending',
             transaction_reference='REF003',
         )
-        admin_client.post(deposit_approve_url(deposit.id))
+        admin_client.post(deposit_approve_url(deposit.uuid))
 
         account = FinancialAccount.objects.get(user=user)
         assert account.total_contributions == Decimal('20000.00')
@@ -116,7 +119,7 @@ class TestDepositApproval:
             status='pending',
             transaction_reference='REF004',
         )
-        admin_client.post(deposit_approve_url(deposit.id))
+        admin_client.post(deposit_approve_url(deposit.uuid))
 
         deposit.refresh_from_db()
         assert deposit.approved_by == admin_user
@@ -129,7 +132,7 @@ class TestDepositApproval:
             status='pending',
             transaction_reference='REF005',
         )
-        response = auth_client.post(deposit_approve_url(deposit.id))
+        response = auth_client.post(deposit_approve_url(deposit.uuid))
         assert response.status_code in [
             status.HTTP_403_FORBIDDEN,
             status.HTTP_401_UNAUTHORIZED,
@@ -163,5 +166,6 @@ class TestFinancialAccount:
         )
         response = auth_client.get(DEPOSIT_LIST_URL)
         assert response.status_code == status.HTTP_200_OK
-        deposit_refs = [d.get('transaction_reference') for d in response.data.get('data', response.data)]
+        results = response.data.get('data', response.data) if hasattr(response.data, 'get') else response.data
+        deposit_refs = [d.get('transaction_reference') for d in results]
         assert 'OTHER001' not in deposit_refs

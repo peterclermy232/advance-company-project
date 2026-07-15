@@ -7,9 +7,9 @@ from rest_framework.test import APIClient
 from .models import User
 
 
-REGISTER_URL = '/api/v1/auth/register/'
-LOGIN_URL = '/api/v1/auth/login/'
-PROFILE_URL = '/api/v1/accounts/profile/'
+REGISTER_URL = '/api/auth/register/'
+LOGIN_URL = '/api/auth/login/'
+PROFILE_URL = '/api/auth/users/profile/'
 
 
 # ---------------------------------------------------------------------------
@@ -22,6 +22,7 @@ class TestUserRegistration:
         data = {
             'email': 'newuser@example.com',
             'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
             'phone_number': '+254712345678',
             'full_name': 'New User',
         }

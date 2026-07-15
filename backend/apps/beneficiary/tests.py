@@ -4,7 +4,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
 
-BENEFICIARY_URL = '/api/v1/beneficiaries/'
+BENEFICIARY_URL = '/api/beneficiary/'
 
 
 def _make_file():
