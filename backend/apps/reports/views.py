@@ -148,7 +148,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         return Report.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user, generated_by=request.user)
+        serializer.save(user=self.request.user, generated_by=self.request.user)
 
     # ---------------------- FINANCIAL REPORT ----------------------
     @action(detail=False, methods=['post'])

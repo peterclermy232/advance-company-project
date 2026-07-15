@@ -66,7 +66,7 @@ class AdminAnalyticsViewSet(ViewSet):
 
             deposit_stats = Deposit.objects.filter(
                 user=user,
-                status="APPROVED",  # ✅ fixed: was "completed"
+                status='completed',
             ).aggregate(
                 total_deposits=Count("uuid"),  # ✅ fixed: was Count("id")
                 last_deposit=Max("created_at"),
@@ -106,7 +106,7 @@ class AdminAnalyticsViewSet(ViewSet):
             if users.exists()
             else 0,
             "total_deposits_count": Deposit.objects.filter(
-                status="APPROVED"  # ✅ fixed: was "completed"
+                status='completed'
             ).count(),
             "total_interest_earned": float(
                 FinancialAccount.objects.aggregate(
@@ -122,7 +122,7 @@ class AdminAnalyticsViewSet(ViewSet):
             month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
             month_data = Deposit.objects.filter(
-                status="APPROVED",  # ✅ fixed: was "completed"
+                status='completed',
                 created_at__gte=month_start,
                 created_at__lte=month_end,
             ).aggregate(
@@ -176,7 +176,7 @@ class AdminAnalyticsViewSet(ViewSet):
                 if users.exists()
                 else 0,
                 "total_deposits_count": Deposit.objects.filter(
-                    status="APPROVED"  # ✅ fixed: was "completed"
+                    status='completed'
                 ).count(),
                 "total_interest_earned": float(
                     FinancialAccount.objects.aggregate(
@@ -216,7 +216,7 @@ class AdminAnalyticsViewSet(ViewSet):
                     "contributions": float(account.total_contributions),
                     "deposits": Deposit.objects.filter(
                         user=user,
-                        status="APPROVED",  # ✅ fixed: was "completed"
+                        status='completed',
                     ).count(),
                     "interest": float(account.interest_earned),
                     "status": user.activity_status,

@@ -110,3 +110,20 @@ def mock_supabase_storage(mocker):
         'apps.documents.storage.SupabaseStorage.exists',
         return_value=False,
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_mpesa_stk_push(mocker):
+    """Prevent any real M-Pesa sandbox calls during tests."""
+    mocker.patch(
+        'apps.financial.views.initiate_stk_push',
+        return_value={
+            'success': True,
+            'data': {
+                'CheckoutRequestID': 'ws_CO_test_checkout_id',
+                'MerchantRequestID': 'test_merchant_id',
+                'ResponseCode': '0',
+                'ResponseDescription': 'Success. Request accepted for processing',
+            },
+        },
+    )
