@@ -88,7 +88,15 @@ services:
       
       - key: EMAIL_HOST_PASSWORD
         sync: false
-      
+
+      # Render blocks outbound raw SMTP on standard plans ("Network is
+      # unreachable" connecting to smtp.gmail.com), so apps/accounts/emails.py's
+      # _send() helper uses the Resend HTTPS API instead whenever this is set,
+      # falling back to the SMTP config above only if it's absent. Must be set
+      # to a real key in the Render dashboard — this only provisions the slot.
+      - key: RESEND_API_KEY
+        sync: false
+
       - key: DEFAULT_FROM_EMAIL
         value: "Advance Company <peterclermy232@gmail.com>"
       
