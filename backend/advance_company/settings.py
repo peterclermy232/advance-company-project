@@ -297,6 +297,14 @@ EMAIL_PORT = int(strip_quotes(config('EMAIL_PORT', default='587')))
 EMAIL_USE_TLS = parse_bool(config('EMAIL_USE_TLS', default=True))
 EMAIL_HOST_USER = strip_quotes(config('EMAIL_HOST_USER', default=''))
 EMAIL_HOST_PASSWORD = strip_quotes(config('EMAIL_HOST_PASSWORD', default=''))
+# Without this, Django's SMTP backend has NO timeout at all and relies on the
+# OS default, which can hang for minutes on a blocked/filtered connection
+# (e.g. Render's network to smtp.gmail.com) instead of failing fast. This
+# matters because several notification code paths send email synchronously
+# inside the same request/response cycle (e.g. document upload's post_save
+# signal), so a hung SMTP connection stalls the user's request, not just the
+# email.
+EMAIL_TIMEOUT = int(strip_quotes(config('EMAIL_TIMEOUT', default='10')))
 DEFAULT_FROM_EMAIL = strip_quotes(config('DEFAULT_FROM_EMAIL', default='Advance Company <onboarding@resend.dev>'))
 RESEND_API_KEY = strip_quotes(config('RESEND_API_KEY', default=''))
 

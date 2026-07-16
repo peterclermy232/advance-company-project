@@ -97,8 +97,13 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
+      # Must match a verified Resend sender: either onboarding@resend.dev
+      # (works with zero setup) or an address on a domain verified in your
+      # Resend account. A personal @gmail.com address will be rejected by
+      # Resend's API even though this key only matters when RESEND_API_KEY
+      # is set (see below) — the SMTP fallback ignores this restriction.
       - key: DEFAULT_FROM_EMAIL
-        value: "Advance Company <peterclermy232@gmail.com>"
+        value: "Advance Company <onboarding@resend.dev>"
       
       # M-Pesa Configuration
       - key: MPESA_ENVIRONMENT

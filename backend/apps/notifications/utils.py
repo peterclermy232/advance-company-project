@@ -1,5 +1,3 @@
-from django.core.mail import send_mail, EmailMultiAlternatives
-from django.template.loader import render_to_string
 from django.conf import settings
 import logging
 
@@ -21,13 +19,13 @@ except ImportError:
 def send_email_notification(user, subject, message, html_message=None):
     """
     Send email notification to user
-    
+
     Args:
         user: User object
         subject: Email subject
         message: Plain text message
         html_message: HTML formatted message (optional)
-    
+
     Returns:
         bool: True if sent successfully
     """
@@ -36,42 +34,30 @@ def send_email_notification(user, subject, message, html_message=None):
         if not user.email:
             logger.warning(f"User {user.full_name} has no email address")
             return False
-        
+
         # Check if user has email enabled
         if hasattr(user, 'notification_preferences'):
             if not user.notification_preferences.email_enabled:
                 logger.info(f"Email disabled for user {user.email}")
                 return False
-        
-        # Check if email is configured
-        if not getattr(settings, 'EMAIL_HOST_USER', None):
+
+        # Check if any email provider is configured (Resend preferred, SMTP fallback)
+        if not getattr(settings, 'RESEND_API_KEY', None) and not getattr(settings, 'EMAIL_HOST_USER', None):
             logger.warning("Email not configured in settings - skipping email")
             return False
-        
-        # Send email
-        if html_message:
-            # Send both plain text and HTML
-            email = EmailMultiAlternatives(
-                subject=subject,
-                body=message,
-                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER),
-                to=[user.email]
-            )
-            email.attach_alternative(html_message, "text/html")
-            email.send()
-        else:
-            # Send plain text only
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER),
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
-        
+
+        # Route through the shared _send() helper (prefers the Resend HTTPS
+        # API over raw SMTP — see apps/accounts/emails.py). This matters here
+        # specifically because this function is called synchronously from
+        # post_save signals (e.g. document upload), so a hung/blocked SMTP
+        # connection would otherwise stall the user's own request, not just
+        # the notification.
+        from apps.accounts.emails import _send
+        _send(subject, message, html_message or f'<p>{message}</p>', user.email)
+
         logger.info(f"Email sent to {user.email}")
         return True
-        
+
     except Exception as e:
         logger.error(f"Error sending email to {user.email}: {str(e)}")
         return False
