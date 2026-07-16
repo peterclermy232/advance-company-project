@@ -307,6 +307,14 @@ EMAIL_HOST_PASSWORD = strip_quotes(config('EMAIL_HOST_PASSWORD', default=''))
 EMAIL_TIMEOUT = int(strip_quotes(config('EMAIL_TIMEOUT', default='10')))
 DEFAULT_FROM_EMAIL = strip_quotes(config('DEFAULT_FROM_EMAIL', default='Advance Company <onboarding@resend.dev>'))
 RESEND_API_KEY = strip_quotes(config('RESEND_API_KEY', default=''))
+# Checked before RESEND_API_KEY in emails.py's _send() — set this to switch
+# the active provider to MailerSend.
+MAILERSEND_API_KEY = strip_quotes(config('MAILERSEND_API_KEY', default=''))
+# MailerSend's trial domain sender — overrides DEFAULT_FROM_EMAIL for
+# MailerSend sends specifically, since a trial domain sender can't be an
+# arbitrary address (e.g. your Gmail).
+MAILERSEND_FROM_EMAIL = strip_quotes(config('MAILERSEND_FROM_EMAIL', default=''))
+MAILERSEND_FROM_NAME = strip_quotes(config('MAILERSEND_FROM_NAME', default='Advance Company'))
 
 # M-PESA Configuration
 MPESA_ENVIRONMENT = strip_quotes(config('MPESA_ENVIRONMENT', default='sandbox'))

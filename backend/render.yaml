@@ -97,6 +97,18 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
+      # Checked before RESEND_API_KEY in emails.py's _send() — set this to
+      # switch the active provider to MailerSend. Get it from
+      # mailersend.com > API Tokens.
+      - key: MAILERSEND_API_KEY
+        sync: false
+
+      - key: MAILERSEND_FROM_EMAIL
+        sync: false
+
+      - key: MAILERSEND_FROM_NAME
+        value: "Advance Company"
+
       # Must match a verified Resend sender: either onboarding@resend.dev
       # (works with zero setup) or an address on a domain verified in your
       # Resend account. A personal @gmail.com address will be rejected by

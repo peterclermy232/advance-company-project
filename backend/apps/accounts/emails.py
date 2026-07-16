@@ -113,12 +113,54 @@ def send_password_reset_email(user, reset_url: str):
     _send(subject, text_content, _base_html(body_html), user.email)
 
 
+def _parse_from_email(from_email: str):
+    """Split 'Name <email@domain>' into (name, email); tolerate a bare address."""
+    if '<' in from_email and '>' in from_email:
+        name, addr = from_email.split('<', 1)
+        return name.strip().strip('"'), addr.split('>', 1)[0].strip()
+    return '', from_email.strip()
+
+
 def _send(subject: str, text: str, html: str, to_email: str):
     from django.conf import settings
 
+    mailersend_api_key = getattr(settings, 'MAILERSEND_API_KEY', None) or None
     resend_api_key = getattr(settings, 'RESEND_API_KEY', None) or None
 
-    if resend_api_key:
+    if mailersend_api_key:
+        import requests
+
+        mailersend_from = getattr(settings, 'MAILERSEND_FROM_EMAIL', '') or None
+        if mailersend_from:
+            from_addr = mailersend_from
+            from_name = getattr(settings, 'MAILERSEND_FROM_NAME', '') or BRAND
+        else:
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Advance Company <onboarding@resend.dev>')
+            from_name, from_addr = _parse_from_email(from_email)
+
+        response = requests.post(
+            'https://api.mailersend.com/v1/email',
+            headers={
+                'Authorization': f'Bearer {mailersend_api_key}',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'from': {'email': from_addr, 'name': from_name or BRAND},
+                'to': [{'email': to_email}],
+                'subject': subject,
+                'text': text,
+                'html': html,
+            },
+            timeout=10,
+        )
+
+        if response.status_code >= 400:
+            logger.error(f'MailerSend email failed ({response.status_code}): {response.text}')
+            response.raise_for_status()
+
+        logger.info(f'Email "{subject}" sent to {to_email} via MailerSend')
+
+    elif resend_api_key:
         try:
             import resend
             resend.api_key = resend_api_key
