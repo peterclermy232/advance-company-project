@@ -22,6 +22,23 @@ export default defineConfig({
 
     setupNodeEvents(on, config) {
       require("cypress-mochawesome-reporter/plugin")(on);
+
+      // Chrome's back/forward cache (bfcache) can serve a page from a
+      // frozen, paused JS snapshot instead of a genuine reload when
+      // cy.visit() repeatedly navigates to the same URL within one spec
+      // (e.g. every login.cy.ts test visiting '/auth/login' in beforeEach).
+      // That resumed snapshot can carry over stale RxJS/Zone.js state from
+      // the previous test's in-flight request, which perpetually hangs the
+      // new test's own request (observed as a stuck "Signing in..." spinner
+      // and Cypress never seeing a matching request). Disabling bfcache
+      // forces a genuine fresh load every time.
+      on("before:browser:launch", (browser, launchOptions) => {
+        if (browser.family === "chromium" && browser.name !== "electron") {
+          launchOptions.args.push("--disable-features=BackForwardCache");
+        }
+        return launchOptions;
+      });
+
       return config;
     },
 
