@@ -22,6 +22,12 @@ export default defineConfig({
 
     setupNodeEvents(on, config) {
       require("cypress-mochawesome-reporter/plugin")(on);
+      // Pipes the browser's console output (console.error/warn/log, and
+      // cy.request/cy.intercept activity) into the same terminal log CI
+      // captures — without this, diagnosing a browser-side JS error means
+      // downloading and watching the video artifact instead of just reading
+      // the CI log text.
+      require("cypress-terminal-report/src/installLogsPrinter")(on);
 
       // Chrome's back/forward cache (bfcache) can serve a page from a
       // frozen, paused JS snapshot instead of a genuine reload when
