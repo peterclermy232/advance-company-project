@@ -99,7 +99,12 @@ jobs:
         uses: cypress-io/github-action@v6
         with:
           working-directory: frontend
-          start: npx ng serve --configuration production
+          # Serves with production-level build optimizations (AOT, minification)
+          # but apiUrl pointed at localhost instead of the real Render backend —
+          # see environment.e2e.ts for why: Cypress's request interception has
+          # proven unreliable against a real remote HTTPS origin specifically,
+          # even though the app itself fires the request correctly every time.
+          start: npx ng serve --configuration e2e
           wait-on: 'http://localhost:4200'
           wait-on-timeout: 120
           browser: chrome

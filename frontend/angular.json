@@ -54,6 +54,17 @@
             "development": {
               "optimization": false,
               "sourceMap": true
+            },
+            "e2e": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/environments/environment.ts",
+                  "with": "src/app/environments/environment.e2e.ts"
+                }
+              ],
+              "outputHashing": "all",
+              "optimization": true,
+              "sourceMap": false
             }
           },
           "defaultConfiguration": "production"
@@ -66,6 +77,9 @@
             },
             "development": {
               "buildTarget": "advance-company-frontend:build:development"
+            },
+            "e2e": {
+              "buildTarget": "advance-company-frontend:build:e2e"
             }
           },
           "defaultConfiguration": "development"

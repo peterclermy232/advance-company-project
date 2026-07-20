@@ -124,7 +124,7 @@ def notify_application_submitted(sender, instance, created, **kwargs):
                 f'Your {instance.get_application_type_display()} application '
                 f'has been submitted for review.'
             ),
-            related_application_id=instance.uuid,
+            related_application_id=instance.id,
             application=instance,
         )
 
@@ -139,13 +139,13 @@ def notify_application_submitted(sender, instance, created, **kwargs):
                         f'{instance.user.full_name} submitted a '
                         f'{instance.get_application_type_display()} application.'
                     ),
-                    related_application_id=instance.uuid,
+                    related_application_id=instance.id,
                     related_user_name=instance.user.full_name,
                 )
             except Exception as e:
                 logger.error(f'Error notifying admin {admin.uuid}: {e}')
 
-        logger.info(f'Notifications sent for new application {instance.uuid}')
+        logger.info(f'Notifications sent for new application {instance.id}')
 
     except Exception as e:
         logger.error(f'Error in notify_application_submitted: {e}', exc_info=True)
@@ -175,10 +175,10 @@ def notify_application_status_change(sender, instance, **kwargs):
                     f'Your {instance.get_application_type_display()} '
                     f'application has been approved.'
                 ),
-                related_application_id=instance.uuid,
+                related_application_id=instance.id,
                 application=instance,
             )
-            logger.info(f'Approval notification sent for application {instance.uuid}')
+            logger.info(f'Approval notification sent for application {instance.id}')
 
         elif old.status != 'rejected' and instance.status == 'rejected':
             comments = instance.admin_comments or 'No comments provided'
@@ -190,9 +190,9 @@ def notify_application_status_change(sender, instance, **kwargs):
                     f'Your {instance.get_application_type_display()} '
                     f'application was rejected. {comments}'
                 ),
-                related_application_id=instance.uuid,
+                related_application_id=instance.id,
             )
-            logger.info(f'Rejection notification sent for application {instance.uuid}')
+            logger.info(f'Rejection notification sent for application {instance.id}')
 
     except Exception as e:
         logger.error(f'Error in notify_application_status_change: {e}', exc_info=True)

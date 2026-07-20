@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 
@@ -329,7 +330,11 @@ FRONTEND_URL = strip_quotes(config('FRONTEND_URL', default=''))
 
 # Sentry error tracking
 SENTRY_DSN = strip_quotes(config('SENTRY_DSN', default=''))
-if SENTRY_DSN:
+# Without this, every pytest run reports exceptions from intentionally-mocked
+# failure-path tests (e.g. "Supabase is down" in a mocked upload) to Sentry as
+# if they were real production errors.
+RUNNING_TESTS = 'pytest' in sys.modules
+if SENTRY_DSN and not RUNNING_TESTS:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
     from sentry_sdk.integrations.logging import LoggingIntegration
